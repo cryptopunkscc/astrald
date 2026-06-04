@@ -5,9 +5,8 @@ import (
 	"testing"
 )
 
-// Regression tests for audit #13: narrowString/narrowBytes used to accept any input,
-// deferring the length check to WriteTo (which was broken). The fix rejects at the
-// API boundary so ro.Set returns immediately for oversized values.
+// narrowString/narrowBytes must reject oversized input at the API boundary so ro.Set
+// returns immediately, rather than deferring the length check to WriteTo.
 
 func TestNarrowString_RejectsOversized(t *testing.T) {
 	cases := []struct {

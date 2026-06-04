@@ -5,7 +5,8 @@ import (
 	"testing"
 )
 
-// Regression tests for audit #13: same lossy-cast bug in Bytes8/16 as in String8/16.
+// Regression tests: Bytes8/16 must reject oversized payloads at WriteTo, not silently
+// truncate the length prefix and desync the stream (same lossy-cast shape as String8/16).
 
 func TestBytes8_WriteTo_RejectsOversized(t *testing.T) {
 	b := Bytes8(make([]byte, 256))

@@ -9,11 +9,10 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-// TestDecode_UnknownType_WrapsBothSentinels pins the top-level-desync fix from
-// blueprints-audit.md #1: astral.Decode must return an error that carries both
-// ErrStreamCorrupted (new — "don't read more") and ErrBlueprintNotFound (existing —
-// "we couldn't resolve this type"). Existing errors.Is(err, ErrBlueprintNotFound)
-// call sites must keep working.
+// TestDecode_UnknownType_WrapsBothSentinels pins the top-level-desync contract:
+// astral.Decode must return an error that carries both ErrStreamCorrupted ("don't
+// read more") and ErrBlueprintNotFound ("couldn't resolve this type"). Existing
+// errors.Is(err, ErrBlueprintNotFound) call sites must keep working.
 func TestDecode_UnknownType_WrapsBothSentinels(t *testing.T) {
 	var buf bytes.Buffer
 	_, err := astral.ShortTypeEncoder(&buf, "unregistered.x.for.test")
@@ -33,9 +32,9 @@ func TestDecode_UnknownType_WrapsBothSentinels(t *testing.T) {
 	}
 }
 
-// TestCanonicalReceiver_LatchesAfterUnknownType pins #1+#23 for canonical: the wire has
-// no per-object framing, so after Stamp+tag are consumed for an unknown type the underlying
-// reader is past the boundary and further reads would be garbage. The receiver latches the
+// TestCanonicalReceiver_LatchesAfterUnknownType: canonical wire has no per-object
+// framing, so after Stamp+tag are consumed for an unknown type the underlying reader
+// is past the boundary and further reads would be garbage. The receiver latches the
 // error and refuses to touch the reader on subsequent calls.
 func TestCanonicalReceiver_LatchesAfterUnknownType(t *testing.T) {
 	var buf bytes.Buffer
@@ -67,9 +66,9 @@ func TestCanonicalReceiver_LatchesAfterUnknownType(t *testing.T) {
 	}
 }
 
-// TestJSONReceiver_LatchesAfterUnknownType pins #23 for JSON: although json.Decoder is
-// document-framed and could in principle continue, the agreed policy is fail-fast — the
-// first error latches and subsequent Receive() returns the same error.
+// TestJSONReceiver_LatchesAfterUnknownType: although json.Decoder is document-framed
+// and could in principle continue, the policy is fail-fast — the first error latches
+// and subsequent Receive() returns the same error.
 func TestJSONReceiver_LatchesAfterUnknownType(t *testing.T) {
 	stream := `{"Type":"unregistered.x.json","Object":null}` + "\n" +
 		`{"Type":"astral.string16","Object":"\"would-have-decoded\""}` + "\n"
@@ -93,8 +92,8 @@ func TestJSONReceiver_LatchesAfterUnknownType(t *testing.T) {
 	}
 }
 
-// TestTextReceiver_LatchesAfterUnknownType pins #23 for text: lines are self-delimited,
-// but the policy is fail-fast — the first error latches.
+// TestTextReceiver_LatchesAfterUnknownType: lines are self-delimited, but the policy
+// is fail-fast — the first error latches.
 func TestTextReceiver_LatchesAfterUnknownType(t *testing.T) {
 	stream := "#[unregistered.x.text]\n" +
 		"#[astral.string16] would-have-decoded\n"
@@ -118,9 +117,9 @@ func TestTextReceiver_LatchesAfterUnknownType(t *testing.T) {
 	}
 }
 
-// TestBinaryReceiver_AllowUnparsed_TopLevel_StillWorks is the regression for #23's binary
-// branch: top-level unknown types continue to be substituted by *UnparsedObject when
-// AllowUnparsed=true, because Bytes32 framing keeps the payload local to the receiver.
+// TestBinaryReceiver_AllowUnparsed_TopLevel_StillWorks: top-level unknown types are
+// substituted by *UnparsedObject when AllowUnparsed=true, because Bytes32 framing
+// keeps the payload local to the receiver.
 func TestBinaryReceiver_AllowUnparsed_TopLevel_StillWorks(t *testing.T) {
 	var buf bytes.Buffer
 	if _, err := astral.ObjectType("unregistered.x.binary").WriteTo(&buf); err != nil {
@@ -150,12 +149,12 @@ func TestBinaryReceiver_AllowUnparsed_TopLevel_StillWorks(t *testing.T) {
 	}
 }
 
-// TestBinaryReceiver_AllowUnparsed_NestedUnknown_StillWorks is the regression for #2 on the
-// binary branch: a registered Blueprint with an ObjectSpec field receives an unknown nested
-// type tag. Decoding the inner envelope returns an error wrapping ErrStreamCorrupted +
-// ErrBlueprintNotFound; the receiver catches errors.Is(ErrBlueprintNotFound) and returns
-// the whole outer envelope as *UnparsedObject. The sentinel wrap does not break the
-// existing recovery branch.
+// TestBinaryReceiver_AllowUnparsed_NestedUnknown_StillWorks: a registered Blueprint
+// with an ObjectSpec field receives an unknown nested type tag. Decoding the inner
+// envelope returns an error wrapping ErrStreamCorrupted + ErrBlueprintNotFound; the
+// receiver catches errors.Is(ErrBlueprintNotFound) and returns the whole outer
+// envelope as *UnparsedObject. The sentinel wrap does not break the existing
+// recovery branch.
 func TestBinaryReceiver_AllowUnparsed_NestedUnknown_StillWorks(t *testing.T) {
 	bp := astral.NewBlueprint("test.stream_corrupted.outer",
 		astral.Field{Name: "Inner", Spec: &astral.ObjectSpec{}},

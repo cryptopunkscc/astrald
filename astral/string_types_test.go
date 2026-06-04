@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// Regression tests for audit #13: the pre-fix code used `Uint8(len(s))` followed by an
-// unreachable `l > (1<<8)-1` guard, so oversized strings wrote a truncated length followed
-// by the full payload — desyncing the stream. Same shape in String16/32.
+// Regression tests: the pre-fix code used `Uint8(len(s))` followed by an unreachable
+// `l > (1<<8)-1` guard, so oversized strings wrote a truncated length followed by the
+// full payload — desyncing the stream. Same shape in String16/32.
 
 func TestString8_WriteTo_RejectsOversized(t *testing.T) {
 	s := String8(strings.Repeat("a", 256))

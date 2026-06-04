@@ -49,7 +49,7 @@ func TestRuntimeSlice_RuntimeBlueprintElement_RoundTrip(t *testing.T) {
 	// why: assert the decoder consumed the entire wire (buf.Len() after ReadFrom == 0).
 	// Pre-fix, decode silently no-op'd per element and left the bulk of the payload on
 	// the wire — that's the regression this test pins. Byte-count parity (read == wrote)
-	// is left off because primitive readers under-report n today (review finding #3).
+	// is left off because primitive readers under-report n today.
 	_, err = dst.ReadFrom(&buf)
 	if err != nil {
 		t.Fatal(err)
