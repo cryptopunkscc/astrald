@@ -73,7 +73,7 @@ func Decode(r io.Reader, config ...ConfigFunc) (object Object, n int64, err erro
 
 	object = cfg.Blueprints.New(typ)
 	if object == nil {
-		return nil, n, NewErrBlueprintNotFound(typ)
+		return nil, n, fmt.Errorf("%w: %w: %s", ErrStreamCorrupted, ErrBlueprintNotFound, typ)
 	}
 
 	m, err := object.ReadFrom(r)
@@ -109,7 +109,10 @@ func DecodeAs[T Object](data []byte, config ...ConfigFunc) (T, error) {
 	return t, nil
 }
 
-// ResolveObjectID calculates the id of the object
+// ResolveObjectID calculates the id of the object. The hashed bytes are
+// `Stamp || canonical ObjectType || payload` — not the bytes produced by Encode/EncodeBytes,
+// which use a configurable type encoder and omit the Stamp. A caller comparing an
+// out-of-band hash against this ObjectID must hash the same canonical sequence.
 func ResolveObjectID(obj Object) (objectID *ObjectID, err error) {
 	w := NewWriteResolver(nil)
 

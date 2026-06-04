@@ -36,7 +36,7 @@ func (mod *Module) AliasMap() *dir.AliasMap {
 		return nil
 	}
 
-	m := make(map[string]*astral.Identity)
+	m := make(map[string]*astral.Identity, len(rows))
 	for _, row := range rows {
 		m[row.Alias] = row.Identity
 	}

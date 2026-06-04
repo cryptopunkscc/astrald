@@ -34,9 +34,10 @@ func (u uint8Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var i uint8
 	err = binary.Read(r, ByteOrder, &i)
-
+	if err != nil {
+		return 0, err
+	}
 	u.SetUint(uint64(i))
-
 	return 1, nil
 }
 
@@ -83,9 +84,10 @@ func (u uint16Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v uint16
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	u.SetUint(uint64(v))
-
 	return 2, nil
 }
 
@@ -132,9 +134,10 @@ func (u uint32Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v uint32
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	u.SetUint(uint64(v))
-
 	return 4, nil
 }
 
@@ -181,9 +184,10 @@ func (u uint64Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v uint64
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	u.SetUint(v)
-
 	return 8, nil
 }
 
@@ -230,9 +234,10 @@ func (i int8Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v int8
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	i.SetInt(int64(v))
-
 	return 1, nil
 }
 
@@ -279,9 +284,10 @@ func (i int16Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v int16
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	i.SetInt(int64(v))
-
 	return 2, nil
 }
 
@@ -328,9 +334,10 @@ func (i int32Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v int32
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	i.SetInt(int64(v))
-
 	return 4, nil
 }
 
@@ -377,9 +384,10 @@ func (i int64Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v int64
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	i.SetInt(v)
-
 	return 8, nil
 }
 

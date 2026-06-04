@@ -9,9 +9,10 @@ import (
 )
 
 type Contract struct {
-	Issuer    *astral.Identity
-	Subject   *astral.Identity
-	Permits   *astral.Slice[*Permit]
+	Issuer  *astral.Identity
+	Subject *astral.Identity
+	Permits []*Permit
+
 	ExpiresAt astral.Time
 }
 
@@ -35,7 +36,7 @@ func (c *Contract) Allows(action ActionObject) bool {
 	if c.Permits == nil {
 		return false
 	}
-	for _, p := range *c.Permits.Elem {
+	for _, p := range c.Permits {
 		if ca, ok := action.(Constrainable); ok {
 			if !ca.ApplyConstraints(p.Constraints) {
 				continue
@@ -53,7 +54,7 @@ func (c *Contract) HasPermit(action string) []*Permit {
 		return nil
 	}
 	var result []*Permit
-	for _, p := range *c.Permits.Elem {
+	for _, p := range c.Permits {
 		if string(p.Action) == action {
 			result = append(result, p)
 		}

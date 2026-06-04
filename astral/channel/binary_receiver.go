@@ -3,6 +3,7 @@ package channel
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -46,7 +47,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 			return astral.NewUnparsedObject(objectType.String(), buf), nil
 		}
 
-		return nil, astral.NewErrBlueprintNotFound(objectType.String())
+		return nil, fmt.Errorf("%w: %s", astral.ErrBlueprintNotFound, objectType.String())
 	}
 
 	// decode the payload
@@ -55,7 +56,7 @@ func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 	case err == nil:
 		return
 
-	case errors.Is(err, &astral.ErrBlueprintNotFound{}) && b.AllowUnparsed:
+	case errors.Is(err, astral.ErrBlueprintNotFound) && b.AllowUnparsed:
 		// if we're missing a blueprint, return an unparsed object if allowed
 		return astral.NewUnparsedObject(objectType.String(), buf), nil
 

@@ -2,13 +2,12 @@ package astral
 
 import (
 	"bytes"
-	encoding2 "encoding"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
+	"sort"
 	"strconv"
 )
 
@@ -23,49 +22,62 @@ func (val mapValue) ObjectType() string {
 	return ""
 }
 
+// WriteTo emits the canonical map wire format:
+//
+//	[uint32 count] [encoded_key | encoded_value]…   sorted by encoded_key
+//
+// Keys must be reflect.String (encoded as String16) or unsigned integers of width 1/2/4/8
+// (encoded as fixed-width big-endian). Values are encoded via objectify on their static type,
+// which naturally produces tag+payload for interface element types and bare payload for
+// concrete Object types — matching StringMap/IntMap heterogeneous and homogeneous modes.
 func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
+	keyWidth, ok := supportedMapKey(val.Type().Key().Kind())
+	if !ok {
+		return 0, fmt.Errorf("map_value: unsupported key kind %s", val.Type().Key().Kind())
+	}
+
 	err = binary.Write(w, ByteOrder, uint32(val.Len()))
 	if err != nil {
 		return
 	}
 	n += 4
 
-	var o Object
-	var i int64
+	type pair struct{ key, value []byte }
+	pairs := make([]pair, 0, val.Len())
 
 	for _, k := range val.MapKeys() {
-		nkey := k.Kind() == reflect.Ptr || k.Kind() == reflect.Interface
-		if wto, ok := k.Interface().(io.WriterTo); ok && !nkey {
-			i, err = wto.WriteTo(w)
-		} else {
-			o, err = objectify(k)
-			if err != nil {
-				return
-			}
+		var keyBuf, valBuf bytes.Buffer
 
-			i, err = o.WriteTo(w)
-		}
-
-		n += i
+		err = writeMapKey(&keyBuf, k, keyWidth)
 		if err != nil {
 			return
 		}
 
-		v := val.MapIndex(k)
-
-		nval := v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface
-		if wto, ok := v.Interface().(io.WriterTo); ok && !nval {
-			i, err = wto.WriteTo(w)
-		} else {
-			o, err = objectify(v)
-			if err != nil {
-				return
-			}
-
-			i, err = o.WriteTo(w)
+		o, oerr := objectify(addressableMapValue(val.MapIndex(k)))
+		if oerr != nil {
+			err = oerr
+			return
+		}
+		if _, err = o.WriteTo(&valBuf); err != nil {
+			return
 		}
 
-		n += i
+		pairs = append(pairs, pair{key: keyBuf.Bytes(), value: valBuf.Bytes()})
+	}
+
+	sort.Slice(pairs, func(i, j int) bool {
+		return bytes.Compare(pairs[i].key, pairs[j].key) < 0
+	})
+
+	for _, p := range pairs {
+		var written int
+		written, err = w.Write(p.key)
+		n += int64(written)
+		if err != nil {
+			return
+		}
+		written, err = w.Write(p.value)
+		n += int64(written)
 		if err != nil {
 			return
 		}
@@ -75,6 +87,11 @@ func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
 }
 
 func (val mapValue) ReadFrom(r io.Reader) (n int64, err error) {
+	keyWidth, ok := supportedMapKey(val.Type().Key().Kind())
+	if !ok {
+		return 0, fmt.Errorf("map_value: unsupported key kind %s", val.Type().Key().Kind())
+	}
+
 	var l uint32
 	err = binary.Read(r, ByteOrder, &l)
 	if err != nil {
@@ -87,25 +104,26 @@ func (val mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	val.Set(reflect.MakeMap(val.Type()))
-
-	var o Object
-	var k int64
+	val.Set(reflect.MakeMapWithSize(val.Type(), int(l)))
 
 	for range l {
-		var key = reflect.New(val.Type().Key()).Elem()
+		var m int64
 
-		o, err = objectify(key)
-		k, err = o.ReadFrom(r)
-		n += k
+		key := reflect.New(val.Type().Key()).Elem()
+		m, err = readMapKey(r, key, keyWidth)
+		n += m
 		if err != nil {
 			return
 		}
 
-		var value = reflect.New(val.Type().Elem()).Elem()
-		o, err = objectify(value)
-		k, err = o.ReadFrom(r)
-		n += k
+		value := reflect.New(val.Type().Elem()).Elem()
+		o, oerr := objectify(value)
+		if oerr != nil {
+			err = oerr
+			return
+		}
+		m, err = o.ReadFrom(r)
+		n += m
 		if err != nil {
 			return
 		}
@@ -116,39 +134,88 @@ func (val mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+// supportedMapKey reports the canonical key width for an allowed map-key kind.
+// Width 0 means String16 wire (reflect.String). Widths 1/2/4/8 are fixed-width big-endian
+// unsigned integers. reflect.Uint is rejected: its width is platform-dependent, which would
+// make the wire bytes non-portable and break content-addressing.
+func supportedMapKey(k reflect.Kind) (width uint8, ok bool) {
+	switch k {
+	case reflect.String:
+		return 0, true
+	case reflect.Uint8:
+		return 1, true
+	case reflect.Uint16:
+		return 2, true
+	case reflect.Uint32:
+		return 4, true
+	case reflect.Uint64:
+		return 8, true
+	}
+	return 0, false
+}
+
+func writeMapKey(w io.Writer, k reflect.Value, width uint8) error {
+	if width == 0 {
+		_, err := String16(k.String()).WriteTo(w)
+		return err
+	}
+	var buf [8]byte
+	binary.BigEndian.PutUint64(buf[:], k.Uint())
+	_, err := w.Write(buf[8-width:])
+	return err
+}
+
+func readMapKey(r io.Reader, dst reflect.Value, width uint8) (int64, error) {
+	if width == 0 {
+		var s String16
+		n, err := (&s).ReadFrom(r)
+		if err != nil {
+			return n, err
+		}
+		dst.SetString(string(s))
+		return n, nil
+	}
+	var buf [8]byte
+	read, err := io.ReadFull(r, buf[8-width:])
+	if err != nil {
+		return int64(read), err
+	}
+	dst.SetUint(binary.BigEndian.Uint64(buf[:]))
+	return int64(read), nil
+}
+
+// addressableMapValue copies a non-addressable MapIndex result into an
+// addressable slot so pointer-receiver methods resolve through reflection.
+// Go maps return non-addressable Values from MapIndex (rehashes may move
+// slots), which hides the pointer method set from objectify.
+func addressableMapValue(v reflect.Value) reflect.Value {
+	addr := reflect.New(v.Type()).Elem()
+	addr.Set(v)
+	return addr
+}
+
 func (val mapValue) MarshalJSON() ([]byte, error) {
 	if val.IsNil() {
 		return jsonNull, nil
 	}
 
+	keyKind := val.Type().Key().Kind()
+	if _, ok := supportedMapKey(keyKind); !ok {
+		return nil, fmt.Errorf("map_value: unsupported key kind %s", keyKind)
+	}
+
 	var jmap = map[string]json.RawMessage{}
-	var err error
 
 	for _, mapKey := range val.MapKeys() {
-		var key []byte
-
-		m, ok := mapKey.Interface().(encoding2.TextMarshaler)
-		if ok {
-			key, err = m.MarshalText()
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			switch mapKey.Kind() {
-			case reflect.String:
-				key = []byte(mapKey.String())
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				key = []byte(strconv.FormatInt(mapKey.Int(), 10))
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				key = []byte(strconv.FormatUint(mapKey.Uint(), 10))
-			default:
-				return nil, errors.New("map key does not implement text encoding")
-			}
+		var key string
+		switch keyKind {
+		case reflect.String:
+			key = mapKey.String()
+		default:
+			key = strconv.FormatUint(mapKey.Uint(), 10)
 		}
 
-		mapValue := val.MapIndex(mapKey)
-
-		o, err := objectify(mapValue)
+		o, err := objectify(addressableMapValue(val.MapIndex(mapKey)))
 		if err != nil {
 			return nil, err
 		}
@@ -158,16 +225,21 @@ func (val mapValue) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 
-		jmap[string(key)] = value
+		jmap[key] = value
 	}
 
 	return json.Marshal(jmap)
 }
 
 func (val mapValue) UnmarshalJSON(data []byte) error {
-	if bytes.Compare(data, jsonNull) == 0 {
+	if bytes.Equal(data, jsonNull) {
 		val.SetZero()
 		return nil
+	}
+
+	keyType := val.Type().Key()
+	if _, ok := supportedMapKey(keyType.Kind()); !ok {
+		return fmt.Errorf("map_value: unsupported key kind %s", keyType.Kind())
 	}
 
 	val.Set(reflect.MakeMap(val.Type()))
@@ -178,50 +250,30 @@ func (val mapValue) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	keyType := val.Type().Key()
-
 	for k, v := range fields {
-		var mapVal reflect.Value
-		var mapKey = reflect.New(keyType)
-
-		if u, ok := mapKey.Interface().(encoding2.TextUnmarshaler); ok {
-			err = u.UnmarshalText([]byte(k))
-		} else {
-			switch keyType.Kind() {
-			case reflect.String:
-				mapKey.Elem().SetString(k)
-
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				i, err := strconv.ParseInt(k, 10, 64)
-				if err != nil {
-					return fmt.Errorf("error parsing int key: %w", err)
-				}
-				mapKey.Elem().SetInt(i)
-
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				i, err := strconv.ParseUint(k, 10, 64)
-				if err != nil {
-					return fmt.Errorf("error parsing uint key: %w", err)
-				}
-				mapKey.Elem().SetUint(i)
-
-			default:
-				return errors.New("map key does not implement text decoding")
+		mapKey := reflect.New(keyType).Elem()
+		switch keyType.Kind() {
+		case reflect.String:
+			mapKey.SetString(k)
+		default:
+			i, perr := strconv.ParseUint(k, 10, 64)
+			if perr != nil {
+				return fmt.Errorf("map_value: parse uint key %q: %w", k, perr)
 			}
+			mapKey.SetUint(i)
 		}
 
-		mapVal = reflect.New(val.Type().Elem()).Elem()
-		o, err := objectify(mapVal)
-		if err != nil {
+		mapVal := reflect.New(val.Type().Elem()).Elem()
+		o, oerr := objectify(mapVal)
+		if oerr != nil {
+			return oerr
+		}
+
+		if err = o.UnmarshalJSON(v); err != nil {
 			return err
 		}
 
-		err = o.UnmarshalJSON(v)
-		if err != nil {
-			return err
-		}
-
-		val.SetMapIndex(mapKey.Elem(), mapVal)
+		val.SetMapIndex(mapKey, mapVal)
 	}
 
 	return nil

@@ -100,7 +100,7 @@ func (db *DB) storeSignedContract(sc *auth.SignedContract) error {
 			return err
 		}
 
-		if sc.Permits.Elem == nil {
+		if len(sc.Permits) == 0 {
 			return nil
 		}
 
@@ -113,7 +113,7 @@ func (db *DB) storeSignedContract(sc *auth.SignedContract) error {
 			return nil
 		}
 
-		for _, p := range *sc.Permits.Elem {
+		for _, p := range sc.Permits {
 			permit, err := fromPermit(row.ObjectID, p)
 			if err != nil {
 				return err

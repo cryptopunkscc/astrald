@@ -22,6 +22,14 @@ func (p ptrValue) ObjectType() string {
 		return ""
 	}
 
+	// why: try the pointer's own method set first so pointer-receiver ObjectType
+	// (e.g. *PrimitiveSpec) is reachable. Falling straight through to objectify(p.Elem())
+	// would land on the immutable struct value, which can't satisfy ObjectTyper for
+	// pointer-receiver methods, and return "".
+	if ot, ok := p.Value.Interface().(ObjectTyper); ok {
+		return ot.ObjectType()
+	}
+
 	o, err := objectify(p.Elem())
 	if err != nil {
 		return ""

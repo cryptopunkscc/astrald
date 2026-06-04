@@ -220,6 +220,10 @@ func (mod *Module) getRepoName(repo objects.Repository) string {
 	return ""
 }
 
+func (mod *Module) RegisterBlueprint(bp *astral.Blueprint) (*astral.ObjectID, error) {
+	return astral.DefaultBlueprints().RegisterBlueprint(bp)
+}
+
 func (mod *Module) Router() astral.Router {
 	return &mod.router
 }

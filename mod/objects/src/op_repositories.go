@@ -23,7 +23,7 @@ func (mod *Module) OpRepositories(ctx *astral.Context, q *routing.IncomingQuery,
 		err = ch.Send(&objects.RepositoryInfo{
 			Name:  astral.String8(name),
 			Label: astral.String8(repo.Label()),
-			Free:  astral.Int64(free),
+			Free:  astral.Uint64(free),
 		})
 		if err != nil {
 			return

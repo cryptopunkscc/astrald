@@ -6,7 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
-// AliasMap maps aliases to identities.
+// AliasMap maps aliases to identities. Aliases is constructed in one shot by the producer
+// (mod/dir.AliasMap) and is read-only after return; no concurrent writers.
 type AliasMap struct {
 	Aliases map[string]*astral.Identity
 }

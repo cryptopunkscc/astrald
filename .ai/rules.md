@@ -43,6 +43,7 @@
 
 - Use `astral.Objectify` for `WriteTo`/`ReadFrom`.
 - Objectify fields must be astral primitives; plain Go fields are not handled.
+- Use `astral.Adapt(v)` to wrap a native Go value into an astral `Object`; do not hand-roll switch ladders. Pass-through for `Object`, `nil`→`&Nil{}`, `error`→`NewError`. Default widths: `int`/`uint`→`Int64`/`Uint64`, `string`→`String32`. When the spec dictates a narrower width (e.g. `uint16`, `string16`), Adapt is the wrong tool — dispatch on the spec first.
 - Use `objects.Save`/`objects.Load`, not raw `WriteTo`.
 - Inject dependencies with `core.Inject(node, &mod.Deps)` in `LoadDependencies`.
 - Prefer `sig.Map`/`sig.Set`/`sig.Queue` over mutex + map/slice.

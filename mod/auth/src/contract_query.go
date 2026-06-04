@@ -70,7 +70,7 @@ func (q *contractQuery) Find(ctx *astral.Context) ([]*auth.SignedContract, error
 				Issuer:    row.IssuerID,
 				Subject:   row.SubjectID,
 				ExpiresAt: astral.Time(row.ExpiresAt),
-				Permits:   astral.WrapSlice(&permits),
+				Permits:   permits,
 			},
 			IssuerSig:  issuerSig,
 			SubjectSig: subjectSig,

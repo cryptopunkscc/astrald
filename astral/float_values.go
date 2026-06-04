@@ -34,9 +34,10 @@ func (f float32Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v float32
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	f.SetFloat(float64(v))
-
 	return 4, nil
 }
 
@@ -83,9 +84,10 @@ func (f float64Value) ReadFrom(r io.Reader) (n int64, err error) {
 
 	var v float64
 	err = binary.Read(r, ByteOrder, &v)
-
+	if err != nil {
+		return 0, err
+	}
 	f.SetFloat(v)
-
 	return 8, nil
 }
 

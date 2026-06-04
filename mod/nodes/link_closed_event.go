@@ -10,7 +10,7 @@ import (
 type LinkClosedEvent struct {
 	RemoteIdentity *astral.Identity // Identity of the other party
 	Forced         astral.Bool
-	LinkCount      astral.Int8
+	LinkCount      astral.Uint8
 }
 
 func (LinkClosedEvent) ObjectType() string {

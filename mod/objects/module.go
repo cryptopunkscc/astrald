@@ -22,6 +22,7 @@ const (
 	MethodRegisterSearcher  = "objects.register_searcher"
 	MethodRegisterDescriber = "objects.register_describer"
 	MethodRegisterFinder    = "objects.register_finder"
+	MethodRegisterBlueprint = "objects.register_blueprint"
 	MethodProbe             = "objects.probe"
 	MethodRead              = "objects.read"
 	MethodGetType           = "objects.get_type"
@@ -99,6 +100,9 @@ type Module interface {
 
 	// Deprecated: Use Probe instead.
 	GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error)
+
+	// RegisterBlueprint registers a runtime Blueprint and returns its content-addressed ObjectID.
+	RegisterBlueprint(*astral.Blueprint) (*astral.ObjectID, error)
 }
 
 type Receiver interface {

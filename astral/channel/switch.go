@@ -60,6 +60,10 @@ func (ch Channel) Switch(args ...any) error {
 		f(&cfg)
 	}
 
+	if cfg.cancelStop != nil {
+		defer cfg.cancelStop()
+	}
+
 	done := make(chan struct{})
 	defer close(done)
 
