@@ -29,12 +29,28 @@ func (*RuntimeMap) ObjectType() string { return "map" }
 // NewRuntimeMap returns a RuntimeMap whose key and element types are determined from a
 // MapSpec. An empty valueType means heterogeneous (element type = Object interface).
 // Returns an error if keyType is unsupported or if valueType is non-empty and unregistered.
+// Element resolution uses defaultBlueprints; the codec path uses newRuntimeMapWith
+// internally for per-call registries.
 func NewRuntimeMap(keyType, valueType string) (*RuntimeMap, error) {
+	return newRuntimeMapWith(defaultBlueprints, keyType, valueType)
+}
+
+// NewRuntimeMapWith is the bps-aware constructor for callers that hold a *Blueprints (e.g.
+// a per-call registry built around DefaultBlueprints). Same shape as NewRuntimeMap; value
+// resolution consults bps instead of the package default. Use when populating a RuntimeObject
+// field whose MapSpec.ValueType names a Blueprint registered only in bps.
+func NewRuntimeMapWith(bps *Blueprints, keyType, valueType string) (*RuntimeMap, error) {
+	return newRuntimeMapWith(bps, keyType, valueType)
+}
+
+// newRuntimeMapWith is the internal bps-aware constructor used by readField when decoding
+// through a custom registry (WithBlueprints).
+func newRuntimeMapWith(bps *Blueprints, keyType, valueType string) (*RuntimeMap, error) {
 	kt, err := resolveKeyType(keyType)
 	if err != nil {
 		return nil, err
 	}
-	et, err := resolveElemType(valueType)
+	et, err := resolveElemType(bps, valueType)
 	if err != nil {
 		return nil, err
 	}
@@ -67,13 +83,14 @@ func (m *RuntimeMap) WriteTo(w io.Writer) (int64, error) {
 }
 
 func (m *RuntimeMap) ReadFrom(r io.Reader) (int64, error) {
-	if !isRuntimeBlueprintType(m.valueName) {
+	bps := blueprintsFromReader(r)
+	if !isRuntimeBlueprintType(bps, m.valueName) {
 		return mapValue{Value: m.ptr.Elem()}.ReadFrom(r)
 	}
-	return m.readRuntimeBlueprintEntries(r)
+	return m.readRuntimeBlueprintEntries(r, bps)
 }
 
-func (m *RuntimeMap) readRuntimeBlueprintEntries(r io.Reader) (int64, error) {
+func (m *RuntimeMap) readRuntimeBlueprintEntries(r io.Reader, bps *Blueprints) (int64, error) {
 	val := m.ptr.Elem()
 	keyWidth, ok := supportedMapKey(val.Type().Key().Kind())
 	if !ok {
@@ -101,7 +118,7 @@ func (m *RuntimeMap) readRuntimeBlueprintEntries(r io.Reader) (int64, error) {
 			return n, err
 		}
 
-		elem, vm, err := readRuntimeBlueprintMapValue(r, m.valueName)
+		elem, vm, err := readRuntimeBlueprintMapValue(r, bps, m.valueName)
 		n += vm
 		if err != nil {
 			return n, err
@@ -121,8 +138,9 @@ func (m *RuntimeMap) MarshalJSON() ([]byte, error) {
 	return mapValue{Value: m.ptr.Elem()}.MarshalJSON()
 }
 
+// UnmarshalJSON: see RuntimeSlice.UnmarshalJSON note — JSON path uses defaultBlueprints only.
 func (m *RuntimeMap) UnmarshalJSON(data []byte) error {
-	if !isRuntimeBlueprintType(m.valueName) {
+	if !isRuntimeBlueprintType(defaultBlueprints, m.valueName) {
 		return mapValue{Value: m.ptr.Elem()}.UnmarshalJSON(data)
 	}
 	val := m.ptr.Elem()
@@ -146,7 +164,11 @@ func (m *RuntimeMap) UnmarshalJSON(data []byte) error {
 		case reflect.String:
 			mapKey.SetString(k)
 		default:
-			u, perr := strconv.ParseUint(k, 10, 64)
+			// why: parse at the actual width so overflowing keys error out instead of
+			// silently truncating via reflect.SetUint. Mirrors Set→convertMapKey's range
+			// check at runtime_map.go:263.
+			bitSize := int(keyType.Size()) * 8
+			u, perr := strconv.ParseUint(k, 10, bitSize)
 			if perr != nil {
 				return fmt.Errorf("runtime_map: parse uint key %q: %w", k, perr)
 			}

@@ -14,6 +14,10 @@ func (*PrimitiveSpec) ObjectType() string { return "astral.blueprint.primitive_s
 func (s *PrimitiveSpec) WriteTo(w io.Writer) (int64, error)  { return Objectify(s).WriteTo(w) }
 func (s *PrimitiveSpec) ReadFrom(r io.Reader) (int64, error) { return Objectify(s).ReadFrom(r) }
 
+// ReferencedType satisfies Spec. PrimitiveSpec is self-contained — no other Blueprint name needs
+// to be resolvable for it to encode/decode.
+func (*PrimitiveSpec) ReferencedType() string { return "" }
+
 // primitiveAllowlist bounds PrimitiveSpec to a fixed set of canonical primitives.
 var primitiveAllowlist = []string{
 	"string8", "string16", "string32", "string64",

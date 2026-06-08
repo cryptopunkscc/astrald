@@ -40,9 +40,8 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.Duration())
 }
 
-func (d Duration) UnmarshalJSON(bytes []byte) error {
-	err := json.Unmarshal(bytes, (*time.Duration)(&d))
-	return err
+func (d *Duration) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, (*time.Duration)(d))
 }
 
 // text

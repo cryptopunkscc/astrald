@@ -1,6 +1,7 @@
 package astral
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,9 +28,24 @@ func (*RuntimeArray) ObjectType() string { return "array" }
 // NewRuntimeArray returns a RuntimeArray whose element type is determined from an ArraySpec
 // type name and whose length matches the spec. An empty typeName means heterogeneous (element
 // type = Object interface). Returns ErrBlueprintNotFound if typeName is non-empty and not
-// registered.
+// registered. Element resolution uses defaultBlueprints; the codec path uses
+// newRuntimeArrayWith internally for per-call registries.
 func NewRuntimeArray(typeName string, length uint32) (*RuntimeArray, error) {
-	et, err := resolveElemType(typeName)
+	return newRuntimeArrayWith(defaultBlueprints, typeName, length)
+}
+
+// NewRuntimeArrayWith is the bps-aware constructor for callers that hold a *Blueprints (e.g.
+// a per-call registry built around DefaultBlueprints). Same shape as NewRuntimeArray; element
+// resolution consults bps instead of the package default. Use when populating a RuntimeObject
+// field whose ArraySpec.Type names a Blueprint registered only in bps.
+func NewRuntimeArrayWith(bps *Blueprints, typeName string, length uint32) (*RuntimeArray, error) {
+	return newRuntimeArrayWith(bps, typeName, length)
+}
+
+// newRuntimeArrayWith is the internal bps-aware constructor used by readField when decoding
+// through a custom registry (WithBlueprints).
+func newRuntimeArrayWith(bps *Blueprints, typeName string, length uint32) (*RuntimeArray, error) {
+	et, err := resolveElemType(bps, typeName)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +60,18 @@ func (a *RuntimeArray) WriteTo(w io.Writer) (int64, error) {
 }
 
 func (a *RuntimeArray) ReadFrom(r io.Reader) (int64, error) {
-	if !isRuntimeBlueprintType(a.elemName) {
+	bps := blueprintsFromReader(r)
+	if !isRuntimeBlueprintType(bps, a.elemName) {
 		return arrayValue{Value: a.ptr.Elem()}.ReadFrom(r)
 	}
 	arr := a.ptr.Elem()
+	// why: parity with the JSON slow path and ptrValue.ReadFrom on nil-flag — without this
+	// reset, a re-decode that sees nil-flag=0 silently keeps the previous element pointer
+	// (readRuntimeBlueprintPtr doesn't touch the slot when the flag is 0).
+	arr.SetZero()
 	var n int64
 	for i := 0; i < arr.Len(); i++ {
-		m, err := readRuntimeBlueprintPtr(r, a.elemName, arr.Index(i))
+		m, err := readRuntimeBlueprintPtr(r, bps, a.elemName, arr.Index(i))
 		n += m
 		if err != nil {
 			return n, err
@@ -63,8 +84,14 @@ func (a *RuntimeArray) MarshalJSON() ([]byte, error) {
 	return arrayValue{Value: a.ptr.Elem()}.MarshalJSON()
 }
 
+// UnmarshalJSON: see RuntimeSlice.UnmarshalJSON note — JSON path uses defaultBlueprints only.
+// `null` zeroes the array on both fast and slow paths, mirroring map/slice JSON behaviour.
 func (a *RuntimeArray) UnmarshalJSON(data []byte) error {
-	if !isRuntimeBlueprintType(a.elemName) {
+	if bytes.Equal(bytes.TrimSpace(data), jsonNull) {
+		a.ptr.Elem().SetZero()
+		return nil
+	}
+	if !isRuntimeBlueprintType(defaultBlueprints, a.elemName) {
 		return arrayValue{Value: a.ptr.Elem()}.UnmarshalJSON(data)
 	}
 	var raw []json.RawMessage

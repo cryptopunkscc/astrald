@@ -9,26 +9,42 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
-// Blueprints holds prototypes of astral objects. Compile-time prototypes, runtime
-// Blueprints, and runtime BlueprintAliases all share one map keyed by Type name —
+// Blueprints holds prototypes of astral objects. Compile-time prototypes and runtime
+// Blueprints (both struct kind and alias kind) all share one map keyed by Type name —
 // each name maps to exactly one entry. Aliases for compile-time prototypes are derived
-// on demand via the Aliasable interface; no parallel storage is needed.
+// on demand via the PrimitiveAlias interface; no parallel storage is needed.
 type Blueprints struct {
-	Blueprints sig.Map[string, Object]
-	Parent     *Blueprints
+	entries sig.Map[string, Object]
+	Parent  *Blueprints
 }
 
-// registryTodos enumerates limitations that apply equally to RegisterBlueprint and
-// RegisterAlias. Kept as a single doc anchor so the comments above each method don't
-// drift apart.
-//
-//   - schema divergence between peers under the same Type is not detected on the wire;
-//     a second peer's incompatible schema returns ErrAlreadyRegistered with no detail.
-//   - parent-chain race — `has()` walks the chain but `Set()` is local-only;
-//     insignificant for v1 since production targets DefaultBlueprints.
-//   - duplicate Register of an identical schema fails instead of being idempotent.
-//   - register is not identity-gated; any peer can squat a name.
-var _ = "registryTodos"
+// entryKind classifies a Blueprints map entry by how it should be materialized
+// or surfaced. The dispatch (runtime carrier vs. derived alias vs. struct
+// prototype) is identical across New, AllBlueprints, and OrderedBlueprints;
+// classify centralizes that switch.
+type entryKind int
+
+const (
+	kindStructProto entryKind = iota
+	kindRuntimeBP
+	kindAliasProto
+)
+
+// classify reports the entryKind of obj stored under name. A *Blueprint counts as the
+// runtime kind only when its Type matches the key — otherwise it's the compile-time
+// prototype of Blueprint itself. Stored *Blueprint runtime entries cover both struct
+// and alias kinds; their internal kind is read off the Blueprint when needed.
+func classify(name string, obj Object) entryKind {
+	if b, ok := obj.(*Blueprint); ok && b.Type.String() == name {
+		return kindRuntimeBP
+	}
+
+	if _, ok := obj.(PrimitiveAlias); ok {
+		return kindAliasProto
+	}
+
+	return kindStructProto
+}
 
 var defaultBlueprints = &Blueprints{}
 
@@ -53,136 +69,80 @@ func Add(object ...Object) error {
 	return defaultBlueprints.Add(object...)
 }
 
-// GetAlias returns the runtime *BlueprintAlias for typeName, or nil.
-func GetAlias(typeName string) *BlueprintAlias {
-	return defaultBlueprints.GetAlias(typeName)
-}
-
 // New returns a zero-value object of the specified type or nil if no blueprint is found.
 //
 // The stored entry under typeName disambiguates: a *Blueprint registered under its own Type
-// materializes as *RuntimeObject; a *BlueprintAlias registered under its own Type
-// materializes as *RuntimeAlias; anything else is a compile-time prototype handed back via
-// reflect.New (giving the originating peer the typed Go value rather than a wire carrier).
+// materializes as *RuntimeObject (dispatching internally on Kind for struct vs alias);
+// anything else is a compile-time prototype handed back via reflect.New (giving the
+// originating peer the typed Go value rather than a wire carrier).
 func (bp *Blueprints) New(typeName string) Object {
-	p, ok := bp.Blueprints.Get(typeName)
+	o, _ := newAt(bp, typeName, 0)
+	return o
+}
+
+// newAt is the depth-aware internal entry. specZeroAt threads its construction depth here
+// so a RefSpec/PtrSpec cycle materializing one runtime Blueprint after another is bounded
+// by MaxBlueprintDepth rather than overflowing the Go stack. Returns the constructor's
+// error when it's ErrDepthExceeded so the outer construction can surface it; other errors
+// are intentionally swallowed to nil to match the documented "treat as unregistered" contract.
+func newAt(bp *Blueprints, typeName string, depth int) (Object, error) {
+	p, ok := bp.entries.Get(typeName)
 	if !ok {
 		if bp.Parent != nil {
-			return bp.Parent.New(typeName)
+			return newAt(bp.Parent, typeName, depth)
 		}
-		return nil
+		return nil, nil
 	}
 
-	// why: runtime Blueprint/BlueprintAlias stored under their own Type materialize as
-	// the matching runtime carrier; compile-time prototypes live under their prototype
-	// name with empty Type and fall through to reflect.New. A GetRuntime* failure means
-	// post-registration mutation broke validation — return interface-nil so decode
-	// surfaces the absence the same way as an unregistered type.
-	switch v := p.(type) {
-	case *Blueprint:
-		if v.Type.String() == typeName {
-			ro, err := v.GetRuntimeObject()
-			if err != nil {
-				return nil
+	// why: a runtime Blueprint stored under its own Type materializes as RuntimeObject;
+	// compile-time prototypes live under their prototype name with empty Type and fall
+	// through to reflect.New. A constructor failure means post-registration mutation
+	// broke validation — return interface-nil so decode surfaces the absence the same
+	// way as an unregistered type. Depth-exceeded escapes the nil-swallow so the
+	// originating construction surfaces a typed error.
+	if classify(typeName, p) == kindRuntimeBP {
+		ro, err := newRuntimeObjectAt(bp, p.(*Blueprint), depth)
+		if err != nil {
+			if errors.Is(err, ErrDepthExceeded) {
+				return nil, err
 			}
-			return ro
+			return nil, nil
 		}
-	case *BlueprintAlias:
-		if v.Type.String() == typeName {
-			ra, err := v.GetRuntimeAlias()
-			if err != nil {
-				return nil
-			}
-			return ra
-		}
+		return ro, nil
 	}
 
-	return reflect.New(reflect.ValueOf(p).Elem().Type()).Interface().(Object)
+	return reflect.New(reflect.ValueOf(p).Elem().Type()).Interface().(Object), nil
 }
 
 // Add registers object prototypes. Pre-validates empty types before any insertion.
 // Returns on first failure; inputs before the error are registered (bounded partial state).
+//
+// has() walks the parent chain so a child cannot silently shadow a prototype registered
+// in a parent. Local Set collisions surface the same error.
+//
+// A populated *Blueprint (Type != "") is rejected: Blueprint's ObjectType is always
+// "astral.blueprint", so Add would store the runtime Blueprint under the prototype slot
+// and poison `New("astral.blueprint")` — use RegisterBlueprint for runtime registration.
 func (bp *Blueprints) Add(object ...Object) error {
 	for _, o := range object {
 		if len(o.ObjectType()) == 0 {
 			return fmt.Errorf("object type is empty for %s", reflect.TypeOf(o))
 		}
+		if b, ok := o.(*Blueprint); ok && b.Type.String() != "" {
+			return fmt.Errorf("Add: use RegisterBlueprint for runtime Blueprint %s", b.Type)
+		}
 	}
 	for _, o := range object {
-		_, ok := bp.Blueprints.Set(o.ObjectType(), o)
+		name := o.ObjectType()
+		if bp.has(name) {
+			return fmt.Errorf("blueprint for %s already added", name)
+		}
+		_, ok := bp.entries.Set(name, o)
 		if !ok {
-			return fmt.Errorf("blueprint for %s already added", o.ObjectType())
+			return fmt.Errorf("blueprint for %s already added", name)
 		}
 	}
 	return nil
-}
-
-// Types returns names of all registered object types.
-func (bp *Blueprints) Types() (names []string) {
-	if bp.Parent != nil {
-		names = bp.Parent.Types()
-	}
-	return append(names, bp.Blueprints.Keys()...)
-}
-
-// AllBlueprints returns every registered prototype as a *Blueprint, in
-// dependency order. Compile-time entries are derived via BlueprintOf; runtime
-// *Blueprints pass through. Per-entry derivation failures are aggregated
-// into err; the returned slice contains the successful entries.
-func (bp *Blueprints) AllBlueprints() ([]*Blueprint, error) {
-	var out []*Blueprint
-	var errs []error
-	if bp.Parent != nil {
-		parent, perr := bp.Parent.AllBlueprints()
-		out = append(out, parent...)
-		if perr != nil {
-			errs = append(errs, perr)
-		}
-	}
-
-	var proto []*Blueprint
-	var runtime []*Blueprint
-	for name, obj := range bp.Blueprints.Clone() {
-		if b, ok := obj.(*Blueprint); ok && b.Type.String() == name {
-			runtime = append(runtime, b)
-			continue
-		}
-		// why: aliases are returned by AllAliases; skip both stored aliases and
-		// compile-time prototypes that satisfy Aliasable so BlueprintOf isn't asked
-		// to derive a struct schema for a primitive carrier.
-		if a, ok := obj.(*BlueprintAlias); ok && a.Type.String() == name {
-			continue
-		}
-		if _, ok := obj.(Aliasable); ok {
-			continue
-		}
-
-		derived, err := BlueprintOf(obj)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("blueprint %s: %w", name, err))
-			continue
-		}
-		proto = append(proto, derived)
-	}
-
-	sort.Slice(proto, func(i, j int) bool {
-		return proto[i].Type.String() < proto[j].Type.String()
-	})
-	out = append(out, proto...)
-
-	for _, name := range orderBlueprintsByReference(runtime) {
-		for _, b := range runtime {
-			if b.Type.String() == name {
-				out = append(out, b)
-				break
-			}
-		}
-	}
-
-	if len(errs) == 0 {
-		return out, nil
-	}
-	return out, errors.Join(errs...)
 }
 
 // OrderedBlueprints returns all registered type names in dependency order. Walks
@@ -192,47 +152,65 @@ func (bp *Blueprints) AllBlueprints() ([]*Blueprint, error) {
 //
 // Aliases precede runtime Blueprints so that a Blueprint's RefSpec to an alias
 // resolves on the peer when replayed in this order. An entry classifies as an
-// alias when it's a stored *BlueprintAlias OR a compile-time prototype that
-// satisfies Aliasable.
+// alias when it's a stored alias-kind Blueprint OR a compile-time prototype that
+// satisfies PrimitiveAlias.
+//
+// Names that appear in both the local entries and the parent chain (parent-add-after-child
+// shadow) are emitted once, with the parent occurrence preserved.
 func (bp *Blueprints) OrderedBlueprints() []string {
 	var out []string
+	seen := map[string]bool{}
 	if bp.Parent != nil {
-		out = bp.Parent.OrderedBlueprints()
+		for _, n := range bp.Parent.OrderedBlueprints() {
+			if !seen[n] {
+				out = append(out, n)
+				seen[n] = true
+			}
+		}
 	}
 
 	var proto []string
 	var aliases []string
 	var runtime []*Blueprint
-	for name, obj := range bp.Blueprints.Clone() {
-		if b, ok := obj.(*Blueprint); ok && b.Type.String() == name {
+	for name, obj := range bp.entries.Clone() {
+		if seen[name] {
+			continue
+		}
+		switch classify(name, obj) {
+		case kindRuntimeBP:
+			b := obj.(*Blueprint)
+			if b.Kind() == BlueprintKindAlias {
+				aliases = append(aliases, name)
+				continue
+			}
 			runtime = append(runtime, b)
-			continue
-		}
-		if a, ok := obj.(*BlueprintAlias); ok && a.Type.String() == name {
+		case kindAliasProto:
 			aliases = append(aliases, name)
-			continue
+		case kindStructProto:
+			proto = append(proto, name)
 		}
-		if _, ok := obj.(Aliasable); ok {
-			aliases = append(aliases, name)
-			continue
-		}
-		proto = append(proto, name)
 	}
 
 	sort.Strings(proto)
 	sort.Strings(aliases)
 	out = append(out, proto...)
 	out = append(out, aliases...)
-	out = append(out, orderBlueprintsByReference(runtime)...)
+	// note: cycle error is silenced here so the public []string signature stays unchanged;
+	// AllBlueprints surfaces the same condition via its error return for callers that need it.
+	ordered, _ := orderBlueprintsByReference(runtime)
+	out = append(out, ordered...)
 	return out
 }
 
-// orderBlueprintsByReference returns blueprint names ordered (Kahn-style topological sort) so each precedes
-// any that references it. References outside the input set are treated as
-// satisfied. Alpha tie-break.
-func orderBlueprintsByReference(bps []*Blueprint) []string {
+// orderBlueprintsByReference returns blueprint names ordered (Kahn-style topological sort)
+// so each precedes any that references it. References outside the input set are treated as
+// satisfied. Alpha tie-break. Returns ErrBlueprintCycle if the input contains a reference
+// cycle — the names slice still contains every input (cycle nodes appended in alpha order
+// after the partial sort) so callers can replay best-effort, but the error makes the cycle
+// observable instead of a silent fall-through.
+func orderBlueprintsByReference(bps []*Blueprint) ([]string, error) {
 	if len(bps) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	inSet := make(map[string]bool, len(bps))
@@ -246,7 +224,7 @@ func orderBlueprintsByReference(bps []*Blueprint) []string {
 		name := b.Type.String()
 		inDeg[name] = inDeg[name] // touch
 		for _, f := range b.Fields {
-			ref := referencedType(f.Spec)
+			ref := f.Spec.ReferencedType()
 			if ref == "" || !inSet[ref] || ref == name {
 				continue
 			}
@@ -263,6 +241,7 @@ func orderBlueprintsByReference(bps []*Blueprint) []string {
 
 	emitted := make(map[string]bool, len(bps))
 	out := make([]string, 0, len(bps))
+	var cycleErr error
 	for len(out) < len(names) {
 		progress := false
 		for _, n := range names {
@@ -277,38 +256,37 @@ func orderBlueprintsByReference(bps []*Blueprint) []string {
 			progress = true
 		}
 		if !progress {
+			var stuck []string
 			for _, n := range names {
 				if !emitted[n] {
+					stuck = append(stuck, n)
 					out = append(out, n)
 					emitted[n] = true
 				}
 			}
+			cycleErr = fmt.Errorf("%w: %v", ErrBlueprintCycle, stuck)
 			break
 		}
 	}
-	return out
+	return out, cycleErr
 }
 
-// Register stores a runtime schema descriptor (*Blueprint or *BlueprintAlias) in the
-// default Blueprints and returns its content-addressed ObjectID. The canonical entry
-// point for runtime registration — typed methods on *Blueprints (RegisterBlueprint,
-// RegisterAlias) remain for callers that already hold the concrete type.
+// Register is the canonical entry point for runtime registration on the default Blueprints.
+// Register stores a runtime *Blueprint (struct or alias kind) on the default Blueprints.
+// Returns the content-addressed ObjectID of the stored descriptor.
 func Register(o Object) (*ObjectID, error) {
 	return defaultBlueprints.Register(o)
 }
 
-// Register dispatches to RegisterBlueprint or RegisterAlias based on the concrete type
-// of o. Returns ErrBlueprintInvalid for anything that isn't a *Blueprint or *BlueprintAlias.
+// Register is the canonical entry point. Returns ErrBlueprintInvalid if o is not a
+// *Blueprint. The kind-specific typed method RegisterBlueprint remains for callers that
+// already hold the concrete type.
 func (bp *Blueprints) Register(o Object) (*ObjectID, error) {
-	switch v := o.(type) {
-	case *Blueprint:
-		return bp.RegisterBlueprint(v)
-	case *BlueprintAlias:
-		return bp.RegisterAlias(v)
-	default:
-		return nil, fmt.Errorf("%w: Register: want *Blueprint or *BlueprintAlias, got %T",
-			ErrBlueprintInvalid, o)
+	v, ok := o.(*Blueprint)
+	if !ok {
+		return nil, fmt.Errorf("%w: Register: want *Blueprint, got %T", ErrBlueprintInvalid, o)
 	}
+	return bp.RegisterBlueprint(v)
 }
 
 // GetBlueprint returns the runtime *Blueprint for typeName, or nil.
@@ -318,14 +296,22 @@ func GetBlueprint(typeName string) *Blueprint {
 }
 
 // RegisterBlueprint stores a runtime Blueprint after validation and returns its
-// content-addressed ObjectID. Type must not collide with any compile-time prototype,
-// previously registered Blueprint, or registered BlueprintAlias — all share the same
-// Blueprints map.
+// content-addressed ObjectID. Accepts both struct-kind (Fields) and alias-kind
+// (Underlying) Blueprints; the kind is read off b.Kind() and validated accordingly.
+// Type must not collide with any compile-time prototype or previously registered
+// Blueprint — they share one map.
 //
 // Caller must not mutate b after this call. The registry stores the pointer as-is;
 // mutations propagate to every RuntimeObject and orphan the returned ObjectID.
 //
-// See registryTodos for limitations shared with RegisterAlias.
+// Limitations:
+//
+//   - blueprint divergence between peers under the same Type is not detected on the wire;
+//     a second peer's incompatible blueprint returns ErrAlreadyRegistered with no detail.
+//   - parent-chain race — `has()` walks the chain but `Set()` is local-only;
+//     insignificant for v1 since production targets DefaultBlueprints.
+//   - duplicate Register of an identical blueprint fails instead of being idempotent.
+//   - register is not identity-gated; any peer can squat a name.
 func (bp *Blueprints) RegisterBlueprint(b *Blueprint) (*ObjectID, error) {
 	if err := validateBlueprint(b); err != nil {
 		return nil, err
@@ -336,24 +322,83 @@ func (bp *Blueprints) RegisterBlueprint(b *Blueprint) (*ObjectID, error) {
 		return nil, fmt.Errorf("%w: %s", ErrAlreadyRegistered, typeName)
 	}
 
-	if err := bp.validateReferences(b); err != nil {
-		return nil, err
+	// why: validate that referenced types are reachable through this registry tree so
+	// New() can construct a working RuntimeObject. Struct-kind walks fields; alias-kind
+	// checks Underlying reachability (the primitive allowlist passed validateBlueprint,
+	// but an isolated NewBlueprints(nil) without a parent chain doesn't have the
+	// primitive prototype to materialize — finding registry/01).
+	if b.Kind() == BlueprintKindStruct {
+		if err := bp.validateReferences(b); err != nil {
+			return nil, err
+		}
+	} else if !bp.has(b.Underlying.String()) {
+		return nil, fmt.Errorf("%w: alias %s underlying %s not reachable",
+			ErrBlueprintInvalid, b.Type, b.Underlying)
 	}
 
-	// todo: think about copying blueprint
-	_, ok := bp.Blueprints.Set(typeName, b)
+	// why: defensive copy so a caller mutating `b` after RegisterBlueprint can't retroactively
+	// change every constructed *RuntimeObject's schema or orphan the returned ObjectID. The
+	// copy is shallow at the Spec level — Specs are small value carriers and the caller
+	// generally constructs them as struct literals, so they aren't aliased through hidden
+	// pointers.
+	stored := cloneBlueprint(b)
+	_, ok := bp.entries.Set(typeName, stored)
 	if !ok {
 		// note: raced with another caller registering the same type
 		return nil, fmt.Errorf("%w: %s", ErrAlreadyRegistered, typeName)
 	}
 
-	return ResolveObjectID(b)
+	return ResolveObjectID(stored)
+}
+
+// cloneBlueprint returns a deep-enough copy of bp to insulate the registry from caller
+// mutation. Type and Underlying are value-typed (String16); Fields is reallocated; each
+// Spec is shallow-copied via the per-kind copy helper.
+func cloneBlueprint(bp *Blueprint) *Blueprint {
+	out := &Blueprint{Type: bp.Type, Underlying: bp.Underlying}
+	if len(bp.Fields) > 0 {
+		out.Fields = make([]Field, len(bp.Fields))
+		for i, f := range bp.Fields {
+			out.Fields[i] = Field{Name: f.Name, Spec: cloneSpec(f.Spec)}
+		}
+	}
+	return out
+}
+
+// cloneSpec returns a new pointer-to-value copy of s. Every Spec carrier in this package
+// is a small struct with String16/Uint32 fields — no nested pointers — so shallow value
+// copy is sufficient.
+func cloneSpec(s Spec) Spec {
+	switch v := s.(type) {
+	case *PrimitiveSpec:
+		c := *v
+		return &c
+	case *RefSpec:
+		c := *v
+		return &c
+	case *SliceSpec:
+		c := *v
+		return &c
+	case *ArraySpec:
+		c := *v
+		return &c
+	case *MapSpec:
+		c := *v
+		return &c
+	case *PtrSpec:
+		c := *v
+		return &c
+	case *ObjectSpec:
+		c := *v
+		return &c
+	}
+	return s
 }
 
 // GetBlueprint returns the runtime Blueprint for typeName, or nil. Compile-time prototypes
 // live under "astral.blueprint", never under their own runtime Type, so they return nil.
 func (bp *Blueprints) GetBlueprint(typeName string) *Blueprint {
-	o, ok := bp.Blueprints.Get(typeName)
+	o, ok := bp.entries.Get(typeName)
 	if !ok {
 		if bp.Parent != nil {
 			return bp.Parent.GetBlueprint(typeName)
@@ -373,7 +418,7 @@ func (bp *Blueprints) GetBlueprint(typeName string) *Blueprint {
 
 // has reports whether typeName exists anywhere in the chain.
 func (bp *Blueprints) has(typeName string) bool {
-	if _, ok := bp.Blueprints.Get(typeName); ok {
+	if _, ok := bp.entries.Get(typeName); ok {
 		return true
 	}
 	if bp.Parent != nil {
@@ -387,7 +432,7 @@ func (bp *Blueprints) has(typeName string) bool {
 // recursion (peers must register prerequisites first).
 func (bp *Blueprints) validateReferences(b *Blueprint) error {
 	for _, f := range b.Fields {
-		ref := referencedType(f.Spec)
+		ref := f.Spec.ReferencedType()
 		if ref == "" || bp.has(ref) {
 			continue
 		}
@@ -397,132 +442,89 @@ func (bp *Blueprints) validateReferences(b *Blueprint) error {
 	return nil
 }
 
-// referencedType returns the type name a Spec depends on, or "" for open specs
-// (heterogeneous containers, ObjectSpec) and self-contained PrimitiveSpec.
-func referencedType(spec Object) string {
-	switch s := spec.(type) {
-	case *RefSpec:
-		return s.Type.String()
-	case *PtrSpec:
-		return s.Type.String()
-	case *SliceSpec:
-		return s.Type.String()
-	case *ArraySpec:
-		return s.Type.String()
-	case *MapSpec:
-		return s.ValueType.String()
-	}
-	return ""
-}
-
-// RegisterAlias stores a runtime BlueprintAlias after validation and returns its
-// content-addressed ObjectID. Shares the main registry map with Blueprints and
-// compile-time prototypes — any name collision returns ErrAlreadyRegistered.
-//
-// Caller must not mutate a after this call.
-//
-// See registryTodos for limitations shared with RegisterBlueprint.
-func (bp *Blueprints) RegisterAlias(a *BlueprintAlias) (*ObjectID, error) {
-	if err := validateAlias(a); err != nil {
-		return nil, err
-	}
-
-	typeName := a.Type.String()
-	if bp.has(typeName) {
-		return nil, fmt.Errorf("%w: %s", ErrAlreadyRegistered, typeName)
-	}
-
-	_, ok := bp.Blueprints.Set(typeName, a)
-	if !ok {
-		// note: raced with another caller registering the same name.
-		return nil, fmt.Errorf("%w: %s", ErrAlreadyRegistered, typeName)
-	}
-
-	return ResolveObjectID(a)
-}
-
-// GetAlias returns the runtime BlueprintAlias stored under typeName, or nil. Compile-time
-// prototypes (including Aliasable ones) are not returned — use AllAliases for the derived
-// form, or inspect the prototype directly via the Aliasable assertion.
-func (bp *Blueprints) GetAlias(typeName string) *BlueprintAlias {
-	if p, ok := bp.Blueprints.Get(typeName); ok {
-		if a, ok := p.(*BlueprintAlias); ok && a.Type.String() == typeName {
-			return a
-		}
-	}
-	if bp.Parent != nil {
-		return bp.Parent.GetAlias(typeName)
-	}
-	return nil
-}
-
-// AllSchemas returns every runtime schema descriptor (aliases + Blueprints) ordered for
-// sync replay: aliases first (alpha within each parent level, leaves with no refs), then
-// runtime Blueprints topo-sorted by reference. Parent-chain entries precede local ones.
-// Derivation failures from AllAliases / AllBlueprints are aggregated into err; the
-// returned slice contains the successful entries.
-//
-// Callers that only want one half can use AllAliases or AllBlueprints; AllSchemas exists
-// so sync can do a single walk and produce one ordered cache.
-func (bp *Blueprints) AllSchemas() ([]Object, error) {
-	aliases, aerr := bp.AllAliases()
-	blueprints, berr := bp.AllBlueprints()
-
-	out := make([]Object, 0, len(aliases)+len(blueprints))
-	for _, a := range aliases {
-		out = append(out, a)
-	}
-	for _, b := range blueprints {
-		out = append(out, b)
-	}
-
-	switch {
-	case aerr == nil && berr == nil:
-		return out, nil
-	case aerr == nil:
-		return out, berr
-	case berr == nil:
-		return out, aerr
-	}
-	return out, errors.Join(aerr, berr)
-}
-
-// AllAliases returns every alias known at this level: stored *BlueprintAlias entries plus
-// entries derived from compile-time prototypes that implement Aliasable. Parent-chain
-// entries come first; at each level aliases are alpha-sorted by Type. Derivation failures
-// (Aliasable.UnderlyingPrimitive returning a value outside primitiveAllowlist) are
-// aggregated into err; the returned slice contains the successful entries.
-func (bp *Blueprints) AllAliases() ([]*BlueprintAlias, error) {
-	var out []*BlueprintAlias
+// AllBlueprints returns every runtime Blueprint (struct kind + alias kind) ordered for sync
+// replay: aliases first (alpha within each parent level), then struct-kind compile-time
+// prototypes (alpha), then struct-kind runtime Blueprints topo-sorted by reference.
+// Parent-chain entries precede local ones. Per-entry derivation failures (BlueprintOf/AliasOf)
+// are aggregated into err; the returned slice contains the successful entries.
+func (bp *Blueprints) AllBlueprints() ([]*Blueprint, error) {
+	var out []*Blueprint
 	var errs []error
+	// why: dedupe by Type so a parent-after-child shadow (registry/02) doesn't emit two
+	// entries for the same name. Parent occurrence wins; local entries with a colliding
+	// name are skipped.
+	seen := map[string]bool{}
 	if bp.Parent != nil {
-		parent, perr := bp.Parent.AllAliases()
-		out = append(out, parent...)
+		parent, perr := bp.Parent.AllBlueprints()
+		for _, b := range parent {
+			if seen[b.Type.String()] {
+				continue
+			}
+			out = append(out, b)
+			seen[b.Type.String()] = true
+		}
 		if perr != nil {
 			errs = append(errs, perr)
 		}
 	}
 
-	local := make([]*BlueprintAlias, 0)
-	for name, obj := range bp.Blueprints.Clone() {
-		if a, ok := obj.(*BlueprintAlias); ok && a.Type.String() == name {
-			local = append(local, a)
+	// why: single Clone() walk bucketed via classify; alias-kind Blueprints are pulled out
+	// of the runtime bucket so sync can replay aliases before any struct-kind Blueprint
+	// RefSpec-ing them.
+	var aliases []*Blueprint
+	var proto []*Blueprint
+	var runtime []*Blueprint
+	for name, obj := range bp.entries.Clone() {
+		if seen[name] {
 			continue
 		}
-		if _, ok := obj.(Aliasable); !ok {
-			continue
+		switch classify(name, obj) {
+		case kindRuntimeBP:
+			b := obj.(*Blueprint)
+			if b.Kind() == BlueprintKindAlias {
+				aliases = append(aliases, b)
+			} else {
+				runtime = append(runtime, b)
+			}
+		case kindAliasProto:
+			derived, err := BlueprintOf(obj)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("alias %s: %w", name, err))
+				continue
+			}
+			aliases = append(aliases, derived)
+		case kindStructProto:
+			derived, err := BlueprintOf(obj)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("blueprint %s: %w", name, err))
+				continue
+			}
+			proto = append(proto, derived)
 		}
-		derived, err := AliasOf(obj)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("alias %s: %w", name, err))
-			continue
-		}
-		local = append(local, derived)
 	}
-	sort.Slice(local, func(i, j int) bool {
-		return local[i].Type.String() < local[j].Type.String()
+
+	sort.Slice(aliases, func(i, j int) bool {
+		return aliases[i].Type.String() < aliases[j].Type.String()
 	})
-	out = append(out, local...)
+	out = append(out, aliases...)
+
+	sort.Slice(proto, func(i, j int) bool {
+		return proto[i].Type.String() < proto[j].Type.String()
+	})
+	out = append(out, proto...)
+
+	ordered, cycleErr := orderBlueprintsByReference(runtime)
+	if cycleErr != nil {
+		errs = append(errs, cycleErr)
+	}
+	for _, name := range ordered {
+		for _, b := range runtime {
+			if b.Type.String() == name {
+				out = append(out, b)
+				break
+			}
+		}
+	}
 
 	if len(errs) == 0 {
 		return out, nil

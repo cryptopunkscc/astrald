@@ -17,4 +17,8 @@ func (*ArraySpec) ObjectType() string { return "astral.blueprint.array_spec" }
 func (s *ArraySpec) WriteTo(w io.Writer) (int64, error)  { return Objectify(s).WriteTo(w) }
 func (s *ArraySpec) ReadFrom(r io.Reader) (int64, error) { return Objectify(s).ReadFrom(r) }
 
+// ReferencedType satisfies Spec. ArraySpec depends on its element Type for closure validation;
+// empty Type (heterogeneous) declares no dependency.
+func (s *ArraySpec) ReferencedType() string { return s.Type.String() }
+
 func init() { _ = Add(&ArraySpec{}) }

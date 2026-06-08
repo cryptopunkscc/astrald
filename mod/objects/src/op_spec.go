@@ -21,7 +21,7 @@ func (mod *Module) OpSpec(ctx *astral.Context, query *routing.IncomingQuery, arg
 	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
-	types := astral.DefaultBlueprints().Types()
+	types := astral.DefaultBlueprints().OrderedBlueprints()
 	slices.Sort(types)
 	for _, typeName := range types {
 		if len(args.Type) > 0 && typeName != args.Type {

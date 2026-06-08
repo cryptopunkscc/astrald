@@ -29,8 +29,25 @@ func (*RuntimeSlice) ObjectType() string { return "slice" }
 // NewRuntimeSlice returns a RuntimeSlice whose element type is determined from a SliceSpec
 // type name. An empty typeName means heterogeneous (element type = Object interface).
 // Returns ErrBlueprintNotFound if typeName is non-empty and not registered.
+// Element resolution uses defaultBlueprints; for a per-call registry, the codec path uses
+// newRuntimeSliceWith internally.
 func NewRuntimeSlice(typeName string) (*RuntimeSlice, error) {
-	et, err := resolveElemType(typeName)
+	return newRuntimeSliceWith(defaultBlueprints, typeName)
+}
+
+// NewRuntimeSliceWith is the bps-aware constructor for callers that hold a *Blueprints (e.g.
+// a per-call registry built around DefaultBlueprints). Same shape as NewRuntimeSlice; element
+// resolution consults bps instead of the package default. Use when populating a RuntimeObject
+// field whose SliceSpec.Type names a Blueprint registered only in bps.
+func NewRuntimeSliceWith(bps *Blueprints, typeName string) (*RuntimeSlice, error) {
+	return newRuntimeSliceWith(bps, typeName)
+}
+
+// newRuntimeSliceWith is the internal bps-aware constructor used by readField when decoding
+// through a custom registry (WithBlueprints). Same shape as NewRuntimeSlice, but resolveElemType
+// consults the provided registry instead of the package default.
+func newRuntimeSliceWith(bps *Blueprints, typeName string) (*RuntimeSlice, error) {
+	et, err := resolveElemType(bps, typeName)
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +58,12 @@ func NewRuntimeSlice(typeName string) (*RuntimeSlice, error) {
 }
 
 // resolveElemType maps a spec type name to its reflect.Type. Empty name → Object interface.
-// Concrete name → reflect.TypeOf(New(name)), which is the pointer prototype (e.g. *Uint32).
-func resolveElemType(typeName string) (reflect.Type, error) {
+// Concrete name → reflect.TypeOf(bps.New(name)), which is the pointer prototype (e.g. *Uint32).
+func resolveElemType(bps *Blueprints, typeName string) (reflect.Type, error) {
 	if typeName == "" {
 		return reflect.TypeOf((*Object)(nil)).Elem(), nil
 	}
-	proto := New(typeName)
+	proto := bps.New(typeName)
 	if proto == nil {
 		return nil, fmt.Errorf("%w: %s", ErrBlueprintNotFound, typeName)
 	}
@@ -59,15 +76,17 @@ func (s *RuntimeSlice) WriteTo(w io.Writer) (int64, error) {
 
 // ReadFrom decodes the slice. For elemName resolving to a runtime Blueprint, the generic
 // reflective codec would silently no-op per element (see RuntimeSlice doc); the slow path
-// constructs each element via New(elemName) so it carries its schema binding.
+// constructs each element via bps.New(elemName) so it carries its schema binding. bps is
+// recovered from r via blueprintsFromReader so WithBlueprints flows through this frame.
 func (s *RuntimeSlice) ReadFrom(r io.Reader) (int64, error) {
-	if !isRuntimeBlueprintType(s.elemName) {
+	bps := blueprintsFromReader(r)
+	if !isRuntimeBlueprintType(bps, s.elemName) {
 		return sliceValue{Value: s.ptr.Elem()}.ReadFrom(r)
 	}
-	return s.readRuntimeBlueprintElements(r)
+	return s.readRuntimeBlueprintElements(r, bps)
 }
 
-func (s *RuntimeSlice) readRuntimeBlueprintElements(r io.Reader) (int64, error) {
+func (s *RuntimeSlice) readRuntimeBlueprintElements(r io.Reader, bps *Blueprints) (int64, error) {
 	var l uint32
 	err := binary.Read(r, ByteOrder, &l)
 	if err != nil {
@@ -77,7 +96,7 @@ func (s *RuntimeSlice) readRuntimeBlueprintElements(r io.Reader) (int64, error) 
 
 	sl := reflect.MakeSlice(s.ptr.Elem().Type(), int(l), int(l))
 	for i := 0; i < int(l); i++ {
-		m, err := readRuntimeBlueprintPtr(r, s.elemName, sl.Index(i))
+		m, err := readRuntimeBlueprintPtr(r, bps, s.elemName, sl.Index(i))
 		n += m
 		if err != nil {
 			return n, err
@@ -93,8 +112,10 @@ func (s *RuntimeSlice) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON mirrors ReadFrom: when elemName names a runtime Blueprint, allocate elements
 // via New(elemName) so the underlying *RuntimeObject is bound before json.Unmarshal runs.
+// note: JSON path uses defaultBlueprints — no plumbing exists to thread WithBlueprints
+// through json.Unmarshal callbacks; tracked as a separate limitation.
 func (s *RuntimeSlice) UnmarshalJSON(data []byte) error {
-	if !isRuntimeBlueprintType(s.elemName) {
+	if !isRuntimeBlueprintType(defaultBlueprints, s.elemName) {
 		return sliceValue{Value: s.ptr.Elem()}.UnmarshalJSON(data)
 	}
 	var arr []json.RawMessage

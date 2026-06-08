@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
-type opTypesArgs struct {
+type opBlueprintsArgs struct {
 	Out string `query:"optional"`
 }
 
@@ -15,7 +15,7 @@ type opTypesArgs struct {
 // reference). Each name is sent as String8; the stream is terminated by an
 // astral.EOS marker so consumers can iterate without relying on channel
 // close to signal end-of-stream.
-func (mod *Module) OpBlueprints(ctx *astral.Context, q *routing.IncomingQuery, args opTypesArgs) (err error) {
+func (mod *Module) OpBlueprints(ctx *astral.Context, q *routing.IncomingQuery, args opBlueprintsArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 

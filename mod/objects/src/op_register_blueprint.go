@@ -11,10 +11,10 @@ type opRegisterBlueprintArgs struct {
 	Out string `query:"optional"`
 }
 
-// OpRegisterBlueprint runs in batch mode: reads runtime schema descriptors (*astral.Blueprint
-// or *astral.BlueprintAlias) from the channel until EOS or EOF, performs registration for
+// OpRegisterBlueprint runs in batch mode: reads runtime *astral.Blueprint descriptors
+// (struct kind or alias kind) from the channel until EOS or EOF, performs registration for
 // each, sends the resulting ObjectID or an error per input, then emits a final EOS marker
-// before closing. The handler dispatches by the input's concrete type.
+// before closing.
 //
 // todo(security): gate by caller identity before mutating DefaultBlueprints. Any peer can
 // currently (a) squat a victim type name to permanently block legitimate registration,
@@ -34,10 +34,9 @@ func (mod *Module) OpRegisterBlueprint(ctx *astral.Context, q *routing.IncomingQ
 
 	err := ch.Switch(
 		func(bp *astral.Blueprint) error { return register(bp) },
-		func(a *astral.BlueprintAlias) error { return register(a) },
 		channel.BreakOnEOS,
 		func(other astral.Object) error {
-			return ch.Send(astral.NewError("expected astral.Blueprint or astral.BlueprintAlias"))
+			return ch.Send(astral.NewError("expected astral.Blueprint"))
 		},
 	)
 	if err != nil {

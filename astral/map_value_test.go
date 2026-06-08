@@ -2,6 +2,7 @@ package astral
 
 import (
 	"bytes"
+	"encoding/hex"
 	"testing"
 )
 
@@ -252,6 +253,50 @@ func TestMap_NilInterfaceValue(t *testing.T) {
 	}
 	if s, ok := dst.M["present"].(*String16); !ok || *s != "hi" {
 		t.Fatalf("present: want String16 hi, got %#v", dst.M["present"])
+	}
+}
+
+// TestMap_CrossCodecParity_ValueVsPtr — map equivalent of the slice/array value-vs-ptr parity
+// guard. map[string]Uint32, map[string]*Uint32, and RuntimeMap("string16","uint32") must all
+// produce identical wire.
+func TestMap_CrossCodecParity_ValueVsPtr(t *testing.T) {
+	wantHex := "00000002" +
+		"0001" + "61" + "01" + "0000002a" +
+		"0002" + "6262" + "01" + "00000063"
+
+	valueForm := map[string]Uint32{"a": 42, "bb": 99}
+	var valBuf bytes.Buffer
+	if _, err := Objectify(&valueForm).WriteTo(&valBuf); err != nil {
+		t.Fatal(err)
+	}
+
+	ptrForm := map[string]*Uint32{"a": NewUint32(42), "bb": NewUint32(99)}
+	var ptrBuf bytes.Buffer
+	if _, err := Objectify(&ptrForm).WriteTo(&ptrBuf); err != nil {
+		t.Fatal(err)
+	}
+
+	rm, err := NewRuntimeMap("string16", "uint32")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rm.Set("a", NewUint32(42)); err != nil {
+		t.Fatal(err)
+	}
+	if err := rm.Set("bb", NewUint32(99)); err != nil {
+		t.Fatal(err)
+	}
+	var rmBuf bytes.Buffer
+	if _, err := rm.WriteTo(&rmBuf); err != nil {
+		t.Fatal(err)
+	}
+
+	gotVal := hex.EncodeToString(valBuf.Bytes())
+	gotPtr := hex.EncodeToString(ptrBuf.Bytes())
+	gotRM := hex.EncodeToString(rmBuf.Bytes())
+	if gotVal != wantHex || gotPtr != wantHex || gotRM != wantHex {
+		t.Fatalf("wire mismatch:\n want: %s\nmap[K]T:    %s\nmap[K]*T:   %s\n      RM: %s",
+			wantHex, gotVal, gotPtr, gotRM)
 	}
 }
 

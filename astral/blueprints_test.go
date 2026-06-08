@@ -541,14 +541,27 @@ func equalStrings(a, b []string) bool {
 	return true
 }
 
-func TestAllBlueprints_CompileTimeReflected(t *testing.T) {
+// structsOnly filters a Blueprint slice to struct-kind entries. Replaces the old
+// AllBlueprintStructs method for tests that asserted on struct-kind entries only.
+func structsOnly(in []*Blueprint) []*Blueprint {
+	var out []*Blueprint
+	for _, b := range in {
+		if b.Kind() == BlueprintKindStruct {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+func TestAllBlueprints_StructsCompileTimeReflected(t *testing.T) {
 	bps := NewBlueprints(nil)
 	_ = bps.Add(&Blueprint{}, &Field{})
 
-	got, err := bps.AllBlueprints()
+	all, err := bps.AllBlueprints()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	got := structsOnly(all)
 	if len(got) != 2 {
 		t.Fatalf("want 2 blueprints, got %d", len(got))
 	}
@@ -578,10 +591,11 @@ func TestAllBlueprints_RuntimeTopoAfterCompileTime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := bps.AllBlueprints()
+	all, err := bps.AllBlueprints()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	got := structsOnly(all)
 	names := make([]string, len(got))
 	for i, b := range got {
 		names[i] = b.Type.String()
@@ -597,10 +611,11 @@ func TestAllBlueprints_BadPrototypeAggregated(t *testing.T) {
 	b := Bool(false)
 	_ = bps.Add(&Blueprint{}, &b)
 
-	got, err := bps.AllBlueprints()
+	all, err := bps.AllBlueprints()
 	if err == nil {
 		t.Fatalf("expected aggregated error for non-struct prototype")
 	}
+	got := structsOnly(all)
 	if len(got) != 1 || got[0].Type.String() != "astral.blueprint" {
 		t.Fatalf("want only the good entry, got %d entries", len(got))
 	}
@@ -617,13 +632,29 @@ func TestAllBlueprints_ParentChain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := child.AllBlueprints()
+	all, err := child.AllBlueprints()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	got := structsOnly(all)
 	names := make([]string, len(got))
 	for i, b := range got {
 		names[i] = b.Type.String()
 	}
 	mustPrecede(t, names, "astral.blueprint", "test.all_child")
+}
+
+// TestAdd_RejectsParentShadow pins the contract: Add() walks the parent chain via has() so
+// a child cannot silently register a prototype that already lives in the parent. Required to
+// prevent two parallel zero values for the same Type across the hierarchy.
+func TestAdd_RejectsParentShadow(t *testing.T) {
+	parent := NewBlueprints(nil)
+	if err := parent.Add(&Blueprint{}); err != nil {
+		t.Fatal(err)
+	}
+	child := NewBlueprints(parent)
+	err := child.Add(&Blueprint{})
+	if err == nil {
+		t.Fatal("expected child.Add to fail against parent-registered prototype")
+	}
 }

@@ -44,6 +44,7 @@ func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
 
 	type pair struct{ key, value []byte }
 	pairs := make([]pair, 0, val.Len())
+	flagged := elemNeedsPresenceFlag(val.Type().Elem())
 
 	for _, k := range val.MapKeys() {
 		var keyBuf, valBuf bytes.Buffer
@@ -57,6 +58,9 @@ func (val mapValue) WriteTo(w io.Writer) (n int64, err error) {
 		if oerr != nil {
 			err = oerr
 			return
+		}
+		if flagged {
+			valBuf.Write(presenceFlagOne)
 		}
 		if _, err = o.WriteTo(&valBuf); err != nil {
 			return
@@ -105,6 +109,7 @@ func (val mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 
 	val.Set(reflect.MakeMapWithSize(val.Type(), int(l)))
+	flagged := elemNeedsPresenceFlag(val.Type().Elem())
 
 	for range l {
 		var m int64
@@ -121,6 +126,13 @@ func (val mapValue) ReadFrom(r io.Reader) (n int64, err error) {
 		if oerr != nil {
 			err = oerr
 			return
+		}
+		if flagged {
+			m, err = consumePresenceFlag(r)
+			n += m
+			if err != nil {
+				return
+			}
 		}
 		m, err = o.ReadFrom(r)
 		n += m
@@ -242,13 +254,20 @@ func (val mapValue) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("map_value: unsupported key kind %s", keyType.Kind())
 	}
 
-	val.Set(reflect.MakeMap(val.Type()))
-
 	var fields map[string]json.RawMessage
 	err := json.Unmarshal(data, &fields)
 	if err != nil {
 		return err
 	}
+
+	// why: defer MakeMap until first entry so an empty JSON object leaves the map nil,
+	// matching the binary path (mapValue.ReadFrom and runtime_map.go's slow path both
+	// SetZero on count==0).
+	if len(fields) == 0 {
+		val.SetZero()
+		return nil
+	}
+	val.Set(reflect.MakeMapWithSize(val.Type(), len(fields)))
 
 	for k, v := range fields {
 		mapKey := reflect.New(keyType).Elem()
@@ -256,7 +275,10 @@ func (val mapValue) UnmarshalJSON(data []byte) error {
 		case reflect.String:
 			mapKey.SetString(k)
 		default:
-			i, perr := strconv.ParseUint(k, 10, 64)
+			// why: parse at the actual width so an overflowing literal errors instead
+			// of silently truncating via reflect.SetUint.
+			bitSize := int(keyType.Size()) * 8
+			i, perr := strconv.ParseUint(k, 10, bitSize)
 			if perr != nil {
 				return fmt.Errorf("map_value: parse uint key %q: %w", k, perr)
 			}
