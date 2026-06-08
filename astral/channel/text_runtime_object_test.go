@@ -19,7 +19,7 @@ func TestTextChannel_RuntimeObject_RoundTrip(t *testing.T) {
 		astral.Field{Name: "Text", Spec: &astral.PrimitiveSpec{PrimitiveType: "string16"}},
 		astral.Field{Name: "Count", Spec: &astral.PrimitiveSpec{PrimitiveType: "uint32"}},
 	)
-	_, err := astral.RegisterBlueprint(bp)
+	_, err := astral.Register(bp)
 	if err != nil {
 		t.Fatalf("register: %v", err)
 	}

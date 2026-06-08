@@ -159,7 +159,7 @@ func TestBinaryReceiver_AllowUnparsed_NestedUnknown_StillWorks(t *testing.T) {
 	bp := astral.NewBlueprint("test.stream_corrupted.outer",
 		astral.Field{Name: "Inner", Spec: &astral.ObjectSpec{}},
 	)
-	if _, err := astral.RegisterBlueprint(bp); err != nil {
+	if _, err := astral.Register(bp); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 

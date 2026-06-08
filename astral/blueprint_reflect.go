@@ -32,9 +32,15 @@ func BlueprintFromType(t reflect.Type) (*Blueprint, error) {
 
 	bp := &Blueprint{Type: String16(typeName)}
 
+	emptyObject := reflect.TypeOf(EmptyObject{})
 	for i := 0; i < t.NumField(); i++ {
 		sf := t.Field(i)
 		if !sf.IsExported() {
+			continue
+		}
+		// why: EmptyObject is the framework's no-payload marker (embedded in Ack/EOS/Nil
+		// and similar). It carries no wire bytes, so it has nothing to describe in a Spec.
+		if sf.Type == emptyObject {
 			continue
 		}
 		spec, err := specFromType(sf.Type)
@@ -67,10 +73,13 @@ func BlueprintOf(v Object) (*Blueprint, error) {
 // primitives, not generic collections, and must short-circuit before the Slice/Map dispatch.
 func specFromType(t reflect.Type) (Object, error) {
 	if t.Kind() == reflect.Interface {
-		if t == objectInterface {
+		// why: accepting any interface whose method set embeds astral.Object lets
+		// sub-interfaces like exonet.Endpoint flow through an ObjectSpec slot, since
+		// every concrete value carries its astral type tag on the wire.
+		if t.Implements(objectInterface) {
 			return &ObjectSpec{}, nil
 		}
-		return nil, fmt.Errorf("only the Object interface is supported, got %s", t)
+		return nil, fmt.Errorf("interface %s does not embed astral.Object", t)
 	}
 
 	if t.Kind() == reflect.Ptr {
@@ -191,10 +200,10 @@ func concreteObjectTypeOf(t reflect.Type) (string, error) {
 // otherwise the concrete element's ObjectType.
 func elemTypeName(t reflect.Type) (string, error) {
 	if t.Kind() == reflect.Interface {
-		if t == objectInterface {
+		if t.Implements(objectInterface) {
 			return "", nil
 		}
-		return "", fmt.Errorf("only the Object interface is supported as element, got %s", t)
+		return "", fmt.Errorf("interface %s does not embed astral.Object", t)
 	}
 	return concreteObjectTypeOf(t)
 }

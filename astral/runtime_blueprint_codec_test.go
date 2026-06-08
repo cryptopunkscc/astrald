@@ -14,7 +14,7 @@ func TestRuntimeSlice_RuntimeBlueprintElement_RoundTrip(t *testing.T) {
 	userBP := NewBlueprint("test.codec.slice.user",
 		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
 	)
-	_, err := RegisterBlueprint(userBP)
+	_, err := Register(userBP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestRuntimeArray_RuntimeBlueprintElement_RoundTrip(t *testing.T) {
 	itemBP := NewBlueprint("test.codec.array.item",
 		Field{Name: "v", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
 	)
-	_, err := RegisterBlueprint(itemBP)
+	_, err := Register(itemBP)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestRuntimeMap_RuntimeBlueprintValue_RoundTrip(t *testing.T) {
 	entryBP := NewBlueprint("test.codec.map.entry",
 		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
 	)
-	_, err := RegisterBlueprint(entryBP)
+	_, err := Register(entryBP)
 	if err != nil {
 		t.Fatal(err)
 	}
