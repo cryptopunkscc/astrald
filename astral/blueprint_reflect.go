@@ -241,8 +241,11 @@ func mapKeyTypeName(t reflect.Type) (string, error) {
 		return "uint16", nil
 	case reflect.Uint32:
 		return "uint32", nil
-	case reflect.Uint64, reflect.Uint:
+	case reflect.Uint64:
 		return "uint64", nil
 	}
-	return "", fmt.Errorf("unsupported map key type %s (must be string or unsigned int)", t)
+	// why: reflect.Uint is rejected here to stay aligned with supportedMapKey in map_value.go —
+	// platform-dependent width would split content hashes across architectures. See the same
+	// rejection in objectify for non-map fields.
+	return "", fmt.Errorf("unsupported map key type %s (must be fixed-width unsigned int or string)", t)
 }

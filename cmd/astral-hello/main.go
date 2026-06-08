@@ -14,7 +14,7 @@ import (
 
 // Greeting is an app-defined astral Object used to verify blueprint sync:
 // after astral-hello starts, the type "astral_hello.greeting" must appear
-// in objects.types on the node.
+// in objects.blueprints on the node.
 type Greeting struct {
 	Recipient astral.String8
 	Message   astral.String16

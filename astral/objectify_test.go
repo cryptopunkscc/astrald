@@ -147,6 +147,11 @@ func TestObjectify_UnsupportedKinds_Sweep(t *testing.T) {
 		{"complex64", func() any { var c complex64; return &c }},
 		{"complex128", func() any { var c complex128; return &c }},
 		{"uintptr", func() any { var u uintptr; return &u }},
+		// why: platform-width int/uint are rejected so the wire bytes stay portable across
+		// architectures — see the rejection in objectify.go and the prior art in
+		// supportedMapKey (map_value.go).
+		{"int", func() any { var i int; return &i }},
+		{"uint", func() any { var u uint; return &u }},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

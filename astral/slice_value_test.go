@@ -7,10 +7,10 @@ import (
 )
 
 func TestSliceOfInts(t *testing.T) {
-	var src, dst []int
+	var src, dst []int64
 
 	for i := 0; i < 10; i++ {
-		src = append(src, i)
+		src = append(src, int64(i))
 	}
 
 	srcObject := Objectify(&src)

@@ -8,10 +8,10 @@ import (
 )
 
 func TestArrayOfInts(t *testing.T) {
-	var src, dst [10]int
+	var src, dst [10]int64
 
 	for i := 0; i < 10; i++ {
-		src[i] = i
+		src[i] = int64(i)
 	}
 
 	srcObject := Objectify(&src)
@@ -33,7 +33,7 @@ func TestArrayOfInts(t *testing.T) {
 	if slices.Compare(dst[:], src[:]) != 0 {
 		t.Fatal("slice values not equal")
 	}
-	dst = [10]int{}
+	dst = [10]int64{}
 
 	// test json marshaling
 	json, err := srcObject.MarshalJSON()

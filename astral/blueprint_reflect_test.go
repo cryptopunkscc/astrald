@@ -272,12 +272,6 @@ func TestSpecFromType_Dispatch(t *testing.T) {
 				F map[uint64]*Identity
 			}{}
 		}, "uint64", "identity"},
-		{"uint_platform_aliases_to_uint64", func() any {
-			return struct {
-				reflectWitnessNamed
-				F map[uint]*Identity
-			}{}
-		}, "uint64", "identity"},
 		{"typed_string_alias", func() any {
 			return struct {
 				reflectWitnessNamed
@@ -357,6 +351,15 @@ func TestSpecFromType_Dispatch(t *testing.T) {
 				F map[int]*Identity
 			}{})
 		}},
+		{"MapWithPlatformUintKey", func() reflect.Type {
+			// why: platform-width uint is rejected to keep mapKeyTypeName aligned with
+			// supportedMapKey in map_value.go — a uint key would split content hashes
+			// across architectures.
+			return reflect.TypeOf(struct {
+				reflectWitnessNamed
+				F map[uint]*Identity
+			}{})
+		}},
 		{"MapWithBoolKey", func() reflect.Type {
 			return reflect.TypeOf(struct {
 				reflectWitnessNamed
@@ -403,6 +406,18 @@ func TestSpecFromType_Dispatch(t *testing.T) {
 			return reflect.TypeOf(struct {
 				reflectWitnessNamed
 				F int32
+			}{})
+		}},
+		{"UnsupportedKind_PlatformInt", func() reflect.Type {
+			return reflect.TypeOf(struct {
+				reflectWitnessNamed
+				F int
+			}{})
+		}},
+		{"UnsupportedKind_PlatformUint", func() reflect.Type {
+			return reflect.TypeOf(struct {
+				reflectWitnessNamed
+				F uint
 			}{})
 		}},
 	}

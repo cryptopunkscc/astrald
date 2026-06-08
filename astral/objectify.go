@@ -164,7 +164,7 @@ func objectify(v reflect.Value) (value, error) {
 	case reflect.Uint32:
 		return uint32Value{v}, nil
 
-	case reflect.Uint64, reflect.Uint:
+	case reflect.Uint64:
 		return uint64Value{v}, nil
 
 	case reflect.Int8:
@@ -176,8 +176,16 @@ func objectify(v reflect.Value) (value, error) {
 	case reflect.Int32:
 		return int32Value{v}, nil
 
-	case reflect.Int64, reflect.Int:
+	case reflect.Int64:
 		return int64Value{v}, nil
+
+	// why: platform-width int/uint are rejected for the same reason supportedMapKey rejects
+	// reflect.Uint — their width is platform-dependent, so silently aliasing them to int64/uint64
+	// would let a struct compiled on a 32-bit host content-hash differently than the 64-bit one
+	// if the codec ever started using the actual platform width. Force callers to declare the
+	// width explicitly (int64/uint64) so Blueprint derivation can describe every encodable struct.
+	case reflect.Int, reflect.Uint:
+		return nil, fmt.Errorf("unsupported type %s %s: platform-width int/uint not allowed, use int64/uint64", v.Kind(), v.Type())
 
 	case reflect.Array:
 		return arrayValue{v}, nil
