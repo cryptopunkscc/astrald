@@ -14,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/core"
 	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/cryptopunkscc/astrald/mod/dir"
 	"github.com/cryptopunkscc/astrald/mod/ether"
 	ipsrc "github.com/cryptopunkscc/astrald/mod/ip/src"
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
@@ -47,6 +48,7 @@ type Node struct {
 	cancel   context.CancelFunc
 	done     chan struct{}
 	runErr   error
+	cnode    *core.Node
 }
 
 // NewNode constructs an unstarted Node. Configure it with SetConfigDir/
@@ -87,6 +89,31 @@ func (n *Node) Identity() string {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	return n.identity
+}
+
+// Alias returns the local node's directory alias — the human-friendly name
+// the dir module assigns on first run (e.g. "snazzy-spark"). Returns "" if
+// the node isn't running yet or the alias hasn't been assigned; callers
+// should fall back to the identity in that case.
+func (n *Node) Alias() string {
+	n.mu.Lock()
+	cnode := n.cnode
+	n.mu.Unlock()
+
+	if cnode == nil || !n.running.Load() {
+		return ""
+	}
+
+	dirMod, err := core.Load[dir.Module](cnode, dir.ModuleName)
+	if err != nil {
+		return ""
+	}
+
+	alias, err := dirMod.GetAlias(cnode.Identity())
+	if err != nil {
+		return ""
+	}
+	return alias
 }
 
 // ApphostWSURL returns the loopback WebSocket URL that local apps connect
@@ -149,6 +176,7 @@ func (n *Node) Start() error {
 	n.done = make(chan struct{})
 	n.identity = nodeID.String()
 	n.runErr = nil
+	n.cnode = cnode
 	n.running.Store(true)
 
 	go func() {
