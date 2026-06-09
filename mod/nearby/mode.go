@@ -17,6 +17,11 @@ const (
 
 func (*Mode) ObjectType() string { return "mod.nearby.mode" }
 
+// UnderlyingPrimitive satisfies astral.PrimitiveAlias so blueprint sync derives an
+// alias-kind *astral.Blueprint for Mode and peers without the nearby module
+// decode the byte as *astral.RuntimeObject of "mod.nearby.mode".
+func (*Mode) UnderlyingPrimitive() string { return "uint8" }
+
 func (m *Mode) WriteTo(w io.Writer) (int64, error) {
 	return (*astral.Uint8)(m).WriteTo(w)
 }

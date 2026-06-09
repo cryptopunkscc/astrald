@@ -29,10 +29,17 @@ func (a sliceValue) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	n += 4
 
+	flagged := elemNeedsPresenceFlag(a.Type().Elem())
 	for i := range a.Len() {
 		o, err = objectify(a.Index(i))
 		if err != nil {
 			return
+		}
+		if flagged {
+			if _, err = w.Write(presenceFlagOne); err != nil {
+				return
+			}
+			n++
 		}
 		m, err = o.WriteTo(w)
 		n += m
@@ -55,10 +62,18 @@ func (a sliceValue) ReadFrom(r io.Reader) (n int64, err error) {
 
 	a.Set(reflect.MakeSlice(a.Type(), int(l), int(l)))
 
+	flagged := elemNeedsPresenceFlag(a.Type().Elem())
 	for i := range int(l) {
 		o, err = objectify(a.Index(i))
 		if err != nil {
 			return
+		}
+		if flagged {
+			m, err = consumePresenceFlag(r)
+			n += m
+			if err != nil {
+				return
+			}
 		}
 		m, err = o.ReadFrom(r)
 		n += m
@@ -70,7 +85,9 @@ func (a sliceValue) ReadFrom(r io.Reader) (n int64, err error) {
 }
 
 func (a sliceValue) MarshalJSON() (_ []byte, err error) {
-	var arr []json.RawMessage
+	// why: non-nil allocation so an empty slice marshals to `[]` rather than `null`,
+	// matching external-JSON consumer expectations (schema validators, jq, jsonb queries).
+	arr := make([]json.RawMessage, 0, a.Len())
 	var o Object
 	var raw []byte
 

@@ -7,7 +7,7 @@ import (
 )
 
 type testStruct struct {
-	SomeNumber int
+	SomeNumber int64
 	SomeList   []string
 }
 

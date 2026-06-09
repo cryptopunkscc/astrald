@@ -30,7 +30,7 @@ const (
 	MethodNewMem            = "objects.new_mem"
 	MethodRepositories      = "objects.repositories"
 	MethodRemoveRepository  = "objects.remove_repository"
-	MethodTypes             = "objects.types"
+	MethodBlueprints        = "objects.blueprints"
 	MethodEcho              = "objects.echo"
 
 	RepoMain      = "main"      // everything
@@ -101,8 +101,9 @@ type Module interface {
 	// Deprecated: Use Probe instead.
 	GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error)
 
-	// RegisterBlueprint registers a runtime Blueprint and returns its content-addressed ObjectID.
-	RegisterBlueprint(*astral.Blueprint) (*astral.ObjectID, error)
+	// Register stores a runtime *astral.Blueprint (struct kind or alias kind) and returns
+	// its content-addressed ObjectID. Other Object types return ErrBlueprintInvalid.
+	Register(astral.Object) (*astral.ObjectID, error)
 }
 
 type Receiver interface {

@@ -9,7 +9,11 @@ var objectInterface = reflect.TypeOf((*Object)(nil)).Elem()
 
 // BlueprintFromType derives a Blueprint from a struct reflect.Type by inspecting its exported
 // fields. The struct (or its pointer) must implement Object so its ObjectType() can be used
-// as the blueprint's Type. Each field is mapped to a Spec carrier:
+// as the blueprint's Type.
+//
+// If the prototype satisfies PrimitiveAlias, an alias-kind Blueprint is returned: Underlying is
+// set to UnderlyingPrimitive() and Fields stays empty. Otherwise a struct-kind Blueprint
+// is returned, with each exported field mapped to a Spec carrier:
 //
 //	implements Object & primitive allowlist → *PrimitiveSpec
 //	implements Object & not primitive       → *RefSpec
@@ -21,20 +25,43 @@ func BlueprintFromType(t reflect.Type) (*Blueprint, error) {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
+
+	typeName, typeNameErr := concreteObjectTypeOf(t)
+
+	// why: PrimitiveAlias is the Go-side declaration of an alias-kind Blueprint and the
+	// underlying Go type may be a primitive newtype (e.g. `type Mode astral.Uint8`),
+	// not a struct. Probe before the struct check so non-struct PrimitiveAlias prototypes
+	// derive correctly.
+	if a, ok := reflect.New(t).Interface().(PrimitiveAlias); ok {
+		if typeNameErr != nil {
+			return nil, fmt.Errorf("BlueprintFromType: %w", typeNameErr)
+		}
+		bp := &Blueprint{Type: String16(typeName), Underlying: String16(a.UnderlyingPrimitive())}
+		if err := validateBlueprint(bp); err != nil {
+			return nil, fmt.Errorf("BlueprintFromType: %w", err)
+		}
+		return bp, nil
+	}
+
 	if t.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("BlueprintFromType: want struct or *struct, got %s", t)
 	}
 
-	typeName, err := concreteObjectTypeOf(t)
-	if err != nil {
-		return nil, fmt.Errorf("BlueprintFromType: %w", err)
+	if typeNameErr != nil {
+		return nil, fmt.Errorf("BlueprintFromType: %w", typeNameErr)
 	}
 
 	bp := &Blueprint{Type: String16(typeName)}
 
+	emptyObject := reflect.TypeOf(EmptyObject{})
 	for i := 0; i < t.NumField(); i++ {
 		sf := t.Field(i)
 		if !sf.IsExported() {
+			continue
+		}
+		// why: EmptyObject is the framework's no-payload marker (embedded in Ack/EOS/Nil
+		// and similar). It carries no wire bytes, so it has nothing to describe in a Spec.
+		if sf.Type == emptyObject {
 			continue
 		}
 		spec, err := specFromType(sf.Type)
@@ -65,12 +92,15 @@ func BlueprintOf(v Object) (*Blueprint, error) {
 // of whether they implement Object themselves. Anything else is first probed for an Object
 // implementation — astral types built on a slice or map (Bytes32 = []byte, etc.) are leaf
 // primitives, not generic collections, and must short-circuit before the Slice/Map dispatch.
-func specFromType(t reflect.Type) (Object, error) {
+func specFromType(t reflect.Type) (Spec, error) {
 	if t.Kind() == reflect.Interface {
-		if t == objectInterface {
+		// why: accepting any interface whose method set embeds astral.Object lets
+		// sub-interfaces like exonet.Endpoint flow through an ObjectSpec slot, since
+		// every concrete value carries its astral type tag on the wire.
+		if t.Implements(objectInterface) {
 			return &ObjectSpec{}, nil
 		}
-		return nil, fmt.Errorf("only the Object interface is supported, got %s", t)
+		return nil, fmt.Errorf("interface %s does not embed astral.Object", t)
 	}
 
 	if t.Kind() == reflect.Ptr {
@@ -191,10 +221,10 @@ func concreteObjectTypeOf(t reflect.Type) (string, error) {
 // otherwise the concrete element's ObjectType.
 func elemTypeName(t reflect.Type) (string, error) {
 	if t.Kind() == reflect.Interface {
-		if t == objectInterface {
+		if t.Implements(objectInterface) {
 			return "", nil
 		}
-		return "", fmt.Errorf("only the Object interface is supported as element, got %s", t)
+		return "", fmt.Errorf("interface %s does not embed astral.Object", t)
 	}
 	return concreteObjectTypeOf(t)
 }
@@ -211,8 +241,11 @@ func mapKeyTypeName(t reflect.Type) (string, error) {
 		return "uint16", nil
 	case reflect.Uint32:
 		return "uint32", nil
-	case reflect.Uint64, reflect.Uint:
+	case reflect.Uint64:
 		return "uint64", nil
 	}
-	return "", fmt.Errorf("unsupported map key type %s (must be string or unsigned int)", t)
+	// why: reflect.Uint is rejected here to stay aligned with supportedMapKey in map_value.go —
+	// platform-dependent width would split content hashes across architectures. See the same
+	// rejection in objectify for non-map fields.
+	return "", fmt.Errorf("unsupported map key type %s (must be fixed-width unsigned int or string)", t)
 }

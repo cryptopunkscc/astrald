@@ -37,3 +37,10 @@ var ErrFieldTypeMismatch = errors.New("field type mismatch")
 
 // ErrDepthExceeded - RuntimeObject encode/decode exceeded MaxBlueprintDepth nested frames
 var ErrDepthExceeded = errors.New("blueprint depth exceeded")
+
+// ErrBlueprintCycle - reachable when the topo-sort over registered Blueprints can't make
+// progress (a reference cycle). Production usually can't construct one — RegisterBlueprint's
+// validateReferences rejects forward refs — but a parent-after-child shadow can introduce
+// one. Callers receive both the cycle-bearing list (with the stuck nodes appended in alpha
+// order) and the error, so sync can still replay best-effort while logging the divergence.
+var ErrBlueprintCycle = errors.New("blueprint reference cycle")

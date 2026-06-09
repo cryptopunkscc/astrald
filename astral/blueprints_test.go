@@ -413,3 +413,248 @@ func TestNew_CompileTimeStillReturnsPrototype(t *testing.T) {
 		t.Fatalf("expected *Blueprint, got %T", obj)
 	}
 }
+
+func TestOrderedTypes_CompileTimeOnly_AlphaSorted(t *testing.T) {
+	bps := NewBlueprints(nil)
+	_ = bps.Add(&Blueprint{}, &Field{}) // ObjectType: astral.blueprint, astral.blueprint.field
+
+	got := bps.OrderedBlueprints()
+	want := []string{"astral.blueprint", "astral.blueprint.field"}
+	if !equalStrings(got, want) {
+		t.Fatalf("want %v, got %v", want, got)
+	}
+}
+
+func TestOrderedTypes_RuntimeAfterCompileTime(t *testing.T) {
+	bps := NewBlueprints(nil)
+	bp := NewBlueprint("test.runtime_one",
+		Field{Name: "x", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	if _, err := bps.RegisterBlueprint(bp); err != nil {
+		t.Fatal(err)
+	}
+
+	got := bps.OrderedBlueprints()
+	if len(got) == 0 || got[len(got)-1] != "test.runtime_one" {
+		t.Fatalf("runtime entry must trail compile-time block, got %v", got)
+	}
+}
+
+func TestOrderedTypes_RuntimeTopoByRef(t *testing.T) {
+	bps := NewBlueprints(nil)
+
+	leaf := NewBlueprint("test.leaf",
+		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	if _, err := bps.RegisterBlueprint(leaf); err != nil {
+		t.Fatal(err)
+	}
+	mid := NewBlueprint("test.mid",
+		Field{Name: "r", Spec: &RefSpec{Type: "test.leaf"}},
+	)
+	if _, err := bps.RegisterBlueprint(mid); err != nil {
+		t.Fatal(err)
+	}
+	top := NewBlueprint("test.top",
+		Field{Name: "r", Spec: &RefSpec{Type: "test.mid"}},
+	)
+	if _, err := bps.RegisterBlueprint(top); err != nil {
+		t.Fatal(err)
+	}
+
+	got := bps.OrderedBlueprints()
+	mustPrecede(t, got, "test.leaf", "test.mid")
+	mustPrecede(t, got, "test.mid", "test.top")
+}
+
+func TestOrderedTypes_ParentChainPrecedesChild(t *testing.T) {
+	parent := NewBlueprints(nil)
+	if _, err := parent.RegisterBlueprint(NewBlueprint("test.parent_only",
+		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+
+	child := NewBlueprints(parent)
+	if _, err := child.RegisterBlueprint(NewBlueprint("test.child_only",
+		Field{Name: "r", Spec: &RefSpec{Type: "test.parent_only"}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+
+	got := child.OrderedBlueprints()
+	mustPrecede(t, got, "test.parent_only", "test.child_only")
+}
+
+func TestOrderedTypes_StableTieBreakAlpha(t *testing.T) {
+	bps := NewBlueprints(nil)
+	names := []string{"test.b_root", "test.a_root", "test.c_root"}
+	for _, n := range names {
+		if _, err := bps.RegisterBlueprint(NewBlueprint(n,
+			Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got := bps.OrderedBlueprints()
+	idx := map[string]int{}
+	for i, n := range got {
+		idx[n] = i
+	}
+	if !(idx["test.a_root"] < idx["test.b_root"] && idx["test.b_root"] < idx["test.c_root"]) {
+		t.Fatalf("expected alpha tie-break a<b<c, got %v", got)
+	}
+}
+
+func mustPrecede(t *testing.T, names []string, earlier, later string) {
+	t.Helper()
+	ei, li := -1, -1
+	for i, n := range names {
+		if n == earlier {
+			ei = i
+		}
+		if n == later {
+			li = i
+		}
+	}
+	if ei < 0 {
+		t.Fatalf("%q missing from %v", earlier, names)
+	}
+	if li < 0 {
+		t.Fatalf("%q missing from %v", later, names)
+	}
+	if ei >= li {
+		t.Fatalf("expected %q before %q, got %v", earlier, later, names)
+	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// structsOnly filters a Blueprint slice to struct-kind entries. Replaces the old
+// AllBlueprintStructs method for tests that asserted on struct-kind entries only.
+func structsOnly(in []*Blueprint) []*Blueprint {
+	var out []*Blueprint
+	for _, b := range in {
+		if b.Kind() == BlueprintKindStruct {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+func TestAllBlueprints_StructsCompileTimeReflected(t *testing.T) {
+	bps := NewBlueprints(nil)
+	_ = bps.Add(&Blueprint{}, &Field{})
+
+	all, err := bps.AllBlueprints()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got := structsOnly(all)
+	if len(got) != 2 {
+		t.Fatalf("want 2 blueprints, got %d", len(got))
+	}
+	if got[0].Type.String() != "astral.blueprint" || got[1].Type.String() != "astral.blueprint.field" {
+		t.Fatalf("want compile-time alpha order, got %s,%s",
+			got[0].Type, got[1].Type)
+	}
+	if len(got[0].Fields) == 0 {
+		t.Fatalf("derived Blueprint must carry reflected fields, got empty")
+	}
+}
+
+func TestAllBlueprints_RuntimeTopoAfterCompileTime(t *testing.T) {
+	bps := NewBlueprints(nil)
+	_ = bps.Add(&Blueprint{})
+
+	leaf := NewBlueprint("test.all_leaf",
+		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)
+	if _, err := bps.RegisterBlueprint(leaf); err != nil {
+		t.Fatal(err)
+	}
+	top := NewBlueprint("test.all_top",
+		Field{Name: "r", Spec: &RefSpec{Type: "test.all_leaf"}},
+	)
+	if _, err := bps.RegisterBlueprint(top); err != nil {
+		t.Fatal(err)
+	}
+
+	all, err := bps.AllBlueprints()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got := structsOnly(all)
+	names := make([]string, len(got))
+	for i, b := range got {
+		names[i] = b.Type.String()
+	}
+	if names[0] != "astral.blueprint" {
+		t.Fatalf("compile-time must come first, got %v", names)
+	}
+	mustPrecede(t, names, "test.all_leaf", "test.all_top")
+}
+
+func TestAllBlueprints_BadPrototypeAggregated(t *testing.T) {
+	bps := NewBlueprints(nil)
+	b := Bool(false)
+	_ = bps.Add(&Blueprint{}, &b)
+
+	all, err := bps.AllBlueprints()
+	if err == nil {
+		t.Fatalf("expected aggregated error for non-struct prototype")
+	}
+	got := structsOnly(all)
+	if len(got) != 1 || got[0].Type.String() != "astral.blueprint" {
+		t.Fatalf("want only the good entry, got %d entries", len(got))
+	}
+}
+
+func TestAllBlueprints_ParentChain(t *testing.T) {
+	parent := NewBlueprints(nil)
+	_ = parent.Add(&Blueprint{})
+
+	child := NewBlueprints(parent)
+	if _, err := child.RegisterBlueprint(NewBlueprint("test.all_child",
+		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+
+	all, err := child.AllBlueprints()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got := structsOnly(all)
+	names := make([]string, len(got))
+	for i, b := range got {
+		names[i] = b.Type.String()
+	}
+	mustPrecede(t, names, "astral.blueprint", "test.all_child")
+}
+
+// TestAdd_RejectsParentShadow pins the contract: Add() walks the parent chain via has() so
+// a child cannot silently register a prototype that already lives in the parent. Required to
+// prevent two parallel zero values for the same Type across the hierarchy.
+func TestAdd_RejectsParentShadow(t *testing.T) {
+	parent := NewBlueprints(nil)
+	if err := parent.Add(&Blueprint{}); err != nil {
+		t.Fatal(err)
+	}
+	child := NewBlueprints(parent)
+	err := child.Add(&Blueprint{})
+	if err == nil {
+		t.Fatal("expected child.Add to fail against parent-registered prototype")
+	}
+}

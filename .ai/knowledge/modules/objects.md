@@ -56,6 +56,7 @@ Hosts the node's content-addressed object layer behind a uniform query and repos
 | `objects.push`, `objects.echo` | object delivery and connectivity helpers |
 | `objects.repositories`, `objects.remove_repository`, `objects.new_mem` | repository management |
 | `objects.register_describer`, `objects.register_finder`, `objects.register_searcher` | external (caller-hosted) discovery registration |
+| `objects.register_blueprint`, `objects.types` | runtime type registration (structs + named primitive aliases through one op) and discovery; backs `apps.WithBlueprintSync` |
 | `Receiver`, `Describer`, `Searcher`, `SearchPreprocessor`, `Finder`, `Holder` | extension points auto-discovered from loaded modules |
 | `main`, `device`, `memory`, `local`, `removable`, `virtual`, `network`, `system` | default repository groups and built-in repositories |
 | `objects__objects` | tracking row (height, id, type, created_at, read_at) used by purge order and lazy type lookups |
@@ -77,3 +78,8 @@ Hosts the node's content-addressed object layer behind a uniform query and repos
 - `AddDescriber`/`AddFinder`/`AddSearcher` deduplicate registrations carrying a `SourceIdentifier` by source identity (external proxies cannot register twice).
 - `OpRegisterDescriber`/`OpRegisterFinder`/`OpRegisterSearcher` reject `OriginNetwork` and the node's own identity.
 - `ReadDefault` is `main`; `WriteDefault` is `local`.
+- `OpTypes` (`objects.types`) streams names from `DefaultBlueprints().OrderedTypes()`: compile-time prototypes first (alpha-sorted), then aliases (alpha-sorted, leaves), then runtime Blueprints topo-sorted by reference; terminated with `EOS`. Aliases precede runtime Blueprints so a Blueprint's RefSpec to an alias resolves when peers replay in order.
+- `OpRegisterBlueprint` (`objects.register_blueprint`) accepts either `*astral.Blueprint` or `*astral.BlueprintAlias` and dispatches by concrete type via `Module.Register` → `Blueprints.Register`; on name collision it returns `astral.ErrAlreadyRegistered` as a wire-error, and the client wrapper at `mod/objects/client/register.go` recognises the wire-string prefix and returns the in-process sentinel so callers can `errors.Is(err, astral.ErrAlreadyRegistered)`.
+- `BlueprintAlias`, `Blueprint`, and compile-time prototypes share one registry map (`Blueprints.Blueprints`); each name maps to exactly one entry, and `RegisterAlias` collides with any prior holder of the same name. A compile-time prototype can declare itself an alias by implementing `astral.Aliasable` (`UnderlyingPrimitive() string`); `AllAliases` derives the `*BlueprintAlias` for sync without storing it, so `New` keeps returning the typed Go value locally while remote peers receive the alias and decode wire bytes as `*RuntimeAlias`.
+- `apps.WithBlueprintSync` is the SDK entry point: pushes every local alias first, then every local Blueprint, through the single `objectsClient.Register` call; `AllBlueprints` and `AllAliases` each run once per process (sync.Once-guarded).
+- todo(security): neither `objects.types` nor `objects.register_blueprint` is gated by caller identity; any peer can squat a type name or enumerate the registry.

@@ -183,7 +183,7 @@ func Adapt(v any) Object {
 }
 
 // normalize converts a caller-supplied value into the canonical astral value for the given Spec.
-func normalize(spec Object, v any) (Object, error) {
+func normalize(spec Spec, v any) (Object, error) {
 	switch s := spec.(type) {
 	case *PrimitiveSpec:
 		return normalizePrimitive(s.PrimitiveType.String(), v)
@@ -209,6 +209,12 @@ func normalize(spec Object, v any) (Object, error) {
 		if !ok {
 			return nil, fmt.Errorf("want *RuntimeSlice, got %T", v)
 		}
+		// why: a *RuntimeSlice over a different element type silently encodes mismatched
+		// wire bytes — the caller's `NewRuntimeSlice("A")` for a field whose SliceSpec.Type
+		// is "B" must not slip past the Set gate.
+		if rs.elemName != s.Type.String() {
+			return nil, fmt.Errorf("SliceSpec.Type=%s: got slice of %q", s.Type, rs.elemName)
+		}
 		return rs, nil
 	case *ArraySpec:
 		ra, ok := v.(*RuntimeArray)
@@ -218,11 +224,24 @@ func normalize(spec Object, v any) (Object, error) {
 		if uint32(ra.Len()) != uint32(s.Length) {
 			return nil, fmt.Errorf("ArraySpec: want length %d, got %d", s.Length, ra.Len())
 		}
+		if ra.elemName != s.Type.String() {
+			return nil, fmt.Errorf("ArraySpec.Type=%s: got array of %q", s.Type, ra.elemName)
+		}
 		return ra, nil
 	case *MapSpec:
 		rm, ok := v.(*RuntimeMap)
 		if !ok {
 			return nil, fmt.Errorf("want *RuntimeMap, got %T", v)
+		}
+		if rm.valueName != s.ValueType.String() {
+			return nil, fmt.Errorf("MapSpec.ValueType=%s: got map of %q", s.ValueType, rm.valueName)
+		}
+		// why: the carrier's key reflect.Kind is set at construction (resolveKeyType);
+		// compare its Kind name against the Spec's KeyType to catch a uint8-Spec field
+		// accepting a uint64-keyed carrier and writing a 1-byte key the peer reads as 8.
+		gotKey, _ := mapKeyTypeName(rm.ptr.Elem().Type().Key())
+		if gotKey != s.KeyType.String() {
+			return nil, fmt.Errorf("MapSpec.KeyType=%s: got map with key %s", s.KeyType, gotKey)
 		}
 		return rm, nil
 

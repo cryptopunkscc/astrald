@@ -244,20 +244,27 @@ func TestRuntimeObject_ArrayHeterogeneousRoundTrip(t *testing.T) {
 	}
 }
 
-func TestRuntimeObject_UnregisteredArrayElement_FailsSymmetrically(t *testing.T) {
+// TestRuntimeObject_UnregisteredArrayElement_BothEndsError pins that an unregistered element
+// type fails both encode and decode, with the failure classes now divergent:
+//   - specZero swallows the constructor error and stores nil (runtime_object.go:218-225),
+//     so encode hits writeField with value==nil and surfaces "nil value for ArraySpec".
+//   - readField still resolves through newRuntimeArrayWith and surfaces ErrBlueprintNotFound.
+//
+// The symmetric-error guarantee (writeField re-resolving against defaultBlueprints) was
+// dropped because it broke per-call-registry encode without catching anything decode wouldn't.
+func TestRuntimeObject_UnregisteredArrayElement_BothEndsError(t *testing.T) {
 	bp := NewBlueprint("test.array.missing",
 		Field{Name: "a", Spec: &ArraySpec{Type: "definitely-not-registered", Length: 2}},
 	)
 
 	src := mustRuntimeObject(t, bp)
 	var buf bytes.Buffer
-	_, err := src.WriteTo(&buf)
-	if !errors.Is(err, ErrBlueprintNotFound) {
-		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
+	if _, err := src.WriteTo(&buf); err == nil {
+		t.Fatal("encode: expected error, got nil")
 	}
 
 	dst := mustRuntimeObject(t, bp)
-	_, err = dst.ReadFrom(&buf)
+	_, err := dst.ReadFrom(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
 	}
@@ -487,42 +494,42 @@ func TestRuntimeObject_NilOnlyForPtrSpec(t *testing.T) {
 	}
 }
 
-// why: pins codec symmetry for SliceSpec/MapSpec whose element type is unregistered. The
-// previous specZero silently substituted a heterogeneous carrier, so WriteTo emitted
-// per-element-tagged bytes while ReadFrom errored — same Blueprint, divergent wire shape.
-func TestRuntimeObject_UnregisteredSliceElement_FailsSymmetrically(t *testing.T) {
+// TestRuntimeObject_UnregisteredSliceElement_BothEndsError pins the post-defensive-drop
+// contract: specZero stores nil for an unregistered element type, so encode fails with
+// "nil value for SliceSpec"; decode still surfaces ErrBlueprintNotFound via newRuntimeSliceWith.
+// The previous symmetric ErrBlueprintNotFound on encode was driven by a defaultBlueprints-bound
+// re-resolve in writeField that broke per-call-registry callers.
+func TestRuntimeObject_UnregisteredSliceElement_BothEndsError(t *testing.T) {
 	bp := NewBlueprint("test.slice.missing",
 		Field{Name: "items", Spec: &SliceSpec{Type: "definitely-not-registered"}},
 	)
 
 	src := mustRuntimeObject(t, bp)
 	var buf bytes.Buffer
-	_, err := src.WriteTo(&buf)
-	if !errors.Is(err, ErrBlueprintNotFound) {
-		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
+	if _, err := src.WriteTo(&buf); err == nil {
+		t.Fatal("encode: expected error, got nil")
 	}
 
 	dst := mustRuntimeObject(t, bp)
-	_, err = dst.ReadFrom(&buf)
+	_, err := dst.ReadFrom(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
 	}
 }
 
-func TestRuntimeObject_UnregisteredMapValue_FailsSymmetrically(t *testing.T) {
+func TestRuntimeObject_UnregisteredMapValue_BothEndsError(t *testing.T) {
 	bp := NewBlueprint("test.map.missing",
 		Field{Name: "m", Spec: &MapSpec{KeyType: "string16", ValueType: "definitely-not-registered"}},
 	)
 
 	src := mustRuntimeObject(t, bp)
 	var buf bytes.Buffer
-	_, err := src.WriteTo(&buf)
-	if !errors.Is(err, ErrBlueprintNotFound) {
-		t.Fatalf("encode: want ErrBlueprintNotFound, got %v", err)
+	if _, err := src.WriteTo(&buf); err == nil {
+		t.Fatal("encode: expected error, got nil")
 	}
 
 	dst := mustRuntimeObject(t, bp)
-	_, err = dst.ReadFrom(&buf)
+	_, err := dst.ReadFrom(&buf)
 	if !errors.Is(err, ErrBlueprintNotFound) {
 		t.Fatalf("decode: want ErrBlueprintNotFound, got %v", err)
 	}
@@ -775,6 +782,55 @@ func TestRuntimeObject_JSON_NoBlueprintError(t *testing.T) {
 	}
 }
 
+// TestRuntimeObject_JSON_CaseInsensitive pins the Postel posture chosen for the JSON
+// decoder: incoming keys match field names case-insensitively (mirroring encoding/json
+// and structValue), excess keys are silently ignored, and two payload keys folding to
+// the same lowercase form are rejected as ambiguous.
+func TestRuntimeObject_JSON_CaseInsensitive(t *testing.T) {
+	bp := NewBlueprint("test.json.case",
+		Field{Name: "SomeNumber", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+		Field{Name: "UserName", Spec: &PrimitiveSpec{PrimitiveType: "string16"}},
+	)
+
+	cases := []struct {
+		name     string
+		payload  string
+		wantNum  uint32
+		wantName String16
+		wantErr  string // substring; "" means expect success
+	}{
+		{"exact", `{"SomeNumber":42,"UserName":"alice"}`, 42, "alice", ""},
+		{"all-lower", `{"somenumber":42,"username":"alice"}`, 42, "alice", ""},
+		{"all-upper", `{"SOMENUMBER":42,"USERNAME":"alice"}`, 42, "alice", ""},
+		{"mixed", `{"sOmEnUmBeR":42,"uSeRnAmE":"alice"}`, 42, "alice", ""},
+		{"excess-ignored", `{"SomeNumber":42,"UserName":"alice","extra":"x"}`, 42, "alice", ""},
+		{"missing-leaves-zero", `{"SomeNumber":42}`, 42, "", ""},
+		{"case-collision-rejected", `{"someNumber":1,"SOMENUMBER":2}`, 0, "", "duplicate fields due to case insensitivity"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dst := mustRuntimeObject(t, bp)
+			err := json.Unmarshal([]byte(c.payload), dst)
+			if c.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
+					t.Fatalf("want err containing %q, got %v", c.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if u, _ := dst.Get("SomeNumber").(*Uint32); u == nil || *u != Uint32(c.wantNum) {
+				t.Fatalf("SomeNumber: want %d, got %#v", c.wantNum, dst.Get("SomeNumber"))
+			}
+			if s, _ := dst.Get("UserName").(*String16); s == nil || *s != c.wantName {
+				t.Fatalf("UserName: want %q, got %#v", c.wantName, dst.Get("UserName"))
+			}
+		})
+	}
+}
+
 // TestRuntimeObject_DecodeDepthCap_MutualPtr proves the decode depth cap converts
 // a mutually-recursive Blueprint pair (X.PtrSpec→Y, Y.PtrSpec→X) into a typed
 // ErrDepthExceeded instead of a stack overflow when fed a stream that keeps every
@@ -791,13 +847,14 @@ func TestRuntimeObject_DecodeDepthCap_MutualPtr(t *testing.T) {
 	yBP := NewBlueprint("test.depth.y",
 		Field{Name: "x", Spec: &PtrSpec{Type: "test.depth.x"}},
 	)
-	DefaultBlueprints().Blueprints.Set("test.depth.x", xBP)
-	DefaultBlueprints().Blueprints.Set("test.depth.y", yBP)
+	DefaultBlueprints().entries.Set("test.depth.x", xBP)
+	DefaultBlueprints().entries.Set("test.depth.y", yBP)
 
 	ro := mustRuntimeObject(t, xBP)
-	// All-ones stream: every PtrSpec presence byte decodes as "present", forcing the
-	// decoder to recurse into the referenced type indefinitely (until the depth cap).
-	r := bytes.NewReader(bytes.Repeat([]byte{0xFF}, 4*MaxBlueprintDepth))
+	// All-0x01 stream: every PtrSpec presence byte decodes as the canonical "present"
+	// flag (readField now enforces strict 0/1), forcing the decoder to recurse into the
+	// referenced type indefinitely (until the depth cap).
+	r := bytes.NewReader(bytes.Repeat([]byte{0x01}, 4*MaxBlueprintDepth))
 	_, err := ro.ReadFrom(r)
 	if !errors.Is(err, ErrDepthExceeded) {
 		t.Fatalf("want ErrDepthExceeded, got %v", err)
@@ -819,8 +876,8 @@ func TestRuntimeObject_DepthCap_Boundary(t *testing.T) {
 		Field{Name: "x", Spec: &PtrSpec{Type: "test.depth.boundary.x"}},
 	)
 	// why: same closure-bypass rationale as TestRuntimeObject_DecodeDepthCap_MutualPtr.
-	DefaultBlueprints().Blueprints.Set("test.depth.boundary.x", xBP)
-	DefaultBlueprints().Blueprints.Set("test.depth.boundary.y", yBP)
+	DefaultBlueprints().entries.Set("test.depth.boundary.x", xBP)
+	DefaultBlueprints().entries.Set("test.depth.boundary.y", yBP)
 
 	t.Run("at_cap_succeeds", func(t *testing.T) {
 		// MaxBlueprintDepth frames: (MaxBlueprintDepth-1) present bytes, then one absent.
@@ -856,3 +913,239 @@ func TestRuntimeObject_DepthCap_Boundary(t *testing.T) {
 // construction. Writing this test requires either (1) construction-time cycle detection
 // in validateBlueprint (today it rejects only self-reference, not two-step cycles), or
 // (2) lazy spec-zero. Both are production-code changes deferred from this iteration.
+
+// TestPtrSpec_WriteNilForms_AllAbsent pins the contract aligned with ptrValue.IsNil():
+// three "absent" forms — interface-nil, *Nil, and typed nil pointer — all serialize as
+// presence=0 (single 0x00 byte). Before the isPtrNil unification a typed nil pointer
+// bypassed both checks, wrote presence=1, then crashed in value.WriteTo.
+func TestPtrSpec_WriteNilForms_AllAbsent(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	if _, err := bps.RegisterBlueprint(NewBlueprintAlias("test.ptr_payload", "uint8")); err != nil {
+		t.Fatal(err)
+	}
+	bp := NewBlueprint("test.ptr_envelope",
+		Field{Name: "p", Spec: &PtrSpec{Type: "test.ptr_payload"}},
+	)
+	if _, err := bps.RegisterBlueprint(bp); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name  string
+		value Object
+	}{
+		{"interface-nil", nil},
+		{"Nil marker", &Nil{}},
+		{"typed nil ptr", (*RuntimeObject)(nil)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ro := bps.New("test.ptr_envelope").(*RuntimeObject)
+			ro.fields[0].Value = c.value
+			var buf bytes.Buffer
+			if _, err := ro.WriteTo(&buf); err != nil {
+				t.Fatalf("WriteTo: %v", err)
+			}
+			if buf.Len() != 1 || buf.Bytes()[0] != 0 {
+				t.Fatalf("want presence=0 (single 0x00 byte), got %v", buf.Bytes())
+			}
+		})
+	}
+}
+
+// TestPtrSpec_MarshalJSON_NilFormsAllNull pins that PtrSpec JSON emits null for the same
+// three absent forms — matches the binary nil-flag protocol so both encodings stay
+// symmetric.
+func TestPtrSpec_MarshalJSON_NilFormsAllNull(t *testing.T) {
+	bps := NewBlueprints(DefaultBlueprints())
+	if _, err := bps.RegisterBlueprint(NewBlueprintAlias("test.ptr_payload_json", "uint8")); err != nil {
+		t.Fatal(err)
+	}
+	bp := NewBlueprint("test.ptr_envelope_json",
+		Field{Name: "p", Spec: &PtrSpec{Type: "test.ptr_payload_json"}},
+	)
+	if _, err := bps.RegisterBlueprint(bp); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name  string
+		value Object
+	}{
+		{"interface-nil", nil},
+		{"Nil marker", &Nil{}},
+		{"typed nil ptr", (*RuntimeObject)(nil)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ro := bps.New("test.ptr_envelope_json").(*RuntimeObject)
+			ro.fields[0].Value = c.value
+			data, err := json.Marshal(ro)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			if !bytes.Contains(data, []byte(`"p":null`)) {
+				t.Fatalf("want field p as null, got %s", data)
+			}
+		})
+	}
+}
+
+// TestObjectSpec_NestedRegistry_HonorsWithBlueprints pins the ObjectSpec branch of
+// readField: the polymorphic envelope recursively calls Decode(dr, WithBlueprints(bps)),
+// so the inner Decode must resolve the embedded type tag via the caller's per-call
+// registry (threaded through objectReader.bps), not the package-level default. Mirrors
+// TestRefSpec_ToAlias_EndToEnd for the ObjectSpec field shape.
+func TestObjectSpec_NestedRegistry_HonorsWithBlueprints(t *testing.T) {
+	// local: typed Go value + a Blueprint with a polymorphic ObjectSpec field
+	local := NewBlueprints(DefaultBlueprints())
+	if err := local.Add(newPrimitiveAliasMode()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := local.RegisterBlueprint(NewBlueprint("test.obj_env",
+		Field{Name: "m", Spec: &ObjectSpec{}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+	src := local.New("test.obj_env").(*RuntimeObject)
+	mode := aliasableMode(3)
+	if err := src.Set("m", &mode); err != nil {
+		t.Fatal(err)
+	}
+	buf, err := EncodeBytes(src, WithBlueprints(local))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// remote: alias + same envelope Blueprint, no Go type for Mode
+	remote := NewBlueprints(DefaultBlueprints())
+	if _, err := remote.RegisterBlueprint(NewBlueprintAlias("test.aliasable_mode", "uint8")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := remote.RegisterBlueprint(NewBlueprint("test.obj_env",
+		Field{Name: "m", Spec: &ObjectSpec{}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := Decode(bytes.NewReader(buf), WithBlueprints(remote))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ro, ok := got.(*RuntimeObject)
+	if !ok {
+		t.Fatalf("want *RuntimeObject, got %T", got)
+	}
+	field := ro.Get("m")
+	ra, ok := field.(*RuntimeObject)
+	if !ok {
+		t.Fatalf("field m: want *RuntimeObject, got %T", field)
+	}
+	u, ok := ra.Underlying().(*Uint8)
+	if !ok || uint8(*u) != 3 {
+		t.Fatalf("field m underlying drift: %#v", ra.Underlying())
+	}
+}
+
+// TestBlueprintsNew_SpecZero_HonorsCustomBlueprints pins the construction-side counterpart
+// to TestObjectSpec_NestedRegistry_HonorsWithBlueprints. Blueprints.New must seed each field's
+// spec-zero through the same registry it dispatched through, so a RefSpec/SliceSpec/MapSpec
+// pointing at a type registered only in a child Blueprints materializes as the typed zero
+// instead of interface-nil (which would later surface as a misleading "nil value for spec"
+// error in writeField). Without threading bps through specZero, the package-level default
+// is consulted and the lookup silently fails.
+func TestBlueprintsNew_SpecZero_HonorsCustomBlueprints(t *testing.T) {
+	local := NewBlueprints(DefaultBlueprints())
+	if _, err := local.RegisterBlueprint(NewBlueprintAlias("test.local_mode", "uint8")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := local.RegisterBlueprint(NewBlueprint("test.local_env",
+		Field{Name: "m", Spec: &RefSpec{Type: "test.local_mode"}},
+		Field{Name: "s", Spec: &SliceSpec{Type: "test.local_mode"}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+
+	ro, ok := local.New("test.local_env").(*RuntimeObject)
+	if !ok {
+		t.Fatalf("local.New: want *RuntimeObject, got %T", local.New("test.local_env"))
+	}
+
+	// RefSpec spec-zero must be a *RuntimeObject from local, not interface-nil.
+	got := ro.Get("m")
+	if got == nil {
+		t.Fatal("Get on RefSpec field returned nil; want typed zero from custom registry")
+	}
+	if _, ok := got.(*RuntimeObject); !ok {
+		t.Fatalf("RefSpec spec-zero: want *RuntimeObject, got %T", got)
+	}
+
+	// SliceSpec spec-zero must be an empty *RuntimeSlice whose elemName resolved through local.
+	got = ro.Get("s")
+	if got == nil {
+		t.Fatal("Get on SliceSpec field returned nil; want empty RuntimeSlice from custom registry")
+	}
+	if _, ok := got.(*RuntimeSlice); !ok {
+		t.Fatalf("SliceSpec spec-zero: want *RuntimeSlice, got %T", got)
+	}
+}
+
+// TestRuntimeObject_Encode_HonorsCustomBlueprints_Slice pins the encode-side counterpart of
+// TestBlueprintsNew_SpecZero_HonorsCustomBlueprints: a RuntimeObject built from a child
+// registry, whose SliceSpec element type lives only in that registry, must encode without
+// hitting a defaultBlueprints-bound re-resolution. Before dropping writeField's defensive
+// re-resolves (and exposing NewRuntimeSliceWith), encode failed with ErrBlueprintNotFound
+// even though decode worked fine.
+func TestRuntimeObject_Encode_HonorsCustomBlueprints_Slice(t *testing.T) {
+	local := NewBlueprints(DefaultBlueprints())
+	if _, err := local.RegisterBlueprint(NewBlueprint("test.encode_payload",
+		Field{Name: "n", Spec: &PrimitiveSpec{PrimitiveType: "uint32"}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := local.RegisterBlueprint(NewBlueprint("test.encode_envelope",
+		Field{Name: "items", Spec: &SliceSpec{Type: "test.encode_payload"}},
+	)); err != nil {
+		t.Fatal(err)
+	}
+
+	src := local.New("test.encode_envelope").(*RuntimeObject)
+	items, err := NewRuntimeSliceWith(local, "test.encode_payload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := local.New("test.encode_payload").(*RuntimeObject)
+	if err := payload.Set("n", uint32(42)); err != nil {
+		t.Fatal(err)
+	}
+	if err := items.Append(payload); err != nil {
+		t.Fatal(err)
+	}
+	if err := src.Set("items", items); err != nil {
+		t.Fatal(err)
+	}
+
+	buf, err := EncodeBytes(src, WithBlueprints(local))
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	got, _, err := Decode(bytes.NewReader(buf), WithBlueprints(local))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	dst, ok := got.(*RuntimeObject)
+	if !ok {
+		t.Fatalf("want *RuntimeObject, got %T", got)
+	}
+	rs, ok := dst.Get("items").(*RuntimeSlice)
+	if !ok || rs.Len() != 1 {
+		t.Fatalf("decoded items: want one element, got %#v", dst.Get("items"))
+	}
+	elem, ok := rs.At(0).(*RuntimeObject)
+	if !ok {
+		t.Fatalf("decoded element: want *RuntimeObject, got %T", rs.At(0))
+	}
+	if n, _ := elem.Get("n").(*Uint32); n == nil || *n != 42 {
+		t.Fatalf("decoded element.n: want 42, got %#v", elem.Get("n"))
+	}
+}

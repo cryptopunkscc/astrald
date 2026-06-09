@@ -49,6 +49,12 @@ func ServeWith(ctx *astral.Context, router astral.Router, reg Registrar, opts ..
 	return serveRegistered(ctx, router, reg)
 }
 
+// serveRegistered starts the IPC route loop before registering the handler with the node so
+// that registration hooks (e.g. blueprint sync) can issue queries that the node may route
+// back through this handler. Without this ordering, the registrar pushes the handler into
+// the node's ipcHandlers list, then runs the hook synchronously — and if the hook's query
+// targets the host identity that equals this guest's identity, the node dials this listener
+// and blocks waiting for an Ack that the not-yet-started Route loop can't provide.
 func serveRegistered(ctx *astral.Context, router astral.Router, reg Registrar) error {
 	h, err := NewHandler()
 	if err != nil {
@@ -60,11 +66,16 @@ func serveRegistered(ctx *astral.Context, router astral.Router, reg Registrar) e
 		router = NewGateRouter(router, rg)
 	}
 
+	routeErrCh := make(chan error, 1)
+	go func() {
+		routeErrCh <- h.Route(ctx, router)
+	}()
+
 	if err := reg.Register(ctx, h.Endpoint(), h.Token()); err != nil {
 		return err
 	}
 
-	return h.Route(ctx, router)
+	return <-routeErrCh
 }
 
 func WithRegistrationHook(hook RegistrationHook) ServeOption {

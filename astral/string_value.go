@@ -25,6 +25,9 @@ func (s stringValue) WriteTo(w io.Writer) (n int64, err error) {
 func (s stringValue) ReadFrom(r io.Reader) (n int64, err error) {
 	var str String32
 	n, err = str.ReadFrom(r)
+	if err != nil {
+		return
+	}
 	s.SetString(str.String())
 	return
 }

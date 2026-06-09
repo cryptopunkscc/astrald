@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+// emptyObjectReflectType is the reflect.Type of the EmptyObject no-payload marker. BlueprintFromType
+// excludes embedded EmptyObject fields from the derived schema (blueprint_reflect.go); the
+// reflection codec mirrors that exclusion so the field-index walk stays aligned with
+// `bp.Fields[i]` for any helper that iterates both in lock-step.
+var emptyObjectReflectType = reflect.TypeOf(EmptyObject{})
+
 type structValue struct {
 	reflect.Value
 	root bool
@@ -45,6 +51,9 @@ func (s structValue) WriteTo(w io.Writer) (n int64, err error) {
 	for i := range s.NumField() {
 		var f = s.Field(i)
 		if !f.CanInterface() {
+			continue
+		}
+		if s.Type().Field(i).Type == emptyObjectReflectType {
 			continue
 		}
 
@@ -85,6 +94,9 @@ func (s structValue) ReadFrom(r io.Reader) (n int64, err error) {
 		if !f.CanInterface() {
 			continue
 		}
+		if s.Type().Field(i).Type == emptyObjectReflectType {
+			continue
+		}
 
 		o, err = objectify(f)
 		if err != nil {
@@ -123,6 +135,9 @@ func (s structValue) MarshalJSON() ([]byte, error) {
 
 		// skip unexported fields
 		if !f.CanInterface() {
+			continue
+		}
+		if s.Type().Field(i).Type == emptyObjectReflectType {
 			continue
 		}
 
@@ -181,6 +196,9 @@ func (s structValue) UnmarshalJSON(data []byte) error {
 
 		// skip unexported fields
 		if !f.CanInterface() {
+			continue
+		}
+		if s.Type().Field(i).Type == emptyObjectReflectType {
 			continue
 		}
 

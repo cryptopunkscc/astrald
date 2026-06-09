@@ -1,12 +1,40 @@
 package astral
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"reflect"
 )
+
+// presenceFlagOne is the constant byte written before each value-kind element of a slice,
+// array, or map value-half so []T and []*T described by the same SliceSpec produce identical
+// bytes. ptrValue emits its own nil-flag and interfaceValue emits a type tag — those kinds
+// don't get this byte.
+var presenceFlagOne = []byte{1}
+
+// elemNeedsPresenceFlag reports whether the container codec must synthesise the presence byte
+// for elements of t. False for Ptr (ptrValue handles framing) and Interface (interfaceValue
+// handles framing); true for every other kind, which writes its payload bare.
+func elemNeedsPresenceFlag(t reflect.Type) bool {
+	k := t.Kind()
+	return k != reflect.Ptr && k != reflect.Interface
+}
+
+// consumePresenceFlag reads the synthesised presence byte. Only 0x01 is valid — value-typed
+// slots have no notion of absent.
+func consumePresenceFlag(r io.Reader) (int64, error) {
+	var flag uint8
+	if err := binary.Read(r, ByteOrder, &flag); err != nil {
+		return 0, err
+	}
+	if flag != 1 {
+		return 1, fmt.Errorf("invalid presence flag %d", flag)
+	}
+	return 1, nil
+}
 
 type Objectified struct {
 	reflect.Value
@@ -136,7 +164,7 @@ func objectify(v reflect.Value) (value, error) {
 	case reflect.Uint32:
 		return uint32Value{v}, nil
 
-	case reflect.Uint64, reflect.Uint:
+	case reflect.Uint64:
 		return uint64Value{v}, nil
 
 	case reflect.Int8:
@@ -148,8 +176,16 @@ func objectify(v reflect.Value) (value, error) {
 	case reflect.Int32:
 		return int32Value{v}, nil
 
-	case reflect.Int64, reflect.Int:
+	case reflect.Int64:
 		return int64Value{v}, nil
+
+	// why: platform-width int/uint are rejected for the same reason supportedMapKey rejects
+	// reflect.Uint — their width is platform-dependent, so silently aliasing them to int64/uint64
+	// would let a struct compiled on a 32-bit host content-hash differently than the 64-bit one
+	// if the codec ever started using the actual platform width. Force callers to declare the
+	// width explicitly (int64/uint64) so Blueprint derivation can describe every encodable struct.
+	case reflect.Int, reflect.Uint:
+		return nil, fmt.Errorf("unsupported type %s %s: platform-width int/uint not allowed, use int64/uint64", v.Kind(), v.Type())
 
 	case reflect.Array:
 		return arrayValue{v}, nil
