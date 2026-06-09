@@ -15,6 +15,7 @@ type opEchoArgs struct {
 	Only   *string `query:"optional"` // only echo these object types (comma separated)
 	Except *string `query:"optional"` // do not echo these object types (comma separated)
 	Stop   string  `query:"optional"` // close the channel when this object type is received (like EOS)
+	Strict bool    `query:"optional"` // fail-fast on objects whose blueprint isn't registered (probes wire-schema understanding)
 	In     string  `query:"optional"`
 	Out    string  `query:"optional"`
 }
@@ -31,7 +32,14 @@ func (mod *Module) OpEcho(ctx *astral.Context, q *routing.IncomingQuery, args op
 
 	var stop = len(args.Stop) > 0
 
-	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out), channel.AllowUnparsed(true))
+	// why: Strict drops the AllowUnparsed fallback so a missing blueprint surfaces as a
+	// decode error instead of silently re-emitting the original bytes. The default keeps
+	// pass-through behavior used by relay/debug callers.
+	opts := []channel.ConfigFunc{channel.WithFormats(args.In, args.Out)}
+	if !args.Strict {
+		opts = append(opts, channel.AllowUnparsed(true))
+	}
+	ch := channel.New(q.AcceptRaw(), opts...)
 	defer ch.Close()
 
 	for {
@@ -41,6 +49,12 @@ func (mod *Module) OpEcho(ctx *astral.Context, q *routing.IncomingQuery, args op
 		case errors.Is(err, io.EOF):
 			return nil
 		case errors.Is(err, astral.ErrBlueprintNotFound):
+			// why: in strict mode an unparseable object is a verification failure — surface
+			// it in-band and end the stream. Lenient mode keeps skipping so one missing
+			// blueprint doesn't kill an otherwise-useful relay.
+			if args.Strict {
+				return ch.Send(astral.NewError(err.Error()))
+			}
 			continue
 		default:
 			return err
