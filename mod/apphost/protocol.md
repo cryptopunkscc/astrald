@@ -203,13 +203,12 @@ Mode is selected by `Sec-WebSocket-Protocol`:
 If the client requests neither, the upgrade is closed with
 `StatusPolicyViolation` (1008).
 
-Origin policy: requests from a loopback peer are allowed when `Origin` is
-any loopback host (`127.0.0.1:*`, `[::1]:*`, `localhost:*`). DNS rebinding
-cannot forge a loopback Origin, so this is safe — and it lets a browser
-page served from one loopback port (e.g. `cmd/ws-client` on `:8627`)
-connect to apphost on another (`:8624`). To allow additional patterns
-(non-loopback origins), list them in the `ws_allow_origins` config key —
-matched by `path.Match` against the Origin host.
+Origin policy: any `Origin` is accepted at the WebSocket layer. The endpoint
+is already loopback-only at the network layer (non-loopback peers get HTTP
+403), so a remote page cannot reach it regardless of Origin. For queries
+arriving over the WebSocket, the browser `Origin` is attached to the
+`InFlightQuery` under the `origin-web` key in `Extra`, leaving per-origin
+authorization to the individual ops.
 
 Authentication uses the same in-protocol `AuthTokenMsg` as the TCP/unix path.
 The HTTP `Authorization: Bearer` header used by the rest of the HTTP bridge

@@ -27,11 +27,12 @@ const (
 // Guest represents an active connection with a guest.
 type Guest struct {
 	*channel.Channel
-	mod     *Module
-	mode    Mode
-	guestID *astral.Identity
-	conn    io.ReadWriteCloser
-	donated atomic.Bool // set when the conn has been donated to a routing goroutine
+	mod       *Module
+	mode      Mode
+	guestID   *astral.Identity
+	conn      io.ReadWriteCloser
+	webOrigin string      // browser Origin header for WS guests; "" for TCP/unix/memu
+	donated   atomic.Bool // set when the conn has been donated to a routing goroutine
 }
 
 type queryEnRoute struct {
@@ -230,6 +231,13 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 
 	// keep track of en route queries
 	inFlight := astral.Launch(q)
+
+	// Carry the browser Origin for queries arriving over the WebSocket endpoint
+	// so ops can apply their own per-origin authorization.
+	if guest.webOrigin != "" {
+		inFlight.Extra.Set("origin-web", guest.webOrigin)
+	}
+
 	enRoute := &queryEnRoute{query: inFlight, cancel: cancelQuery}
 
 	// route the query

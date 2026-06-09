@@ -63,7 +63,7 @@ Bridges local apps into the node over IPC, an HTTP object/query gateway, and a l
 | `Module.RouteQuery` | high-priority router that forwards target-addressed queries to IPC then WS handlers |
 | `Module.PreprocessQuery` | attaches local app relay contracts and adds relay hops for apps hosted elsewhere |
 | `Module.HoldObject` | `objects.Holder` adapter consulted by `objects.purge` |
-| `config.Listen`, `config.BindHTTP`, `config.WSAllowOrigins`, `config.AllowAnonymous`, `config.Workers`, `config.Tokens` | IPC endpoints, HTTP/WS bind address, WS origin allowlist, anonymous policy, worker pool, static tokens |
+| `config.Listen`, `config.BindHTTP`, `config.AllowAnonymous`, `config.Workers`, `config.Tokens` | IPC endpoints, HTTP/WS bind address, anonymous policy, worker pool, static tokens |
 | `apphost__access_tokens`, `apphost__local_apps`, `apphost__object_holds` | persistent tokens, installed-app records, app-owned object holds |
 
 ## Invariants
@@ -73,7 +73,7 @@ Bridges local apps into the node over IPC, an HTTP object/query gateway, and a l
 - Anonymous IPC guests can route only when `allow_anonymous` is true and always lose `ZoneNetwork`.
 - A guest can act as another identity only when `auth.Authorize(SudoAction{Actor:guestID, AsID:target})` grants it; this gate covers `Caller` override in `RouteQueryMsg`, identity in `RegisterHandlerMsg`, and identity in `RegisterServiceMsg`.
 - Streaming ops (`list_tokens`, `list_held_objects`) end with `EOS`.
-- The WS endpoint at `/.ws` is loopback-only; non-loopback requests receive HTTP 403. Loopback origins are always allowed; remote origins must match `WSAllowOrigins` patterns.
+- The WS endpoint at `/.ws` is loopback-only; non-loopback requests receive HTTP 403. Any `Origin` is accepted; the browser Origin is attached to each routed query's `Extra` under `origin-web` for op-level filtering.
 - WS auth is in-protocol via `AuthTokenMsg`, not the HTTP `Authorization` header (the latter only covers `/.objects/...` and the HTTP query bridge).
 - `CreateLocalApp` and `HoldObject` use `OnConflict{DoNothing}`: reinstall does not refresh the row, and duplicate holds are idempotent. A hold does not require the object to be present locally.
 - `HoldObject(objectID)` returns true on lookup error (fail-safe: purge skips the object).

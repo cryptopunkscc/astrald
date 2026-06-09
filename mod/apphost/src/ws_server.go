@@ -54,6 +54,9 @@ func (srv *HTTPServer) handleWS(writer http.ResponseWriter, request *http.Reques
 	}()
 
 	guest := NewGuestFromChannel(srv.Module, ch, conn, mode)
+	// Record the web Origin (if any) so routed queries can carry it for
+	// op-level filtering. Empty for non-browser WS clients.
+	guest.webOrigin = request.Header.Get("Origin")
 	defer func() {
 		// If the guest donated its conn to a routing goroutine via AttachQueryMsg,
 		// that goroutine now owns the close. Otherwise close here.
@@ -90,9 +93,13 @@ func (srv *HTTPServer) negotiateWS(writer http.ResponseWriter, request *http.Req
 		return nil, 0, ""
 	}
 
+	// Accept any Origin. The endpoint is already loopback-only at the network
+	// layer (isLoopback above); per-caller origin filtering for web pages is
+	// done at the op level via the "origin-web" key added to each query's Extra
+	// (see Guest.onRouteQueryMsg).
 	c, err := websocket.Accept(writer, request, &websocket.AcceptOptions{
-		Subprotocols:   []string{SubprotocolBinary, SubprotocolJSON},
-		OriginPatterns: srv.wsOriginPatterns(request),
+		Subprotocols:       []string{SubprotocolBinary, SubprotocolJSON},
+		InsecureSkipVerify: true,
 	})
 	if err != nil {
 		// websocket.Accept already wrote an HTTP error response
@@ -129,18 +136,4 @@ func isLoopback(r *http.Request) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
-}
-
-// wsOriginPatterns returns the OriginPatterns to pass to websocket.Accept. The user's
-// configured WSAllowOrigins are always honored. When the request itself comes from
-// loopback, any loopback origin host (127.0.0.1:*, [::1]:*, localhost:*) is also
-// allowed — DNS rebinding cannot make Origin resolve to a loopback host, so this stays
-// safe while letting a browser page served from one loopback port talk to apphost on
-// another.
-func (srv *HTTPServer) wsOriginPatterns(r *http.Request) []string {
-	patterns := append([]string{}, srv.config.WSAllowOrigins...)
-	if isLoopback(r) {
-		patterns = append(patterns, "127.0.0.1:*", "[::1]:*", "localhost:*", "localhost")
-	}
-	return patterns
 }

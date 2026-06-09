@@ -12,11 +12,6 @@ type Config struct {
 	BindHTTP string `yaml:"bind_http,flow"`
 
 	AllowAnonymous bool `yaml:"allow_anonymous,omitempty"`
-
-	// WSAllowOrigins lists origins permitted for the /.ws WebSocket endpoint
-	// (host patterns matched by path.Match, see coder/websocket AcceptOptions).
-	// Empty means loopback-only — non-loopback requests are refused.
-	WSAllowOrigins []string `yaml:"ws_allow_origins,omitempty"`
 }
 
 var defaultConfig = Config{
