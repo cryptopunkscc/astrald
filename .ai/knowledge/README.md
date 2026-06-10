@@ -44,8 +44,8 @@ Read the module guide when entering that module's source.
 |---|---|
 | `mod/nodes/`, Link, Stream, Session, peer, flow control, frame protocol, migration, link establishment | `modules/nodes.md` |
 | `mod/apphost/`, token, handler registration, IPC bridge, guest connection, contract indexing, app-owned object holds | `modules/apphost.md` |
-| `mod/objects/`, Load[T], Save, Commit, Discard, Blueprint, repo group, Push, object store, purge, Holder | `modules/objects.md` |
-| `mod/dir/`, alias, filter, resolve, DisplayName, ApplyFilters, IdentityFilter, identity resolver | `modules/dir.md` |
+| `mod/objects/`, Load[T], Store, Commit, Discard, Blueprint, objects.blueprints, repo group, Push, purge, Holder | `modules/objects.md` |
+| `mod/dir/`, alias, ResolveIdentity, DisplayName, SetAlias, ApplyFilters, IdentityFilter, PreprocessQuery, dir__aliases, DNS resolver | `modules/dir.md` |
 | `mod/auth/`, Authorize, Add, auth handler, active contract object holder | `modules/auth.md` |
 | `mod/gateway/`, relay socket, binder, connector, gateway relay | `modules/gateway.md` |
 | `mod/nat/`, hole punch, ConePuncher, UDP traversal, nat.Hole | `modules/nat.md` |
@@ -57,7 +57,7 @@ Read the module guide when entering that module's source.
 | `mod/scheduler/`, schedule task, run task, PoolLocker, Releaser, FuncAdapter | `modules/scheduler.md` |
 | `mod/events/`, event, subscribe, emit, EventReceiver, EventEmitter | `modules/events.md` |
 | `mod/fs/`, filesystem, file serve, ReadDir, Stat, virtual filesystem | `modules/fs.md` |
-| `mod/ether/`, local network broadcast, UDP multicast, object broadcast, ether push | `modules/ether.md` |
+| `mod/ether/`, Push, PushToIP, Broadcast, SignedBroadcast, EventBroadcastReceived, LANDiscoveryHook, broadcastReceiver, udp_port, UDP broadcast | `modules/ether.md` |
 | `mod/services/`, service registry, named service, bind service, AddService | `modules/services.md` |
 | `mod/shell/`, shell command, terminal, admin CLI, command handler | `modules/shell.md` |
 | `mod/tree/`, config tree, persistent setting, tree.Value, Follow, tree path | `modules/tree.md` |
@@ -71,6 +71,5 @@ Read the module guide when entering that module's source.
 | `mod/fwd/`, port forward, bridge, AstralServer, TCPServer, TorTarget | `modules/fwd.md` |
 | `mod/log/`, logging, log level, OpListen, View, LogFile | `modules/log.md` |
 | `mod/archives/`, zip archive, archive entry, Index, Forget, ArchiveDescriptor, EventArchiveIndexed | `modules/archives.md` |
-| `mod/media/`, AudioFile, audio metadata, app.media.audio_file | `modules/media.md` |
 | `mod/utp/`, uTP, UDP transport, utp.Endpoint, ListenPort, exonet dialer | `modules/utp.md` |
-| `mod/all/`, aggregation, blank imports, module bundle, portal binary | `modules/all.md` |
+| `mod/all/`, aggregator, blank imports, mods.go, pub, views, core.RegisterModule, astral.Add, fmt.SetView, portal | `modules/all.md` |

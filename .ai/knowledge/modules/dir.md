@@ -6,12 +6,10 @@ Maps human-readable names to identities and back, using a persistent alias table
 
 | Module | Why |
 | --- | --- |
-| `nearby` (opt) | `ComposeStatus` checks `Nearby.Mode()` and attaches `dir.Alias` when visible |
+| `nearby` | `ComposeStatus` checks `Nearby.Mode()` and attaches `dir.Alias` when visible; injected via `core.Inject`, which fails when the module is missing |
 | `astral.Node` | local identity backs `localnode` resolution, default alias setup, filter bypass for local targets, and display alias lookup |
 | `core/assets` | `Database()` backs `dir__aliases`; `LoadYAML` loads the empty dir config |
 | `gorm` | migrates and queries alias rows |
-| `nodes` (opt) | registers the `linked` filter from outside this module |
-| `user` (opt) | registers `localswarm` and `localuser` filters from outside this module |
 
 ## Flows
 
@@ -22,7 +20,7 @@ Maps human-readable names to identities and back, using a persistent alias table
 - Default alias: loader migrates the alias table -> `setDefaultAlias` checks the local node alias -> generates an `aliasgen` name when missing -> persists it and logs the name.
 - Resolver registration: loader adds the DNS resolver; `AddResolver` lets other code append resolvers used after literal identity and alias lookup.
 - DNS resolver: accept only lowercase domain-shaped names -> query TXT records at `_astral.<domain>` -> parse the first `id=` record as an identity.
-- Filter registration: loader installs `all` and `localnode`, then sets default filters to `all`; other modules can register additional named filters with `SetFilter`.
+- Filter registration: loader installs `all` and `localnode`, then sets default filters to `all`; other modules register named filters with `SetFilter` (`nodes` registers `linked`; `user` registers `localswarm` and `localuser`).
 - Filter ops: `dir.filters` streams registered filter names and ends with `EOS`; `dir.apply_filters` resolves an optional ID and OR-applies the comma-separated filter names.
 - Query gate: `PreprocessQuery` allows local-node targets -> reads query `filters` from `q.Extra` when provided -> otherwise uses default filters -> rejects unmatched targets with `ErrTargetNotAllowed`.
 - Nearby status: `ComposeStatus` is a nearby composer -> only in `ModeVisible`, load local alias -> attach `dir.Alias` when non-empty.
@@ -58,4 +56,4 @@ Maps human-readable names to identities and back, using a persistent alias table
 - Empty `q.Extra["filters"]` falls back to `DefaultFilters()`; empty default allows.
 - DNS resolver rejects input not matching `domainRegex` (lowercase domain shape).
 - `AliasMap()` returns nil and logs verbose on DB failure.
-- Client `apply_filters.go` references `MethodSetAlias`; broken.
+- Client `apply_filters.go` queries `dir.MethodSetAlias` instead of `dir.MethodApplyFilters`; the op is broken via the client until the code is fixed.

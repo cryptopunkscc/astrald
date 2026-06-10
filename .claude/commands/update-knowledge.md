@@ -1,0 +1,1 @@
+../../.ai/skills/update-knowledge/command.md
