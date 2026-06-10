@@ -229,9 +229,11 @@ state file and writes nothing.
    per the Traversal recipe), not file names alone; `Method*` constants
    confirm it when present. Each op and each type is classified `missing`,
    `drifted`, or `clean`; the gate also reports orphaned op docs and README
-   staleness. A fully clean package stops here and stages nothing. An
-   undocumented module is stale by definition; its gate returns the full
-   op and type inventory.
+   staleness. The orphan sweep is explicit: the gate lists every baseline
+   `ops/*.md` and reports each file whose op does not exist in source — an
+   unreported orphan blocks the package downstream. A fully clean package
+   stops here and stages nothing. An undocumented module is stale by
+   definition; its gate returns the full op and type inventory.
 2. **Op author batches.** One author per batch of up to 10 missing or
    drifted ops, balanced across batches, batches in parallel. The author
    prompt carries the distilled format spec; the author reads only source —
@@ -250,10 +252,15 @@ state file and writes nothing.
 5. **Verify.** Independent and adversarial. Behavior and form checks read
    only the authored files; copied baseline docs are never re-read. Copies
    are checked with one `diff -rq` against the baseline — a differing or
-   extra file outside the authored list, or a missing baseline file that is
-   not an excluded orphan, blocks. Completeness is an `ls`-level check
-   against the gate inventory. Blocking issues trigger one repair round and
-   a re-verify scoped to those issues.
+   extra file outside the authored list blocks. A baseline-only op doc is
+   checked against source: an op present in source means a missing copy
+   (block); an op absent from source means an orphaned baseline doc — its
+   absence from staging is correct and is reported as a warning for
+   provenance, not a block. Completeness is an `ls`-level check against
+   the gate inventory. Blocking issues trigger one repair round and a
+   re-verify scoped to those issues. The repair never copies a baseline
+   doc whose op lacks a source implementation into staging; orphans are
+   excluded, not staged.
 
 **Phase 2 — Merge.** Remove staging for packages that failed verification.
 Append the provenance section. Report.
@@ -307,6 +314,8 @@ Behavior — against `mod/<name>/`:
 * Every documented argument exists in the args struct with the documented
   name, required flag, and default. No struct query field is undocumented
   (except implicit `in`/`out`).
+* The implicit `in`/`out` parameters are never an issue at any severity —
+  listed or omitted, in any doc.
 * The `(stream)` bullet matches the objects the op body actually reads.
 * Every returned-objects bullet traces to a send or reject path. Every send
   path is documented, including the `eos` terminator.
@@ -333,6 +342,9 @@ Form — against the corpus:
 Completeness — against the package:
 
 * Every source op has exactly one staged op doc; no orphan op docs.
+* A baseline doc whose op has no source implementation is an orphan:
+  correct handling is its absence from staging — never staged, and its
+  absence is never a gap or block.
 * Every module type referenced by a staged op doc has a staged type doc.
 * `README.md` exists.
 * Verbatim copies are byte-identical to baseline.
@@ -367,6 +379,9 @@ Completeness — against the package:
   `ObjectType()`, never guessed from file names.
 * Auto-orphaned type docs — a baseline type doc with no matching struct is
   kept and reported, never silently dropped.
+* Orphan re-staging — "repairing" a baseline-only orphaned op doc by
+  copying it into staging. An orphan's absence from staging is the correct
+  state; the repair deletes a staged orphan, never creates one.
 * Upstream-only protocols — no `mod/<name>/` source (e.g. `lna`) means the
   protocol is never staged, flagged, or deleted.
 * Self-graded packages — the verifier is a different agent than the author.

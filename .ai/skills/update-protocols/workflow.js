@@ -335,6 +335,7 @@ Form deviations from the templates are severity "block"; prose-level style issue
 Behavior — against \`mod/<name>/\`:
 
 * Every documented argument exists in the args struct with the documented name, required flag, and default. No struct query field is undocumented (except implicit \`in\`/\`out\`).
+* The implicit \`in\`/\`out\` parameters are NEVER an issue at any severity — listed or omitted, in any doc.
 * The \`(stream)\` bullet matches the objects the op body actually reads.
 * Every returned-objects bullet traces to a send or reject path. Every send path is documented, including the \`eos\` terminator.
 * Every type doc field matches the Go struct: name, astral type, order. Text/JSON form claims match the type's encoding.
@@ -353,6 +354,7 @@ Form — against the corpus:
 Completeness — against the package:
 
 * Every source op has exactly one staged op doc; no orphan op docs.
+* A baseline doc whose op has no source implementation is an orphan: correct handling is its absence from staging — never staged, and its absence is never a gap or block.
 * Every module type referenced by a staged op doc has a staged type doc.
 * \`README.md\` exists.
 * Verbatim copies are byte-identical to baseline.`
@@ -362,7 +364,7 @@ function gatePrompt(m) {
 Enumerate the source op inventory from the exported \`Op*\` methods under \`mod/${m.name}/src/\` (one \`src/op_*.go\` per op by convention). The wire name of an op is \`<ModuleName>.<snake_case of the method name without the Op prefix>\` (see \`lib/routing/op_router.go\` \`AddStructPrefix\`); \`Method*\` constants in \`mod/${m.name}/module.go\` state it explicitly when present — report a mismatch between a constant and a derived name as a finding. Enumerate module-defined types: structs in the module root package \`mod/${m.name}/*.go\` with an \`ObjectType()\` method that ops accept or return.
 Compare against the baseline package \`${BASE}/${m.name}/\` (if the directory does not exist, every op and type is "missing", readmeStale=true, and clean=false):
 - ops: each source op is "missing" (no \`ops/<protocol>.<op>.md\`), "drifted" (doc disagrees with the \`op<Pascal>Args\` struct on argument names/required flags/defaults, or with the body's \`ch.Send\`/reject paths on returned objects or stream protocol), or "clean". The implicit \`in\`/\`out\` parameters are NEVER drift, whether listed or omitted.
-- orphanedOpDocs: baseline \`ops/*.md\` files whose op no longer exists in source.
+- orphanedOpDocs: \`ls ${BASE}/${m.name}/ops/\` and check every file against the source op inventory; each file whose op does not exist in source goes in orphanedOpDocs. Do not skip this sweep — an unreported orphan blocks the package downstream.
 - types: each relevant type is "missing" (no \`types/<ObjectType()>.md\`), "drifted" (fields disagree with the Go struct), or "clean". A baseline type doc with NO matching source struct is NOT orphaned — keep status "clean" and report it as a package finding.
 - readmeStale: README.md missing, or its description names op families that no longer exist.
 clean=true only if all ops and types are clean, readmeStale=false, and orphanedOpDocs is empty. Each finding is one declarative sentence with code identifiers in backticks.`
@@ -407,7 +409,7 @@ function assemblePrompt(m, gate) {
    - types: ${cleanTypes.length ? cleanTypes.map(t => `\`types/${t}.md\``).join(', ') : '(none)'}
    - \`README.md\`${gate.readmeStale ? ' — skip, it was authored' : ''}
 2. Do NOT copy these orphaned op docs: ${gate.orphanedOpDocs.length ? gate.orphanedOpDocs.join(', ') : '(none)'}.
-3. Completeness check: every op in [${gate.ops.map(o => o.name).join(', ')}] has \`${STAGE}/${m}/ops/<op>.md\`; every type in [${gate.types.map(t => t.name).join(', ')}] has \`${STAGE}/${m}/types/<name>.md\`; \`${STAGE}/${m}/README.md\` exists; no staged op doc lacks a source op. Report each failure as one gap sentence naming the missing or extra file.
+3. Completeness check: every op in [${gate.ops.map(o => o.name).join(', ')}] has \`${STAGE}/${m}/ops/<op>.md\`; every type in [${gate.types.map(t => t.name).join(', ')}] has \`${STAGE}/${m}/types/<name>.md\`; \`${STAGE}/${m}/README.md\` exists; every staged \`ops/*.md\` names an op in that same op list — compare against the list, never against the baseline directory; a newly authored doc has no baseline counterpart and that is NOT a gap. Report each failure as one gap sentence naming the missing or extra file.
 Never write under \`${BASE}\`. Return the copied files and the gaps.`
 }
 
@@ -421,7 +423,7 @@ ${CHECKLIST}
 Adversarially verify (do NOT edit) the staged protocol package \`${STAGE}/${m}/\` against the source \`mod/${m}/\` and the corpus \`${BASE}/\`. Verification is reading only. Files copied verbatim from the baseline are NOT re-read — they were verified when they entered the corpus. Scope:
 1. The Behavior and Form checklist items apply only to the authored files:
 ${authored.length ? authored.map(f => `   - \`${f}\``).join('\n') : '   - (none authored)'}
-2. Copies, one command: \`diff -rq ${BASE}/${m} ${STAGE}/${m}\`. If \`${BASE}/${m}/\` does not exist, instead confirm every staged file is in the authored list. A differing or staging-only file outside the authored list is a "block" issue. A baseline-only file is a "block" issue unless it is an excluded orphaned op doc: ${gate.orphanedOpDocs.length ? gate.orphanedOpDocs.join(', ') : '(none)'}.
+2. Copies, one command: \`diff -rq ${BASE}/${m} ${STAGE}/${m}\`. If \`${BASE}/${m}/\` does not exist, instead confirm every staged file is in the authored list. A differing or staging-only file outside the authored list is a "block" issue. A baseline-only op doc: check source first — if its op exists in \`mod/${m}/src/\`, it is a missing copy, severity "block"; if the op does NOT exist in source, the file is an orphaned baseline doc and its absence from staging is CORRECT — report it as severity "warn" with claim "orphaned baseline doc excluded: <file>" so provenance records it. Already-excluded orphans, expected to be baseline-only: ${gate.orphanedOpDocs.length ? gate.orphanedOpDocs.join(', ') : '(none)'}.
 3. Completeness, \`ls\` only: every op in [${gate.ops.map(o => o.name).join(', ')}] has \`ops/<op>.md\`; every type in [${gate.types.map(t => t.name).join(', ')}] has \`types/<name>.md\`; \`README.md\` exists.
 The authors claim the authored docs rely on these sources — check them directly:
 ${(citations ?? []).map(c => `- ${c}`).join('\n')}
@@ -437,7 +439,9 @@ ${CHECKLIST}
 
 Repair the staged protocol package \`${STAGE}/${m}/\`. A verifier found these blocking issues — fix exactly these, nothing else:
 ${blocked.map(i => `- ${i.file}: ${i.claim} — ${i.problem}`).join('\n')}
-Edits are diff-aware and match the templates and rules above exactly. A missing file is created per its template from \`mod/${m}/\` source. Return the staged files you edited.`
+Edits are diff-aware and match the templates and rules above exactly. A missing file is created per its template from \`mod/${m}/\` source.
+Never copy a baseline doc into staging unless its op exists in \`mod/${m}/src/\`. A baseline doc whose op has no source implementation is an orphan: the fix is its ABSENCE from staging — delete the staged copy if one exists and note the exclusion in the summary.
+Return the staged files you edited.`
 }
 
 function reverifyPrompt(m, blocked) {
@@ -592,6 +596,7 @@ const mergeReport = await agent(
    - modules skipped as unchanged since the last run: ${unchanged.map(u => u.module).join(', ') || 'none'}
    - modules deferred at the token budget floor: ${budgetSkipped.join(', ') || 'none'}
    - package-level findings for a human: ${stale.flatMap(p => p.gate.findings).join('; ') || 'none'}
+   - verifier warnings for a human (includes orphaned baseline docs excluded from staging): ${shipped.flatMap(p => (p.verdict?.issues ?? []).filter(i => i.severity === 'warn').map(i => `${p.module} ${i.file}: ${i.problem.slice(0, 200)}`)).join('; ') || 'none'}
    - the move procedure: replace \`${BASE}/<protocol>/\` wholesale with \`${STAGE}/<protocol>/\`, review the submodule diff, commit in astral-docs.
 Do NOT git commit. Do NOT write under \`${BASE}\`. Return a short markdown summary of the staged packages.`,
   { label: 'merge', phase: 'Merge', model: 'haiku' }
