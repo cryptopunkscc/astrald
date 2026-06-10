@@ -15,14 +15,21 @@ export const meta = {
 
 // args: undefined -> all modules with ops | "nodes" / ["a","b"] -> scoped
 //       { mode: "drift", modules?: [...] } -> report only
-const opts = args && typeof args === 'object' && !Array.isArray(args) ? args : {}
+// A string that looks like JSON is unwrapped first — some callers deliver
+// args JSON-encoded ('["a","b"]' instead of ["a","b"]), which would
+// otherwise scope the run to one bogus module named like the whole list.
+let input = args
+if (typeof input === 'string' && /^[\[{]/.test(input.trim())) {
+  try { input = JSON.parse(input) } catch {}
+}
+const opts = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
 const driftOnly = opts.mode === 'drift'
-const scoped = Array.isArray(args)
-  ? args
+const scoped = Array.isArray(input)
+  ? input
   : Array.isArray(opts.modules)
     ? opts.modules
-    : typeof args === 'string'
-      ? [args]
+    : typeof input === 'string'
+      ? [input]
       : null
 
 const BASE = '.ai/system/protocols'
