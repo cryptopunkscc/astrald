@@ -58,4 +58,4 @@ Signs and verifies hashes and text through pluggable crypto engines, and indexes
 - `HoldObject` matches `crypto__private_keys.key_id` or `public_key_id` and fails closed on DB errors.
 - `NodeSigner` panics if no engine supplies `asn1` for the local secp256k1 identity.
 - Auto-index ceiling: hard-coded `maxObjectSize = 4096`.
-- Encodings: `PrivateKey` text `type:base64(key)`; `PublicKey` text `type:hex(key)`; `Signature` text `scheme:base64(data)`; `Hash` binary `Bytes8`, text/JSON hex.
+- Encodings: text/binary forms of `PrivateKey`, `PublicKey`, `Signature`, and `Hash` are specified in [system/protocols/crypto/types](../../system/protocols/crypto/types).

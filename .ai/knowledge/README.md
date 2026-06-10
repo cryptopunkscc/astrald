@@ -10,7 +10,6 @@ Concept pages explain cross-module ideas. Read `concepts/README.md` before creat
 |---|---|
 | Identity, secp256k1, Anyone, User, Swarm, node identity | `concepts/identity.md` |
 | App, AppContract, GuestID, AccessToken, apphost IPC, Guest, handshake | `concepts/app.md` |
-| user setup, node bootstrap, swarm join, invite flow, request invite, SignedNodeContract, active contract, first node | `concepts/user-setup.md` |
 | Zone, ZoneNetwork, ZoneDevice, ZoneVirtual, network access, zone enforcement | `concepts/zone.md` |
 | Query, Router, RouteQuery, RouteNotFound, Reject, Accept, Session, Preprocessor, Gateway, routing pipeline | `concepts/query.md` |
 | Auth, Authorize, Action, ActionSudo, ActionRelayFor, auth handler, authorization | `concepts/auth.md` |
@@ -53,7 +52,7 @@ Read the module guide when entering that module's source.
 | `mod/kcp/`, KCP, UDP transport, local-port mapping, ephemeral listener | `modules/kcp.md` |
 | `mod/tcp/`, TCP listener, ListenPort, CreateEphemeralListener | `modules/tcp.md` |
 | `mod/exonet/`, Dialer, Unpacker, Parser, SetDialer, network name, transport registry | `modules/exonet.md` |
-| `mod/user/`, user identity, Swarm member, MaintainLinkTask, node contract, asset object holder | `modules/user.md` |
+| `mod/user/`, user identity, Swarm member, MaintainLinkTask, node contract, asset object holder, user setup, node bootstrap, swarm join, invite flow, request invite, active contract, first node | `modules/user.md` |
 | `mod/nearby/`, local discovery, broadcast, Stealth, Visible, UDP discovery | `modules/nearby.md` |
 | `mod/scheduler/`, schedule task, run task, PoolLocker, Releaser, FuncAdapter | `modules/scheduler.md` |
 | `mod/events/`, event, subscribe, emit, EventReceiver, EventEmitter | `modules/events.md` |

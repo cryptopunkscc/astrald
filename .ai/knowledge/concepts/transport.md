@@ -8,7 +8,7 @@
 
 * `exonet` is the pluggable transport registry.
 * `Endpoint` is a transport name plus an address string.
-* `Endpoint` is a serializable Object.
+* `Endpoint` is a serializable Object — see [mod.nodes.endpoint_with_ttl](../../system/protocols/nodes/types/mod.nodes.endpoint_with_ttl.md).
 * `exonet.Conn` is a raw unauthenticated byte stream with endpoint metadata.
 * Transport modules register a Dialer, Parser, and Unpacker.
 

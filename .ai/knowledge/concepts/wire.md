@@ -14,7 +14,8 @@ Invariant: only canonical encoding produces a stable `ObjectID`. Do not use bina
 ## Objectify Fields
 
 `astral.Objectify(&v)` reflects a value into binary, JSON, and a derived
-`ObjectType()`. Struct fields are read and written in declaration order.
+`ObjectType()`. The reflector reads and writes struct fields in declaration
+order (binary encoding is positional — see [structure](../../system/core-primitives/structure.md)).
 
 Supported kinds:
 

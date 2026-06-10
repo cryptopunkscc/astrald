@@ -35,20 +35,16 @@ The contract path is purely a delegation: it does NOT call `Contract.Allows`, an
 
 `Contract`:
 
-* Shape: `{Issuer, Subject, Permits, ExpiresAt}`.
-* Signed by both parties.
-* Implements `crypto.SignableTextObject`.
-* Signable hash is the contract's `ObjectID.Hash`.
+* Fields and co-signing semantics: see [mod.auth.contract](../../system/protocols/auth/types/mod.auth.contract.md).
+* Implements `crypto.SignableTextObject`; signable hash is the contract's `ObjectID.Hash`.
 
 `Permit`:
 
-* Names an action by its `ObjectType` string.
-* Carries an optional `*astral.Bundle` of constraints.
+* Action name (`ObjectType` string) and optional `*astral.Bundle` constraints: see [mod.auth.permit](../../system/protocols/auth/types/mod.auth.permit.md).
 
 `SignedContract`:
 
-* Wraps `*Contract` with `IssuerSig` and `SubjectSig` (`*crypto.Signature`).
-* Both signatures must be present and verify before indexing.
+* Wraps `*Contract` with `IssuerSig` and `SubjectSig` (`*crypto.Signature`); both must be present (non-nil) and verify before indexing. Fields: see [mod.auth.signed_contract](../../system/protocols/auth/types/mod.auth.signed_contract.md).
 * `IsNil()` is true when the embedded `*Contract` is nil.
 
 ## Constraints

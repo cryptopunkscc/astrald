@@ -2,7 +2,7 @@
 
 ## Representation
 
-`astral.Identity` is a compressed secp256k1 public key.
+`astral.Identity` is a compressed secp256k1 public key — see [common-types/identity](../../system/common-types/identity.md).
 
 Invariants:
 

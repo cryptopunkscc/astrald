@@ -12,8 +12,7 @@
 ### ObjectID
 
 * Content address over the canonical encoding of an object.
-* Wire format is 40 bytes: 8-byte size and 32-byte hash.
-* String format is `data1` plus zBase32.
+* Wire and string encoding: see [object_id.sha256](../../system/common-types/object_id.sha256.md).
 * Nodes compute ObjectIDs locally during `Commit`.
 
 ### Repository

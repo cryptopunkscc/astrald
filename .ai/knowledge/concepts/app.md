@@ -19,7 +19,7 @@ A third bridge, the bearer-auth HTTP gateway, is not the apphost protocol; it ex
 
 Authentication:
 
-* No `AuthTokenMsg` -> `GuestID` stays zero. Anonymous guests can route only when `allow_anonymous` is true and always lose `ZoneNetwork`.
+* No `AuthTokenMsg` -> `GuestID` stays zero (anonymous). Anonymous routing rules (`allow_anonymous` gate, `ZoneNetwork` stripped): see [topics/astral-ipc](../../system/topics/astral-ipc.md).
 * Valid `AuthTokenMsg` -> `GuestID = token.Identity`. Multiple Apps may connect with different GuestIDs.
 * Static tokens come from `config.Tokens` (resolved by `dir`, 100-year expiry). Dynamic tokens come from `apphost.create_token` (32-char random, default 1-year expiry) or `apphost.register`.
 
@@ -28,9 +28,9 @@ A guest may act as another identity only when `auth.Authorize(SudoAction{Actor:G
 ## Capabilities
 
 * Send queries (`RouteQueryMsg`): the Host enforces zones, attaches relay contracts, and bridges the session back as a byte stream after `QueryAcceptedMsg`.
-* Register an IPC handler: the Host opens a fresh IPC dial to `Endpoint` for each inbound query and pushes `HandleQueryMsg`.
+* Register an IPC handler: the Host dispatches each inbound query to the handler's `Endpoint` — mechanism in [topics/astral-ipc](../../system/topics/astral-ipc.md).
 * Register a WS service handler: the Host pushes `IncomingQueryMsg` on the registration WS; the App opens a per-query WS and sends `AttachQueryMsg` to accept, or `RejectIncomingMsg` on the registration WS to refuse. Default attach timeout is 5 s.
-* Cancel in-flight queries by nonce.
+* Cancel in-flight queries by nonce: see [apphost.cancel](../../system/protocols/apphost/ops/apphost.cancel.md).
 * Hold and unhold object IDs to block purge.
 
 Handlers disappear on disconnect (the IPC guest-conn variant, the WS service handler) or when `bind` releases their token.

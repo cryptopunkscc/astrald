@@ -2,8 +2,8 @@
 
 ## Link
 
-* A `Link` is one authenticated brontide-encrypted connection between two
-  `Identity` values.
+* A `Link` is one authenticated, brontide-encrypted (Noise XK) connection
+  between two `Identity` values — see [core-primitives/link](../../system/core-primitives/link.md).
 * `Link` embeds `*channel.Channel`; reads and writes go through that channel
   with `WithLockedWrites()` so the mux can share the writer.
 * `Link` implements `astral.Router` by delegating `RouteQuery` to its `Mux`.
@@ -17,7 +17,7 @@
 
 ## Session
 
-* A `Session` is a logical pipe over a `Link` for one routed `Query`.
+* A `Session` is a logical pipe over a `Link` for one routed `Query` — see [mod.nodes.session_info](../../system/protocols/nodes/types/mod.nodes.session_info.md).
 * Each `Session` is tracked by a 64-bit `Nonce` and lives in `Mux.sessions`.
 * `RemoteIdentity` is the logical peer; `SourceIdentity` is the link peer when
   the session is relayed, otherwise nil.
