@@ -49,6 +49,8 @@ type Node struct {
 	done     chan struct{}
 	runErr   error
 	cnode    *core.Node
+
+	queryHandlers map[string]QueryHandler
 }
 
 // NewNode constructs an unstarted Node. Configure it with SetConfigDir/
@@ -158,6 +160,10 @@ func (n *Node) Start() error {
 	if err != nil {
 		return fmt.Errorf("new node: %w", err)
 	}
+
+	// let the platform wrapper serve queries at the node identity
+	// (see AddQueryHandler)
+	cnode.Add(&handlerRouter{node: n, cnode: cnode}, astral.RoutingPriorityNormal)
 
 	if n.host != nil {
 		host := n.host
