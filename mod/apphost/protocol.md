@@ -11,12 +11,12 @@ used by apps (guests) to access the astral network via the local node (host).
 
 The guest connects to the host via any of the supported [IPC](#ipc) methods.
 If the host accepts, the session is established, and it ends whenever the
-connection is closed. Over the duration of the sesssion the guest can at any
+connection is closed. Over the duration of the session the guest can at any
 point send a request to the host, after which the guest must wait for the host's
 response. If the request did not result in session termination or state change,
 the guest can use the same connection to send further requests.
 
-Requests are encoded as String8 followed by their argumets.
+Requests are encoded as String8 followed by their arguments.
 
 ## Table of contents
 
@@ -71,7 +71,7 @@ will forward all queries directed to the guest to this endpoint.
 
 If the registration succeeds, return code 0 will be returned and the connection
 will go into keep-alive mode with no data sent. Once either side closes the
-conenction the registration expires. If the registration fails, the session
+connection the registration expires. If the registration fails, the session
 continues.
 
 After the query handler accepts the callback connection and the endpoint,

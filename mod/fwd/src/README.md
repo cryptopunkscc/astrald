@@ -40,7 +40,7 @@ demo@demo> fwd start tcp://127.0.0.1:8022 astral://demo:ssh
 Forward astral server to a Tor address:
 
 ```text
-demo@demo> fwd start astral://hideen tor://cyl3gwxjmn4mhohlpufat5n25nnm6axrb3f7i3mvoaz3cpidypmihxe5.onion:8080
+demo@demo> fwd start astral://hidden tor://cyl3gwxjmn4mhohlpufat5n25nnm6axrb3f7i3mvoaz3cpidypmihxe5.onion:8080
 ```
 
 ### Config file
