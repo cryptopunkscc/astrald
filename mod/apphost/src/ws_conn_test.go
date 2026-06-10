@@ -22,6 +22,13 @@ func roundTripWSConn(t *testing.T, msgType websocket.MessageType) {
 	if _, err := rand.Read(payload); err != nil {
 		t.Fatalf("rand: %v", err)
 	}
+	// text mode flushes only complete lines; make the payload one giant line
+	for i, b := range payload[:len(payload)-1] {
+		if b == '\n' {
+			payload[i] = ' '
+		}
+	}
+	payload[len(payload)-1] = '\n'
 
 	serverDone := make(chan error, 1)
 
@@ -90,9 +97,73 @@ func TestWSConn_BinaryRoundTrip(t *testing.T) {
 }
 
 func TestWSConn_TextRoundTrip(t *testing.T) {
-	// Text frames carry arbitrary bytes for our purposes too — coder/websocket doesn't
-	// enforce UTF-8 on the read side. We use small ASCII bytes to keep it strict.
+	// Text mode re-frames on newlines, so only newline-terminated data is
+	// flushed; roundTripWSConn ends its payload with '\n'.
 	roundTripWSConn(t, websocket.MessageText)
+}
+
+// TestWSConn_TextLineFraming verifies the astral.json.v1 invariant: one
+// newline-terminated line per text frame, regardless of how writes chunk the
+// byte stream.
+func TestWSConn_TextLineFraming(t *testing.T) {
+	serverDone := make(chan error, 1)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
+		if err != nil {
+			serverDone <- err
+			return
+		}
+
+		conn := newWSConn(r.Context(), c, websocket.MessageText)
+		defer conn.Close()
+
+		// two complete lines in a single Write -> two frames
+		if _, err := conn.Write([]byte("{\"a\":1}\n{\"b\":2}\n")); err != nil {
+			serverDone <- err
+			return
+		}
+		// one line spread over three Writes -> one frame
+		for _, part := range []string{"{\"c\"", ":3}", "\n"} {
+			if _, err := conn.Write([]byte(part)); err != nil {
+				serverDone <- err
+				return
+			}
+		}
+		serverDone <- nil
+
+		// hold the conn open until the client is done reading
+		_, _, _ = c.Reader(r.Context())
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	wsURL := strings.Replace(srv.URL, "http://", "ws://", 1)
+	c, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer c.CloseNow()
+
+	want := []string{"{\"a\":1}\n", "{\"b\":2}\n", "{\"c\":3}\n"}
+	for i, expected := range want {
+		typ, data, err := c.Read(ctx)
+		if err != nil {
+			t.Fatalf("frame %d: read: %v", i, err)
+		}
+		if typ != websocket.MessageText {
+			t.Fatalf("frame %d: type = %v, want text", i, typ)
+		}
+		if string(data) != expected {
+			t.Fatalf("frame %d = %q, want %q", i, data, expected)
+		}
+	}
+
+	if err := <-serverDone; err != nil {
+		t.Fatalf("server: %v", err)
+	}
 }
 
 func TestWSConn_CloseIdempotent(t *testing.T) {

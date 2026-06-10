@@ -235,7 +235,8 @@ func TestWS_NegotiationWithRealHandler_PostAcceptIO(t *testing.T) {
 			defer wc.CloseNow()
 
 			nc := websocket.NetConn(ctx, wc, c.msgType)
-			payload := []byte("hello-astral")
+			// newline-terminated: text mode only flushes complete lines
+			payload := []byte("hello-astral\n")
 			if _, err := nc.Write(payload); err != nil {
 				t.Fatalf("write: %v", err)
 			}
