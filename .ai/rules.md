@@ -39,6 +39,14 @@
 - Logging: always `%v`. Levels: `Log` 0, `Logv(1)` verbose, `Logv(2)` debug.
 - Annotate code as you write it per `comments.md` (always-on): `// todo` `// fixme` `// note` `// why`. Intent, not mechanics.
 
+## Documentation Style
+
+- Write `.ai` docs in the minimal English of `.ai/system/`.
+- Declarative present tense. One fact per sentence or bullet.
+- No motivation, hype, hedging, or meta-commentary.
+- Repeat the subject; do not chain pronouns across sentences.
+- Backtick code identifiers. State defaults, limits, and terminators explicitly.
+
 ## Project APIs
 
 - Use `astral.Objectify` for `WriteTo`/`ReadFrom`.

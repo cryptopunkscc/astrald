@@ -6,6 +6,8 @@ Use a concept file when the idea spans modules, such as identity, queries, links
 
 ## Style
 
+- Follow `.ai/rules.md` "Documentation Style" (the minimal English of
+  `.ai/system/`).
 - Start with `# Name`.
 - Add a short opening paragraph only when it clarifies the concept.
 - Use concrete headings named after the concept's parts, not a fixed template.

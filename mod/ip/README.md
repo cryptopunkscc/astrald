@@ -1,3 +1,3 @@
 # IP module
 
-The IP module provides unified structure for API and it's responsible for monitoring of network changes.
+The IP module provides a unified IP address type and is responsible for monitoring network changes.

@@ -171,6 +171,8 @@ When the guide feels too thin, improve `Flows` before adding tables. When it fee
 
 ## Writing Rules
 
+- Follow `.ai/rules.md` "Documentation Style" (the minimal English of
+  `.ai/system/`).
 - Prefer reader orientation over completeness.
 - Prefer factual, source-grounded statements over interpretation.
 - Keep section order stable across modules.
