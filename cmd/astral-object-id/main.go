@@ -18,7 +18,7 @@ func main() {
 	args := flag.Args()
 
 	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "usage: %s <file>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s [-v] <file>\n", os.Args[0])
 		os.Exit(1)
 	}
 

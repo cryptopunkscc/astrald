@@ -78,7 +78,7 @@ func main() {
 		}
 		targetID, err = dircli.ResolveIdentity(ctx, target)
 		if err != nil {
-			fatal("resolve identity: %v\n", err)
+			fatal("resolve identity: %v", err)
 		}
 		client = treecli.New(targetID, nil)
 	}
@@ -98,18 +98,18 @@ func main() {
 	if path != "" {
 		node, err = tree.Query(ctx, node, path, false)
 		if err != nil {
-			fatal("query error: %v\n", err)
+			fatal("query: %v", err)
 		}
 	}
 
 	// walk the tree
 	err = walk(ctx, node, nil)
 	if err != nil {
-		fatal("walk error: %v\n", err)
+		fatal("walk: %v", err)
 	}
 }
 
 func fatal(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintf(os.Stderr, "error: "+format+"\n", args...)
 	os.Exit(1)
 }

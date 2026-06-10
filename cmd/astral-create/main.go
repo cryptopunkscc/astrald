@@ -28,7 +28,7 @@ func main() {
 
 	targetID, err := dircli.ResolveIdentity(ctx, target)
 	if err != nil {
-		fatal("resolve target: %v\n", err)
+		fatal("resolve target: %v", err)
 	}
 
 	w, err := objectscli.New(targetID, nil).Create(ctx, repo, alloc)

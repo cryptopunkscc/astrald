@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
-// NewAppContract creates an app contract granting HostForAction and RelayForAction from app to node.
+// NewAppContract creates an app contract granting RelayForAction from app to node.
 func NewAppContract(app, node *astral.Identity, duration time.Duration) (*auth.Contract, error) {
 	permits := []*auth.Permit{
 		{Action: astral.String8(nodes.RelayForAction{}.ObjectType())},

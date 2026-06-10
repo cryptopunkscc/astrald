@@ -53,7 +53,7 @@ func (m *Modules) Run(ctx *astral.Context) error {
 
 	m.injectLoaded()
 
-	// Dependencies - in this stage modules load their deps and injects its handlers.
+	// Dependencies - in this stage modules load their deps and inject their handlers.
 	var deps = m.loadDependencies(ctx, loaded)
 
 	// Prepare - In this stage, modules should perform any configuration necessary before services are run.
@@ -64,7 +64,7 @@ func (m *Modules) Run(ctx *astral.Context) error {
 }
 
 func (m *Modules) loadEnabled() []string {
-	// Sage 1 - Load. During this stage
+	// Stage 1 - Load. During this stage modules are loaded.
 	var loaded = make([]string, 0, len(m.enabled))
 	for _, name := range m.enabled {
 		if err := m.loadModule(name); err != nil {

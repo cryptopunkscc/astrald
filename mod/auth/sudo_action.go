@@ -7,7 +7,7 @@ import (
 )
 
 // SudoAction requests permission to act as AsID.
-// ActorId (from base) is the requesting identity; AsID is the target identity.
+// ActorID (from base) is the requesting identity; AsID is the target identity.
 type SudoAction struct {
 	Action
 	AsID *astral.Identity

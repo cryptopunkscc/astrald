@@ -9,7 +9,7 @@ type Repository interface {
 	// Label returns repository label
 	Label() string
 
-	// Create creates an object in the repository. Repo field should be ignored by repositories.
+	// Create creates an object in the repository.
 	Create(ctx *astral.Context, opts *CreateOpts) (Writer, error)
 
 	// Contains checks if the repository contains the specified object.

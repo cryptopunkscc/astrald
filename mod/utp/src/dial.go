@@ -36,14 +36,12 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (
 
 	localEndpoint, err := utpmod.ParseEndpoint(conn.LocalAddr().String())
 	if err != nil {
-		return nil, fmt.Errorf(`utp module/dial parsing local endpoint failed
-: %w`, err)
+		return nil, fmt.Errorf(`utp module/dial parsing local endpoint failed: %w`, err)
 	}
 
 	remoteEndpoint, err := utpmod.ParseEndpoint(conn.RemoteAddr().String())
 	if err != nil {
-		return nil, fmt.Errorf(`utp module/dial parsing remote endpoint failed
-: %w`, err)
+		return nil, fmt.Errorf(`utp module/dial parsing remote endpoint failed: %w`, err)
 	}
 
 	return WrapUtpConn(conn, remoteEndpoint, localEndpoint, true), nil

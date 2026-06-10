@@ -27,7 +27,7 @@ func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.
 
 		endpoint, err := utp.ParseEndpoint(addr)
 		if err != nil {
-			mod.log.Errorv(0, "tcp module/Load invalid endpoint: %v", addr)
+			mod.log.Errorv(0, "utp module/Load invalid endpoint: %v", addr)
 		}
 
 		mod.configEndpoints = append(mod.configEndpoints, endpoint)

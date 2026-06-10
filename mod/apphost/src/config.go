@@ -1,7 +1,7 @@
 package apphost
 
 type Config struct {
-	// Listen on these adresses
+	// Listen on these addresses
 	Listen []string `yaml:"listen,omitempty"`
 
 	// Number of apphost workers

@@ -131,7 +131,7 @@ func (mod *Module) EstablishOutboundLink(ctx context.Context, remoteID *astral.I
 	}
 
 	ch := channel.New(aconn, channel.WithLockedWrites())
-	negotiator := mod.GetLinkNegotitator(ch)
+	negotiator := mod.GetLinkNegotiator(ch)
 	link, err := negotiator.NegotiateOutbound()
 	if err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (
 	}
 
 	ch := channel.New(aconn, channel.WithLockedWrites())
-	negotiator := mod.GetLinkNegotitator(ch)
+	negotiator := mod.GetLinkNegotiator(ch)
 	link, err := negotiator.NegotiateInbound()
 	if err != nil {
 		return err

@@ -82,7 +82,7 @@ func (nonce Nonce) Value() (driver.Value, error) {
 func (nonce *Nonce) Scan(src any) error {
 	v, ok := src.(string)
 	if !ok {
-		return errors.New("typcast failed")
+		return errors.New("typecast failed")
 	}
 
 	u, err := strconv.ParseUint(v, 16, 64)

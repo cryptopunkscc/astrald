@@ -55,7 +55,7 @@ func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io
 
 func (mod *Module) removeHandlersByToken(token astral.Nonce) error {
 	for _, h := range mod.ipcHandlers.Clone() {
-		if h.IpcToken == token {
+		if h.IPCToken == token {
 			mod.ipcHandlers.Remove(h)
 		}
 	}

@@ -9,14 +9,14 @@ import (
 	"github.com/cryptopunkscc/utp"
 )
 
-// Server implements UDP listening with connection acceptance via rudp.Listener
+// Server implements uTP listening with connection acceptance via utp.Listener
 type Server struct {
 	*Module
 	listener *utp.Listener
 	acceptCh chan *utp.Conn
 }
 
-// NewServer creates a new src UDP server
+// NewServer creates a new uTP server
 func NewServer(module *Module) *Server {
 	return &Server{
 		Module:   module,

@@ -90,7 +90,7 @@ func (mod *Module) OpSubscribe(ctx *astral.Context, q *routing.IncomingQuery, ar
 				continue
 			}
 
-			mod.log.Logv(1, "indexerHandle %v subscribe ended: %v", indexer.name, err)
+			mod.log.Logv(1, "indexer %v subscribe ended: %v", indexer.name, err)
 			return nil
 		}
 

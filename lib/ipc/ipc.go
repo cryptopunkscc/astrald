@@ -79,7 +79,7 @@ func Listen(ipcAddress string) (net.Listener, error) {
 
 		listen, err := net.Listen("unix", path)
 		if err != nil {
-			// if the socket already exists, remove it if it's stale it and listen again
+			// if the socket already exists, remove it if it's stale and listen again
 			if strings.Contains(err.Error(), "already in use") {
 				rerr := os.Remove(path)
 				if rerr != nil {

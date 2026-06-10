@@ -321,7 +321,7 @@ func (m *Mux) handlePing(f *frames.Ping) {
 	if f.Pong {
 		rtt, err := m.onPong(f.Nonce)
 		if err != nil {
-			m.mod.log.Errorv(1, "invalid pong sessionId from %v", m.RemoteIdentity())
+			m.mod.log.Errorv(1, "invalid pong nonce from %v", m.RemoteIdentity())
 		} else if m.mod.config.LogPings {
 			m.mod.log.Logv(1, "ping with %v: %v", m.RemoteIdentity(), rtt)
 		}

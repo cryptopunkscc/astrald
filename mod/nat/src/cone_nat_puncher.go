@@ -36,13 +36,13 @@ type ConePuncherCallbacks struct {
 }
 
 // conePuncher is a minimal cone NAT puncher using fixed defaults and a provided peer listen port.
-// its simplest form of punching as it only punches port and few ports around
-// it. Which wont work on most of home NAT's because they are asymmetric.
-// TODO: research statistics about how many NAT's are cone (with and without port preservation) and how many of them are assymmetric.
+// It's simplest form of punching as it only punches port and few ports around
+// it. Which won't work on most of home NATs because they are asymmetric.
+// TODO: research statistics about how many NATs are cone (with and without port preservation) and how many of them are asymmetric.
 type conePuncher struct {
 	session   []byte         // required session identifier (copied)
 	conn      net.PacketConn // bound UDP socket
-	localPort int            // cached localIdentity port of conn
+	localPort int            // cached local port of conn
 
 	// callbacks
 	callbacks *ConePuncherCallbacks
@@ -128,7 +128,7 @@ func (p *conePuncher) HolePunch(
 		return nil, fmt.Errorf("invalid peer port: %d", peerPort)
 	}
 
-	// Snapshot conn and localPort under Lock
+	// Snapshot conn and localPort
 	conn := p.conn
 	localPort := p.localPort
 

@@ -31,7 +31,7 @@ const (
 	lengthHeaderSize = 2
 
 	// encHeaderSize is the number of bytes required to hold an encrypted
-	// header and it's MAC.
+	// header and its MAC.
 	encHeaderSize = lengthHeaderSize + macSize
 
 	// keyRotationInterval is the number of messages sent on a single
@@ -206,7 +206,7 @@ type symmetricState struct {
 // mixKey implements a basic HKDF-based key ratchet. This method is called
 // with the result of each DH output generated during the handshake process.
 // The first 32 bytes extract from the HKDF reader is the next chaining key,
-// then latter 32 bytes become the temp secret key using within any future AEAD
+// then latter 32 bytes become the temp secret key used within any future AEAD
 // operations until another DH operation is performed.
 func (s *symmetricState) mixKey(input []byte) {
 	var info []byte
@@ -344,7 +344,7 @@ func EphemeralGenerator(gen func() (*btcec.PrivateKey, error)) func(*Machine) {
 // a padding-oracle, and binds the encrypted packet length to the packet
 // itself.
 //
-// The acts proceeds the following order (initiator on the left):
+// The acts proceed in the following order (initiator on the left):
 //
 //	GenActOne()   ->
 //	                  RecvActOne()
@@ -387,7 +387,7 @@ type Machine struct {
 // NewBrontideMachine creates a new instance of the brontide state-machine. If
 // the responder (listener) is creating the object, then the remotePub should
 // be nil. The handshake state within brontide is initialized using the ascii
-// string "lightning" as the prologue. The last parameter is a set of variadic
+// string "astral" as the prologue. The last parameter is a set of variadic
 // arguments for adding additional options to the brontide Machine
 // initialization.
 func NewBrontideMachine(initiator bool, localKey SingleKeyECDH,
@@ -434,7 +434,7 @@ const (
 	// ActThreeSize is the size of the packet sent from initiator to
 	// responder in ActThree. The packet consists of a handshake version,
 	// the initiators static key encrypted with strong forward secrecy and
-	// a 16-byte poly1035 tag.
+	// a 16-byte poly1305 tag.
 	//
 	// 1 + 33 + 16 + 16
 	ActThreeSize = 66
@@ -870,7 +870,7 @@ func (b *Machine) ReadHeader(r io.Reader) (uint32, error) {
 	return pktLen, nil
 }
 
-// ReadBody attempts to ready the next message body from the passed io.Reader.
+// ReadBody attempts to read the next message body from the passed io.Reader.
 // The provided buffer MUST be the length indicated by the packet length
 // returned by the preceding call to ReadHeader. In the case of an
 // authentication error, a non-nil error is returned.

@@ -108,7 +108,7 @@ func (mod *Module) IsLinked(identity *astral.Identity) bool {
 	return mod.linkPool.SelectLinkWith(identity) != nil
 }
 
-func (mod *Module) GetLinkNegotitator(ch *channel.Channel) *muxLinkNegotiator {
+func (mod *Module) GetLinkNegotiator(ch *channel.Channel) *muxLinkNegotiator {
 	return &muxLinkNegotiator{
 		mod: mod,
 		ch:  ch,

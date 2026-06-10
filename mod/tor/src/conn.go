@@ -10,14 +10,14 @@ import (
 // Type check
 var _ exonet.Conn = &Conn{}
 
-// Conn represents a network connection over Driver
+// Conn represents a network connection over Tor
 type Conn struct {
 	net.Conn
 	remoteEndpoint *tor.Endpoint
 	outbound       bool
 }
 
-// LocalEndpoint returns an empty address, since there is no local endpoint in Driver
+// LocalEndpoint returns an empty address, since there is no local endpoint in Tor
 func (conn *Conn) LocalEndpoint() exonet.Endpoint {
 	return &tor.Endpoint{}
 }

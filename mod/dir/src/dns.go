@@ -28,7 +28,7 @@ func (dns DNS) ResolveIdentity(s string) (identity *astral.Identity, err error) 
 	domain := "_astral." + s
 	txtRecords, err := net.LookupTXT(domain)
 	if err != nil {
-		dns.log.Errorv(1, "Error looking up TXT records for %v: %v\n", domain, err)
+		dns.log.Errorv(1, "error looking up TXT records for %v: %v", domain, err)
 		return identity, err
 	}
 

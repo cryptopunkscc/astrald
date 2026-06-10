@@ -70,7 +70,7 @@ func (q *Queue[T]) Wait() <-chan struct{} {
 	return q.wait
 }
 
-// Data returns nil of the value is not ready (if called before Wait closes), the value otherwise
+// Data returns nil if the value is not ready (if called before Wait closes), the value otherwise
 func (q *Queue[T]) Data() T {
 	return q.data
 }

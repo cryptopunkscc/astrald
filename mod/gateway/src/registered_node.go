@@ -11,7 +11,7 @@ import (
 )
 
 // registeredNode represents a node registered as reachable through the gateway.
-// Only one registration per withIdentity is allowed.
+// Only one registration per identity is allowed.
 type registeredNode struct {
 	Identity  *astral.Identity
 	Nonce     astral.Nonce

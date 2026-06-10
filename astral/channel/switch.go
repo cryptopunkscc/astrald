@@ -15,7 +15,7 @@ var configType = reflect.TypeOf((*Config)(nil)).Elem()
 // Switch takes a list of functions with a single argument and an optional return value of an error type.
 // It then receives objects from the channel and passes them to functions with compatible argument types.
 // It stops on Receive() error or when a function returns an error. If a function returns ErrBreak, Switch
-// stops end returns nil. If no function takes the object type, an ErrUnexpectedObject is returned.
+// stops and returns nil. If no function takes the object type, an ErrUnexpectedObject is returned.
 //
 // Example:
 //

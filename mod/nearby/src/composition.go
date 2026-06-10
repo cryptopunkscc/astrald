@@ -5,7 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 )
 
-const MaxAttachmentSize = 4 * 1024 //4kb
+const MaxAttachmentSize = 4 * 1024 // 4 KiB
 
 var _ nearby.Composition = &Composition{}
 

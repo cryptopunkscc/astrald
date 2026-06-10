@@ -146,7 +146,7 @@ func (guest *Guest) onRegisterHandlerMsg(ctx *astral.Context, msg *apphost.Regis
 	// add the handler
 	handler := &IPCHandler{
 		Identity: msg.Identity,
-		IpcToken: msg.AuthToken,
+		IPCToken: msg.AuthToken,
 		Endpoint: string(msg.Endpoint),
 	}
 	guest.mod.ipcHandlers.Add(handler)

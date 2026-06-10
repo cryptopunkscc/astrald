@@ -77,7 +77,7 @@ func (p *ConnPool) dialSocket() (exonet.Conn, error) {
 	return conn, nil
 }
 
-// idleCount returns the number of conns not yet in relay or closed.
+// idleCount returns the number of conns not yet handed off or closed.
 func (p *ConnPool) idleCount() int {
 	return len(p.conns.Select(func(a *idleConn) bool {
 		select {

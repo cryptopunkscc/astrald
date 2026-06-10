@@ -65,7 +65,7 @@ func (h *Handler) ReadQuery() (*PendingQuery, error) {
 		}
 
 		// check auth ipcToken
-		if queryMsg.IpcToken != h.ipcToken {
+		if queryMsg.IPCToken != h.ipcToken {
 			ch.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 			ch.Close()
 			continue

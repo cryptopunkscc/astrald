@@ -83,7 +83,7 @@ func (w *Dispenser) SetUnlimited(v bool) error {
 	return nil
 }
 
-// Limit returns the reamining write limit.
+// Limit returns the remaining write limit.
 func (w *Dispenser) Limit() int {
 	return w.limit
 }

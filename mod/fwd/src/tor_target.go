@@ -15,10 +15,10 @@ type TorTarget struct {
 	endpoint exonet.Endpoint
 }
 
-func NewTorTarget(drv tor.Module, addr string, identiy *astral.Identity) (*TorTarget, error) {
+func NewTorTarget(drv tor.Module, addr string, identity *astral.Identity) (*TorTarget, error) {
 	var err error
 	var t = &TorTarget{
-		identity: identiy,
+		identity: identity,
 		tor:      drv,
 	}
 

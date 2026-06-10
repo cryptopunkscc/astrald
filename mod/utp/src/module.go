@@ -13,7 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/tasks"
 )
 
-// Module represents the UDP module and implements the exonet.Dialer interface.
+// Module represents the uTP module and implements the exonet.Dialer interface.
 type Module struct {
 	Deps
 	config          Config // Configuration for the module

@@ -9,7 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
-// Deps represents the dependencies required by the src UDP module.
+// Deps represents the dependencies required by the uTP module.
 type Deps struct {
 	Exonet  exonet.Module
 	Nodes   nodes.Module

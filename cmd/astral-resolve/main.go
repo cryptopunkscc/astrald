@@ -10,7 +10,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: astral-resolve <name>")
+		fmt.Fprintln(os.Stderr, "usage: astral-resolve <name>")
 		return
 	}
 

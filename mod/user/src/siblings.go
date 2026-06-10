@@ -8,7 +8,7 @@ import (
 )
 
 type Sibling struct {
-	Id     *astral.Identity
+	ID     *astral.Identity
 	Cancel context.CancelFunc
 }
 
@@ -26,7 +26,7 @@ func (mod *Module) notifyLinkedSibs(event string) {
 
 func (mod *Module) getLinkedSibs() (list []*astral.Identity) {
 	for _, sib := range mod.sibs.Values() {
-		list = append(list, sib.Id)
+		list = append(list, sib.ID)
 	}
 
 	return list
@@ -37,7 +37,7 @@ func (mod *Module) addSibling(id *astral.Identity,
 
 	mod.log.Log("adding sibling %v", id)
 	mod.sibs.Set(id.String(), Sibling{
-		Id:     id,
+		ID:     id,
 		Cancel: cancel,
 	})
 }

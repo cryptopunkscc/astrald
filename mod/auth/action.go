@@ -7,17 +7,17 @@ import (
 // Action is the base struct embedded by all typed action objects.
 type Action struct {
 	Nonce   astral.Nonce
-	ActorId *astral.Identity
+	ActorID *astral.Identity
 }
 
 // NewAction returns an Action with a fresh nonce and the given actor.
 func NewAction(actor *astral.Identity) Action {
-	return Action{Nonce: astral.NewNonce(), ActorId: actor}
+	return Action{Nonce: astral.NewNonce(), ActorID: actor}
 }
 
 func (a Action) Id() astral.Nonce              { return a.Nonce }
-func (a Action) Actor() *astral.Identity       { return a.ActorId }
-func (a *Action) SetActor(id *astral.Identity) { a.ActorId = id }
+func (a Action) Actor() *astral.Identity       { return a.ActorID }
+func (a *Action) SetActor(id *astral.Identity) { a.ActorID = id }
 
 // ActionObject is the interface satisfied by all action types.
 type ActionObject interface {

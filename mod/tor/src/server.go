@@ -128,7 +128,7 @@ func (l listener) Addr() string {
 func (l listener) PrivateKey() Key {
 	s := l.onion.PrivateKey
 
-	// force v3 as log is now considered insecure
+	// force v3 as v2 is now considered insecure
 	if !strings.HasPrefix(s, "ED25519-V3:") {
 		return nil
 	}

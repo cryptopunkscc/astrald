@@ -13,9 +13,9 @@ import (
 
 // Exit statuses
 const (
-	ExitSuccess   = int(iota) // Normal exit
-	ExitNodeError             // Node reported an error
-	ExitForced                // User forced shutdown with double SIGINT
+	ExitSuccess   = iota // Normal exit
+	ExitNodeError        // Node reported an error
+	ExitForced           // User forced shutdown with double SIGINT
 )
 
 func main() {
@@ -33,17 +33,17 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT)
 	go func() {
 		<-sigCh
-		fmt.Println("shutting down...")
+		fmt.Fprintln(os.Stderr, "shutting down...")
 		shutdown()
 
 		<-sigCh
-		fmt.Println("forcing shutdown...")
+		fmt.Fprintln(os.Stderr, "forcing shutdown...")
 		os.Exit(ExitForced)
 	}()
 
 	// run the node
 	if err := run(ctx, args); err != nil {
-		fmt.Printf("node error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "node error: %s\n", err)
 		os.Exit(ExitNodeError)
 	}
 

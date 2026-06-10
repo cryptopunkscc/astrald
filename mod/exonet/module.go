@@ -23,7 +23,7 @@ type Endpoint interface {
 	astral.Object
 	Network() string // network name
 	Address() string // text representation of the address
-	Pack() []byte    // binary represenation of the address
+	Pack() []byte    // binary representation of the address
 }
 
 type Dialer interface {

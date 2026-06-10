@@ -54,7 +54,7 @@ type Module interface {
 
 	VerifyObjectSignature(*PublicKey, *Signature, SignableObject) error
 
-	VerityTextObjectSignature(*PublicKey, *Signature, SignableTextObject) error
+	VerifyTextObjectSignature(*PublicKey, *Signature, SignableTextObject) error
 
 	AddToIndex(object astral.Object) error
 }

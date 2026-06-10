@@ -19,7 +19,7 @@ func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error
 	return Parse(address)
 }
 
-// Parse parses a string representation of a Driver address (both v2 and v3 are supported)
+// Parse parses a string representation of a Tor address (both v2 and v3 are supported)
 func Parse(s string) (*tor.Endpoint, error) {
 	var (
 		err      error

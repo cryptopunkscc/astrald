@@ -175,7 +175,7 @@ func (mod *Module) VerifyTextSignature(key *crypto.PublicKey, sig *crypto.Signat
 	case len(sig.Scheme) == 0:
 		return errors.New("signature scheme is empty")
 	case len(msg) == 0:
-		return errors.New("hash is empty")
+		return errors.New("message is empty")
 	}
 
 	return dispatchVerify[crypto.TextVerifier](
@@ -206,7 +206,7 @@ func (mod *Module) TextObjectSigner(key *crypto.PublicKey) (crypto.TextObjectSig
 	}, nil
 }
 
-func (mod *Module) VerityTextObjectSignature(key *crypto.PublicKey, signature *crypto.Signature, object crypto.SignableTextObject) error {
+func (mod *Module) VerifyTextObjectSignature(key *crypto.PublicKey, signature *crypto.Signature, object crypto.SignableTextObject) error {
 	return mod.VerifyTextSignature(key, signature, mod.formatSignableText(object))
 }
 

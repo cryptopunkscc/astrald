@@ -13,9 +13,9 @@ type TCPTarget struct {
 	addr     *_net.TCPAddr
 }
 
-func NewTCPTarget(addr string, identiy *astral.Identity) (*TCPTarget, error) {
+func NewTCPTarget(addr string, identity *astral.Identity) (*TCPTarget, error) {
 	var err error
-	var tcp = &TCPTarget{identity: identiy}
+	var tcp = &TCPTarget{identity: identity}
 
 	tcp.addr, err = _net.ResolveTCPAddr("tcp", addr)
 	if err != nil {

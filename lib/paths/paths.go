@@ -96,7 +96,7 @@ func (t *PathTrie) insert(path string) error {
 		return err
 	}
 
-	// Root splits to ["", ""] or ["", ""]
+	// Root splits to [] or ["", ""]
 	isRoot := len(parts) == 0 || (len(parts) == 2 && parts[0] == "" && parts[1] == "")
 	if isRoot {
 		t.coversAll = true

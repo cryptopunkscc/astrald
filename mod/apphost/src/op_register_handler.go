@@ -25,7 +25,7 @@ func (mod *Module) OpRegisterHandler(ctx *astral.Context, q *routing.IncomingQue
 	// add the handler
 	handler := &IPCHandler{
 		Identity: q.Caller(),
-		IpcToken: args.Token,
+		IPCToken: args.Token,
 		Endpoint: args.Endpoint,
 	}
 

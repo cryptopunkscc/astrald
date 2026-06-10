@@ -9,7 +9,7 @@ import (
 
 var _ exonet.Dialer = &Module{}
 
-// Dial tries to establish a Driver connection to the provided address
+// Dial tries to establish a Tor connection to the provided address
 func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {
 	if dial := mod.settings.Dial.Get(); dial != nil && !*dial {
 		return nil, exonet.ErrDisabledNetwork

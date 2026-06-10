@@ -58,9 +58,9 @@ func (srv *HTTPServer) Run(ctx *astral.Context) error {
 
 		err := httpServer.Shutdown(sctx)
 		if err != nil {
-			srv.log.Error("http server: shutdown err:: %v", bindHTTP, err)
+			srv.log.Error("http server: shutdown error at %v: %v", bindHTTP, err)
 		} else {
-			srv.log.Logv(1, "http server: stopped", bindHTTP)
+			srv.log.Logv(1, "http server: stopped at %v", bindHTTP)
 		}
 	}()
 
@@ -71,7 +71,7 @@ func (srv *HTTPServer) Run(ctx *astral.Context) error {
 	case err == nil:
 	case errors.Is(err, http.ErrServerClosed):
 	default:
-		srv.log.Error("http server: serve: %v", bindHTTP, err)
+		srv.log.Error("http server: serve error at %v: %v", bindHTTP, err)
 	}
 
 	<-ctx.Done()

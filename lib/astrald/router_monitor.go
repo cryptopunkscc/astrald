@@ -11,7 +11,7 @@ How to use with the default client:
 
 	// then fetch all active conns (thread-safe)
 
-	for _, conn := monitor.Conns() {}
+	for _, conn := range monitor.Conns() {}
 */
 
 import (

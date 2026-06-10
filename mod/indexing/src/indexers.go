@@ -8,7 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
-// indexerHandle is the in-memory view of a registered indexerHandle.
+// indexerHandle is the in-memory view of a registered indexer.
 // node is the tree node at /mod/indexing/indexers/<name> — its value is the
 // nonce, and its sub-nodes are per-repo cursor versions.
 type indexerHandle struct {

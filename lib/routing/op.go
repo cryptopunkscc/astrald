@@ -44,7 +44,7 @@ var ErrInvalidSignature = errors.New("invalid function signature")
 // NewOp wraps a function as an Op. fn has to have one of the following signatures:
 // - func(*astral.Context, *shell.Query) error
 // - func(*astral.Context, *shell.Query, ArgType) error
-// ArgType can ba struct or a pointer to a struct with all fields exported.
+// ArgType can be a struct or a pointer to a struct with all fields exported.
 func NewOp(fn any) (*Op, error) {
 	var v = reflect.ValueOf(fn)
 	var t = v.Type()

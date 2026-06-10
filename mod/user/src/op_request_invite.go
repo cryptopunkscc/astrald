@@ -18,7 +18,7 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery
 	ac := mod.ActiveContract()
 
 	if ac == nil {
-		// We dont have an active contract to invite
+		// We don't have an active contract to invite
 		return q.RejectWithCode(2)
 	}
 

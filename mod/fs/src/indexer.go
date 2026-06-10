@@ -219,7 +219,7 @@ func (indexer *Indexer) init(ctx *astral.Context) error {
 
 	indexer.mod.log.Info(`fs indexer: scan completed in %v`, time.Since(now))
 	if err := indexer.mod.db.InvalidateAllPaths(); err != nil {
-		return fmt.Errorf("invalid all paths failed: %w", err)
+		return fmt.Errorf("invalidate all paths failed: %w", err)
 	}
 
 	enqueuer := NewBatchCollector(1000, func(batch []string) error {
@@ -270,7 +270,7 @@ func (indexer *Indexer) scan(ctx context.Context, root string, enqueue bool) err
 		}
 
 		if err := indexer.mod.db.InvalidatePaths(toInvalidate); err != nil {
-			return fmt.Errorf("db requeuePath: %w", err)
+			return fmt.Errorf("db invalidate: %w", err)
 		}
 
 		// Optionally enqueue invalidated paths for hashing

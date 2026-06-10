@@ -21,7 +21,7 @@ func main() {
 
 	handler, err := apps.NewHandler()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "listen: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 	if err = apps.NewDefaultAppRegistrar(ctx).Register(ctx, handler.Endpoint(), handler.Token()); err != nil {

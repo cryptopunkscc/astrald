@@ -99,8 +99,6 @@ func (e *Endpoint) Address() string {
 	return fmt.Sprintf("%s:%d", e.Digest, e.Port)
 }
 
-// other
-
 // Pack returns binary representation of the address
 func (e *Endpoint) Pack() []byte {
 	var b = &bytes.Buffer{}
@@ -112,8 +110,6 @@ func (e *Endpoint) Pack() []byte {
 
 	return b.Bytes()
 }
-
-// other
 
 // IsZero returns true if the address has zero-value
 func (e *Endpoint) IsZero() bool {

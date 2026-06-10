@@ -14,7 +14,7 @@ import (
 // IPCHandler routes queries to a registered IPC endpoint.
 type IPCHandler struct {
 	Identity *astral.Identity // identity of the handler
-	IpcToken astral.Nonce     // token for the IPC endpoint
+	IPCToken astral.Nonce     // token for the IPC endpoint
 	Endpoint string           // IPC endpoint
 }
 
@@ -29,7 +29,7 @@ func (handler *IPCHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQue
 	var ch = channel.New(conn)
 
 	err = ch.Send(&apphost.HandleQueryMsg{
-		IpcToken: handler.IpcToken,
+		IPCToken: handler.IPCToken,
 		ID:       q.Nonce,
 		Caller:   q.Caller,
 		Target:   q.Target,

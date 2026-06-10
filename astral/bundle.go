@@ -221,7 +221,7 @@ func (b *Bundle) append(object Object) error {
 	return nil
 }
 
-// SelectByType select objects of the parameter type from a generic list of Objects
+// SelectByType selects objects of the parameter type from a generic list of Objects
 func SelectByType[T Object](objects []Object) (list []T) {
 	for _, o := range objects {
 		if o, ok := o.(T); ok {

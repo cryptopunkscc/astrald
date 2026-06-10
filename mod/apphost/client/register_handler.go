@@ -7,7 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
-// RegisterHandler registers a new handler for incoming queries. Protocol is tcp
+// RegisterHandler registers a new handler for incoming queries.
 func (client *Client) RegisterHandler(ctx *astral.Context, endpoint string, authToken astral.Nonce) error {
 	ch, err := client.queryCh(ctx, apphost.MethodRegisterHandler, query.Args{
 		"endpoint": endpoint,

@@ -19,7 +19,7 @@ var Anyone = &Identity{}
 var anyoneKey = strings.Repeat("00", 33)
 var ErrInvalidKeyLength = errors.New("invalid key length")
 
-// Identity is an eliptic-curve-based identity
+// Identity is an elliptic-curve-based identity
 type Identity struct {
 	publicKey *secp256k1.PublicKey
 }
@@ -197,7 +197,7 @@ func (id *Identity) Value() (driver.Value, error) {
 func (id *Identity) Scan(src any) error {
 	str, ok := src.(string)
 	if !ok {
-		return errors.New("typcast failed")
+		return errors.New("typecast failed")
 	}
 
 	n, err := ParseIdentity(str)

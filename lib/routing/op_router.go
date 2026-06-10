@@ -109,7 +109,7 @@ func (router *OpRouter) RemoveOp(name string) error {
 	return nil
 }
 
-// GetOp returns the router under
+// GetOp returns the op registered under the given name.
 func (router *OpRouter) GetOp(name string) (*Op, error) {
 	route, ok := router.routes.Get(name)
 	if !ok {

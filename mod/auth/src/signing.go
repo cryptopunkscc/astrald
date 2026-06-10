@@ -92,7 +92,7 @@ func (mod *Module) verifySig(key *crypto.PublicKey, sig *crypto.Signature, contr
 	case crypto.SchemeASN1:
 		return mod.Crypto.VerifyObjectSignature(key, sig, contract)
 	case crypto.SchemeBIP137:
-		return mod.Crypto.VerityTextObjectSignature(key, sig, contract)
+		return mod.Crypto.VerifyTextObjectSignature(key, sig, contract)
 	default:
 		return fmt.Errorf("unsupported signature scheme: %s", sig.Scheme)
 	}

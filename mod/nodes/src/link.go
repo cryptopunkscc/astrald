@@ -194,7 +194,7 @@ func (s *Link) pong(nonce astral.Nonce) (time.Duration, error) {
 	p := s.ping
 	if p == nil || p.nonce != nonce {
 		s.pingMu.Unlock()
-		return -1, errors.New("invalid sessionId")
+		return -1, errors.New("invalid pong nonce")
 	}
 	s.ping = nil
 	s.pingMu.Unlock()

@@ -8,7 +8,7 @@ import (
 
 // HandleQueryMsg represents a request to handle a query.
 type HandleQueryMsg struct {
-	IpcToken astral.Nonce
+	IPCToken astral.Nonce
 	ID       astral.Nonce
 	Caller   *astral.Identity
 	Target   *astral.Identity

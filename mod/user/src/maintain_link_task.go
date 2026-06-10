@@ -17,7 +17,7 @@ var _ scheduler.Task = &MaintainLinkTask{}
 
 // MaintainLinkTask attempts to maintain a link to a target node indefinitely.
 // triggers:
-// - ensure_connectivity_action
+// - nodes.LinkClosedEvent (link to target dropped)
 type MaintainLinkTask struct {
 	mod            *Module
 	Target         *astral.Identity

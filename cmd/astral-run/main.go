@@ -25,10 +25,10 @@ func main() {
 
 	flag.StringVar(&asFlag, "as", "", "identity or `alias` to run as")
 	flag.BoolVar(&ensureTokenFlag, "ensure-token", false, "reuse existing token or create one if none exists")
-	flag.BoolVar(&ensureIdentityFlag, "ensure-identity", false, "if alias not found in dir, create identity and register it; implies --ensure-token")
+	flag.BoolVar(&ensureIdentityFlag, "ensure-identity", false, "if alias not found in dir, create identity and register it; implies -ensure-token")
 	flag.Var(&extraEnv, "env", "set an environment variable `KEY=VALUE` (repeatable)")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: %s -as <identity|alias> [--ensure-identity] [--ensure-token] [--env KEY=VALUE]... <executable> [args...]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s -as <identity|alias> [-ensure-identity] [-ensure-token] [-env KEY=VALUE]... <executable> [args...]\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Parse()

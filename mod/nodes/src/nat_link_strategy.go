@@ -16,7 +16,7 @@ import (
 	servicescli "github.com/cryptopunkscc/astrald/mod/services/client"
 )
 
-type NatLinkStrategy struct {
+type NATLinkStrategy struct {
 	mod    *Module
 	log    *log.Logger
 	target *astral.Identity
@@ -25,11 +25,11 @@ type NatLinkStrategy struct {
 	done chan struct{}
 }
 
-var _ nodes.LinkStrategy = &NatLinkStrategy{}
+var _ nodes.LinkStrategy = &NATLinkStrategy{}
 
-func (s *NatLinkStrategy) Name() string { return nodes.StrategyNAT }
+func (s *NATLinkStrategy) Name() string { return nodes.StrategyNAT }
 
-func (s *NatLinkStrategy) Signal(ctx *astral.Context) {
+func (s *NATLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.done != nil {
 		s.mu.Unlock()
@@ -47,7 +47,7 @@ func (s *NatLinkStrategy) Signal(ctx *astral.Context) {
 	}()
 }
 
-func (s *NatLinkStrategy) peerSupportsNAT(ctx *astral.Context) bool {
+func (s *NATLinkStrategy) peerSupportsNAT(ctx *astral.Context) bool {
 	s.log.Logv(2, "%v checking NAT support", s.target)
 
 	ch, err := servicescli.New(s.target, astrald.Default()).Discover(ctx, false)
@@ -65,7 +65,7 @@ func (s *NatLinkStrategy) peerSupportsNAT(ctx *astral.Context) bool {
 	return false
 }
 
-func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
+func (s *NATLinkStrategy) attempt(ctx *astral.Context) error {
 	selfID := s.mod.node.Identity()
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
@@ -174,7 +174,7 @@ func (s *NatLinkStrategy) attempt(ctx *astral.Context) error {
 	return nil
 }
 
-func (s *NatLinkStrategy) signalDone() {
+func (s *NATLinkStrategy) signalDone() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.done != nil {
@@ -183,7 +183,7 @@ func (s *NatLinkStrategy) signalDone() {
 	}
 }
 
-func (s *NatLinkStrategy) Done() <-chan struct{} {
+func (s *NATLinkStrategy) Done() <-chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -197,14 +197,14 @@ func (s *NatLinkStrategy) Done() <-chan struct{} {
 
 // factory
 
-type NatLinkStrategyFactory struct {
+type NATLinkStrategyFactory struct {
 	mod *Module
 }
 
-var _ nodes.StrategyFactory = &NatLinkStrategyFactory{}
+var _ nodes.StrategyFactory = &NATLinkStrategyFactory{}
 
-func (f *NatLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
-	return &NatLinkStrategy{
+func (f *NATLinkStrategyFactory) Build(target *astral.Identity) nodes.LinkStrategy {
+	return &NATLinkStrategy{
 		mod:    f.mod,
 		log:    f.mod.log.AppendTag("nat"),
 		target: target,

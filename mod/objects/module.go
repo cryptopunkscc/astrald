@@ -44,7 +44,7 @@ const (
 )
 
 // MaxObjectSize is the maximum size of an object that can be loaded into memory
-const MaxObjectSize int64 = 64 << 20 // 32 MB
+const MaxObjectSize int64 = 64 << 20 // 64 MB
 
 type Module interface {
 	// AddRepository registers a Repository

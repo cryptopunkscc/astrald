@@ -7,7 +7,7 @@ import (
 )
 
 // connector represents a pending connection request from a node that wants
-// to reach a registered node through the gateway. Multiple connectors per withIdentity
+// to reach a registered node through the gateway. Multiple connectors per identity
 // are allowed.
 type connector struct {
 	mu       sync.Mutex
