@@ -23,13 +23,15 @@ func (client *Client) Create(ctx *astral.Context, repo string, alloc int) (objec
 	if err != nil {
 		return nil, err
 	}
-	defer ch.Close()
 
 	// wait for ack
 	err = ch.Switch(channel.ExpectAck, channel.PassErrors, channel.WithContext(ctx))
 	if err != nil {
+		ch.Close()
 		return nil, err
 	}
+
+	// the channel stays open for the returned writer and is closed by its Commit/Discard
 	return &writer{ch: ch}, nil
 }
 
