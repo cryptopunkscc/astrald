@@ -3,6 +3,7 @@ package objects
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -222,6 +223,31 @@ func (mod *Module) getRepoName(repo objects.Repository) string {
 
 func (mod *Module) Register(o astral.Object) (*astral.ObjectID, error) {
 	return astral.DefaultBlueprints().Register(o)
+}
+
+// GetBlueprint returns the Blueprint for typeName: a runtime Blueprint as registered, or one
+// derived from the compile-time prototype (alias kind for PrimitiveAlias prototypes, struct
+// kind otherwise). Primitive names return astral.ErrPrimitiveType; unknown names return
+// astral.ErrBlueprintNotFound. References inside the result are not resolved — the caller
+// fetches referenced types itself.
+func (mod *Module) GetBlueprint(typeName string) (*astral.Blueprint, error) {
+	// why: primitives are registered under their own names, so New would hand back the
+	// primitive prototype and BlueprintOf would fail with an opaque reflection error;
+	// primitives have no blueprint by design, so reject them explicitly.
+	if astral.IsPrimitiveType(typeName) {
+		return nil, fmt.Errorf("%w: %s", astral.ErrPrimitiveType, typeName)
+	}
+
+	if bp := astral.DefaultBlueprints().GetBlueprint(typeName); bp != nil {
+		return bp, nil
+	}
+
+	proto := astral.New(typeName)
+	if proto == nil {
+		return nil, fmt.Errorf("%w: %s", astral.ErrBlueprintNotFound, typeName)
+	}
+
+	return astral.BlueprintOf(proto)
 }
 
 func (mod *Module) Router() astral.Router {

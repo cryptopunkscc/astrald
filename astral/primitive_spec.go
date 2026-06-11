@@ -36,4 +36,8 @@ func isAllowedPrimitive(name string) bool {
 	return false
 }
 
+// IsPrimitiveType reports whether name is a wire primitive (a primitiveAllowlist member).
+// Primitives have no Blueprint even though they are registered under their own names.
+func IsPrimitiveType(name string) bool { return isAllowedPrimitive(name) }
+
 func init() { _ = Add(&PrimitiveSpec{}) }

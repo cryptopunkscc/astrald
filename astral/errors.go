@@ -23,6 +23,9 @@ var ErrAlreadyRegistered = errors.New("blueprint already registered")
 // ErrBlueprintNotFound - no Blueprint or compile-time prototype is registered for the named Object Type
 var ErrBlueprintNotFound = errors.New("blueprint not found")
 
+// ErrPrimitiveType - the named Type is a wire primitive; primitives have no Blueprint
+var ErrPrimitiveType = errors.New("primitive type has no blueprint")
+
 // ErrStreamCorrupted - an unknown type tag was consumed mid-stream and the remaining bytes
 // cannot be safely interpreted. Wraps ErrBlueprintNotFound at sites that consumed bytes they
 // cannot skip (Decode, interfaceValue.ReadFrom). Channel receivers without per-object framing
