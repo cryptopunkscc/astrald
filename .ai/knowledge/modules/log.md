@@ -19,6 +19,7 @@ Centralizes node logging by filtering `astral/log` output, writing log entries t
 - File sink: `CreateLogFile` creates `~/.config/astrald/logs/astrald.log.<timestamp>` when the home directory is available -> `LogFile.LogEntry` serializes writes through a mutex and sends entries through a channel wrapper.
 - Live stream: `log.listen` accepts the raw query stream -> creates a channel with optional input and output formats -> adds `logForwarder` -> waits until the client closes by reading from the channel -> deferred removal stops forwarding.
 - Rendering: package init and loader-installed view functions render primitives, identities, queries, and entries with module theme colors; identity rendering falls back to fingerprint when no resolver is available.
+- External-type rendering: blueprint-backed `astral.RuntimeObject` values have no compile-time view; `RuntimeObjectView` registers via `fmt.SetFallbackView` and renders `Type{Field: value, ...}` (struct) or `Type(value)` (alias), delegating each field to `fmt.ViewFor`. Runtime container carriers (`RuntimeSlice`/`RuntimeArray`/`RuntimeMap`) register per-type under their constant `ObjectType` (`slice`/`array`/`map`). Replaces the prior raw `%v` Go dump. See issue #337.
 
 ## Source
 
@@ -27,7 +28,7 @@ Centralizes node logging by filtering `astral/log` output, writing log entries t
 - `mod/log/src/module.go`, `mod/log/src/config.go`, `mod/log/src/deps.go` - module state, dynamic log-level filter, config binding, and dependency wiring.
 - `mod/log/src/log_file.go` - per-run log file creation and serialized entry writes.
 - `mod/log/src/op_listen.go` - `log.listen` handler and live forwarding logger.
-- `mod/log/views/` - terminal renderers and opt-in view registration functions.
+- `mod/log/views/` - terminal renderers and opt-in view registration functions; `runtime_object_view.go` (external-type fallback) and `runtime_{slice,array,map}_view.go` (container carriers).
 - `mod/log/styles/`, `mod/log/theme/` - reusable color, gradient, and style helpers for views.
 
 ## Surface

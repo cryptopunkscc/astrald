@@ -120,6 +120,11 @@ func (ro *RuntimeObject) Underlying() Object {
 	return ro.value
 }
 
+// Blueprint returns the schema backing this RuntimeObject, or nil if unbound. Callers reflect
+// on the result — Fields for struct kind, Underlying for alias kind — to render or inspect a
+// type the binary was not built with.
+func (ro *RuntimeObject) Blueprint() *Blueprint { return ro.bp }
+
 // GetRuntimeObject returns a fresh RuntimeObject backed by this Blueprint. Spec-zeros are
 // resolved through defaultBlueprints; route through Blueprints.New for a custom registry.
 func (bp *Blueprint) GetRuntimeObject() (*RuntimeObject, error) { return NewRuntimeObject(bp) }
