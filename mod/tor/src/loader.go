@@ -14,6 +14,8 @@ import (
 
 type Loader struct{}
 
+// Load constructs a Module, applies YAML config overrides, and initialises a SOCKS5 proxy targeting TorProxy.
+// Fails if the SOCKS5 dialer does not implement proxy.ContextDialer.
 func (Loader) Load(node astral.Node, assets assets.Assets, logger *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:   node,

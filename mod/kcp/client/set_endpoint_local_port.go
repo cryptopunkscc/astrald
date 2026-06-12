@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/kcp"
 )
 
+// SetEndpointLocalPort maps endpoint to localPort; replace controls whether an existing mapping is overwritten.
 func (client *Client) SetEndpointLocalPort(ctx *astral.Context, endpoint kcp.Endpoint, localPort astral.Uint16, replace bool) error {
 	ch, err := client.queryCh(ctx, kcp.MethodSetEndpointLocalPort, query.Args{
 		"endpoint":   endpoint.Address(),

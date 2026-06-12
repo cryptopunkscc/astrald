@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ether"
 )
 
+// Loader implements core.Module factory for the ether module and registers it at init time.
 type Loader struct{}
 
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {

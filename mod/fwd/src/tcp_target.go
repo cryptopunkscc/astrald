@@ -13,6 +13,7 @@ type TCPTarget struct {
 	addr     *_net.TCPAddr
 }
 
+// NewTCPTarget resolves addr to a TCPAddr at construction time; dial happens per RouteQuery call.
 func NewTCPTarget(addr string, identity *astral.Identity) (*TCPTarget, error) {
 	var err error
 	var tcp = &TCPTarget{identity: identity}
@@ -25,6 +26,7 @@ func NewTCPTarget(addr string, identity *astral.Identity) (*TCPTarget, error) {
 	return tcp, nil
 }
 
+// RouteQuery dials the TCP address and pumps conn→w in a background goroutine to bridge the two streams.
 func (t *TCPTarget) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	var dialer = _net.Dialer{}
 

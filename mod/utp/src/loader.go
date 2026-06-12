@@ -13,6 +13,8 @@ import (
 
 type Loader struct{}
 
+// Load constructs and configures the uTP module, stripping the "utp:" scheme
+// prefix from any configured endpoint addresses before parsing them.
 func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:   node,

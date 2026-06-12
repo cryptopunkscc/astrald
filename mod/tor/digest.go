@@ -16,6 +16,7 @@ type Digest []byte
 
 var _ astral.Object = (*Digest)(nil)
 
+// DigestFromString parses a base32-encoded Tor digest, with or without the ".onion" suffix.
 func DigestFromString(s string) (Digest, error) {
 	var d = Digest{}
 	err := d.UnmarshalText([]byte(s))

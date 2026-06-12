@@ -8,6 +8,8 @@ import (
 
 var _ nodes.EndpointResolver = &Module{}
 
+// ResolveEndpoints returns the module's advertised TCP endpoints only when nodeID matches the local node;
+// all other identities receive an empty channel.
 func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan *nodes.EndpointWithTTL, err error) {
 	if !nodeID.IsEqual(mod.node.Identity()) {
 		return sig.ArrayToChan([]*nodes.EndpointWithTTL{}), nil

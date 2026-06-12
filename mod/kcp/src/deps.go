@@ -23,6 +23,8 @@ type Deps struct {
 	Tree    tree.Module
 }
 
+// LoadDependencies injects module dependencies and registers mod as the kcp dialer, parser, and unpacker
+// with the exonet layer, and as an endpoint resolver with the nodes layer.
 func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

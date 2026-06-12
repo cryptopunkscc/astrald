@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
+// NodePunch coordinates the offer/answer/ready/go signalling exchange with the NAT module, then delegates
+// the actual UDP hole-punch to puncher; returns the resulting Hole on success.
 func (t *Client) NodePunch(ctx *astral.Context, target *astral.Identity, localIP ip.IP, puncher nat.Puncher) (*nat.Hole, error) {
 	ch, err := t.queryCh(ctx, nat.MethodNodePunch, query.Args{})
 	if err != nil {

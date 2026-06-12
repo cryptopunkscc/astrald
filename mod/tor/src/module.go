@@ -27,6 +27,7 @@ type Settings struct {
 	Dial   *tree.Value[*astral.Bool] `tree:"dial"`
 }
 
+// Module implements the Tor transport: it dials and listens via a local Tor SOCKS5/control-port proxy.
 type Module struct {
 	Deps
 	config   Config
@@ -41,6 +42,8 @@ type Module struct {
 	server    sig.Switch
 }
 
+// Run applies config-driven settings and then reactively starts or stops the hidden-service server
+// whenever the Listen setting changes, blocking until ctx is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 

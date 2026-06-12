@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
+// LoadDependencies injects module dependencies and binds the persisted settings path in the tree.
 func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

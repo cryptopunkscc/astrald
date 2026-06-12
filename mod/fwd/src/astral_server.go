@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// AstralServer listens on an astral service name and forwards queries to a target router.
+// note: Run currently always returns an error; the service-registration path is commented out.
 type AstralServer struct {
 	*Module
 	serviceName string
@@ -15,6 +17,7 @@ type AstralServer struct {
 	target      astral.Router
 }
 
+// NewAstralServer parses serviceName as [identity@]service, resolving the optional identity prefix via Dir.
 func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*AstralServer, error) {
 	var err error
 	var identity = mod.node.Identity()
@@ -39,6 +42,7 @@ func NewAstralServer(mod *Module, serviceName string, target astral.Router) (*As
 	return srv, nil
 }
 
+// Run always returns an error; service registration is not yet implemented.
 func (srv *AstralServer) Run(ctx *astral.Context) error {
 	return errors.New("obsolete")
 	//var err = srv.AddOp(srv.serviceName, routing.NewOp())

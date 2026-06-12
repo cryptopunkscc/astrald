@@ -17,6 +17,8 @@ type Deps struct {
 	IP      ip.Module
 }
 
+// LoadDependencies injects required modules and registers this module as the
+// uTP dialer, parser, unpacker, and endpoint resolver with the exonet and nodes subsystems.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

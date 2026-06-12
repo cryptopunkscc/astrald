@@ -21,6 +21,8 @@ type Deps struct {
 	Objects objects.Module
 }
 
+// Module implements ip.Module; it tracks local network addresses, discovers public IP candidates
+// from registered providers, and exposes IP-related operations via its embedded router.
 type Module struct {
 	Deps
 	node   astral.Node
@@ -31,6 +33,7 @@ type Module struct {
 	providers sig.Set[ip.PublicIPCandidateProvider]
 }
 
+// Run starts background monitoring of local network address changes and blocks until ctx is done.
 func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.watchAddresses(ctx)
 
@@ -38,6 +41,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
+// LocalIPs returns all non-loopback IP addresses currently assigned to local network interfaces.
 func (mod *Module) LocalIPs() ([]ip.IP, error) {
 	return mod.localAddresses(false)
 }

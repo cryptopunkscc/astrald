@@ -13,6 +13,8 @@ import (
 
 type Loader struct{}
 
+// Load constructs the Module, merges YAML config over defaults, and registers
+// the "Op"-prefixed operation router entries before returning.
 func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {
 	mod := &Module{
 		node:   node,

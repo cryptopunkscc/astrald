@@ -17,6 +17,8 @@ import (
 
 var _ tcp.Module = &Module{}
 
+// Module implements tcp.Module and manages the TCP transport lifecycle,
+// including the main TCP server, ephemeral per-port listeners, and endpoint advertisement.
 type Module struct {
 	Deps
 	config   Config
@@ -34,6 +36,8 @@ type Module struct {
 	ephemeralListeners sig.Map[astral.Uint16, exonet.EphemeralListener]
 }
 
+// Settings holds live, tree-bound toggles for the module; values may change at runtime
+// without a restart and are observed via Follow.
 type Settings struct {
 	Listen *tree.Value[*astral.Bool] `tree:"listen"`
 	Dial   *tree.Value[*astral.Bool] `tree:"dial"`
@@ -56,6 +60,8 @@ func (mod *Module) acceptAll(ctx context.Context, conn exonet.Conn) (shouldStop 
 	return false, nil
 }
 
+// Run syncs static config into the live settings tree, then reactively starts or stops
+// the main TCP server whenever the Listen setting changes.
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 

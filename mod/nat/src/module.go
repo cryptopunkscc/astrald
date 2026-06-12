@@ -50,6 +50,7 @@ type Module struct {
 	cond    *sync.Cond
 }
 
+// Run starts the enabled-state tracking goroutine and blocks until ctx is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
@@ -76,6 +77,7 @@ func (mod *Module) Router() astral.Router {
 	return &mod.router
 }
 
+// SetEnabled updates the enabled flag and broadcasts to all waiters if the value changed.
 func (mod *Module) SetEnabled(enabled bool) {
 	if mod.enabled.Swap(enabled) != enabled {
 		mod.cond.Broadcast()

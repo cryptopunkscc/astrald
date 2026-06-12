@@ -14,9 +14,12 @@ const (
 	MethodListEndpointLocalMappings = "kcp.list_endpoint_local_mappings"
 )
 
+// Module is the public contract for the KCP transport: it dials, unpacks, and parses
+// exonet endpoints over KCP/UDP and exposes the port it is bound to.
 type Module interface {
 	exonet.Dialer
 	exonet.Unpacker
 	exonet.Parser
+	// ListenPort returns the UDP port the module is currently bound to; 0 means unbound.
 	ListenPort() int
 }

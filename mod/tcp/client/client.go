@@ -11,6 +11,7 @@ type Client struct {
 	targetID *astral.Identity
 }
 
+// New creates a Client targeting targetID; if a is nil, astrald.Default() is used.
 func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	if a == nil {
 		a = astrald.Default()

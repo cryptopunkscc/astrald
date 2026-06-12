@@ -51,6 +51,8 @@ func (mod *Module) String() string {
 	return kcp.ModuleName
 }
 
+// Run starts the module, applies config-file settings, and watches the Listen
+// setting to dynamically start or stop the KCP server for the lifetime of ctx.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 

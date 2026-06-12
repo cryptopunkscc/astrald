@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// HolePool is a concurrent-safe registry of active NAT holes, keyed by nonce.
 type HolePool struct {
 	*Module
 	holes sig.Map[astral.Nonce, *Hole]
@@ -18,6 +19,7 @@ func NewHolePool(mod *Module) *HolePool {
 	}
 }
 
+// Add registers a hole in the pool; returns ErrDuplicateHole if a hole with the same nonce already exists.
 func (p *HolePool) Add(hole *Hole) error {
 	_, ok := p.holes.Set(hole.Nonce, hole)
 	if !ok {
@@ -34,6 +36,7 @@ func (p *HolePool) GetAll() []*Hole {
 	return p.holes.Values()
 }
 
+// TakeAny removes and returns the first hole that matches the given peer identity.
 func (p *HolePool) TakeAny(peer *astral.Identity) (*Hole, error) {
 	for _, hole := range p.holes.Values() {
 		if hole.MatchesPeer(peer) {

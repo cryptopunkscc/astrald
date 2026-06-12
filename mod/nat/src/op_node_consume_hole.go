@@ -21,6 +21,8 @@ type opNodeConsumeHoleArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpNodeConsumeHole coordinates a two-phase lock-then-take exchange to hand a hole out of the pool.
+// When Target is set it acts as the initiator; otherwise it is the responder waiting for the lock signal.
 func (mod *Module) OpNodeConsumeHole(ctx *astral.Context, q *routing.IncomingQuery, args opNodeConsumeHoleArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

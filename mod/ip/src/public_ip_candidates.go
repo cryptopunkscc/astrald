@@ -8,6 +8,7 @@ func (mod *Module) AddPublicIPCandidateProvider(provider ip.PublicIPCandidatePro
 	return mod.providers.Add(provider)
 }
 
+// PublicIPCandidates collects candidates from all registered providers, deduplicating by string representation.
 func (mod *Module) PublicIPCandidates() (ips []ip.IP) {
 	var unique = map[string]struct{}{}
 

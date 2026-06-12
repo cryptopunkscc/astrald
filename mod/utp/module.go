@@ -6,6 +6,7 @@ import (
 
 const ModuleName = "utp"
 
+// Module is the public contract for the UTP transport.
 type Module interface {
 	exonet.Dialer
 	exonet.Unpacker

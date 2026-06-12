@@ -12,6 +12,7 @@ const (
 	MethodCloseEphemeralListener = "tcp.close_ephemeral_listener"
 )
 
+// Module is the public contract for the TCP transport.
 type Module interface {
 	exonet.Dialer
 	exonet.Unpacker

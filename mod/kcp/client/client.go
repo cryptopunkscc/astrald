@@ -11,6 +11,7 @@ type Client struct {
 	targetID *astral.Identity
 }
 
+// New creates a Client targeting targetID; falls back to astrald.Default() when a is nil.
 func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	if a == nil {
 		a = astrald.Default()
@@ -18,6 +19,7 @@ func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	return &Client{astral: a, targetID: targetID}
 }
 
+// WithTarget returns a new Client bound to target, sharing the same underlying astral client.
 func (client *Client) WithTarget(target *astral.Identity) *Client {
 	return &Client{astral: client.astral, targetID: target}
 }

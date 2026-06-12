@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/services"
 )
 
+// DiscoverServices sends the current enabled state immediately, then streams updates on every enabled change.
+// When follow is false the channel is closed after the initial snapshot.
 func (mod *Module) DiscoverServices(
 	ctx *astral.Context,
 	caller *astral.Identity,

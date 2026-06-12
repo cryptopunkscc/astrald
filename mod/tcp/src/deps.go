@@ -23,6 +23,8 @@ type Deps struct {
 	Tree    tree.Module
 }
 
+// LoadDependencies injects module dependencies, binds the live settings path in the tree,
+// and registers the module as the TCP dialer, parser, unpacker, and endpoint resolver.
 func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

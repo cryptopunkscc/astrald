@@ -113,6 +113,7 @@ func (e *Endpoint) String() string {
 	return e.Address()
 }
 
+// IsZero reports whether the endpoint is uninitialised; a nil receiver is treated as zero.
 func (e *Endpoint) IsZero() bool {
 	return e == nil || e.IP == nil
 }

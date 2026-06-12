@@ -15,6 +15,7 @@ type Deps struct {
 	Dir dir.Module
 }
 
+// Module implements exonet.Module, routing dial/unpack/parse calls to per-network handlers registered at runtime.
 type Module struct {
 	Deps
 	config Config
@@ -27,12 +28,14 @@ type Module struct {
 	parser    sig.Map[string, exonet.Parser]
 }
 
+// Run blocks until the context is cancelled; exonet is a passive registry with no active work of its own.
 func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 
 	return nil
 }
 
+// Dial dispatches to the dialer registered for the endpoint's network; returns ErrUnsupportedNetwork if none is registered.
 func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exonet.Conn, err error) {
 	d, found := mod.dialers.Get(endpoint.Network())
 	if found {
@@ -42,6 +45,7 @@ func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (conn exo
 	return nil, exonet.ErrUnsupportedNetwork
 }
 
+// Unpack dispatches to the unpacker registered for the given network; returns ErrUnsupportedNetwork if none is registered.
 func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) {
 	u, found := mod.unpackers.Get(network)
 	if found {
@@ -51,6 +55,7 @@ func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) 
 	return nil, exonet.ErrUnsupportedNetwork
 }
 
+// Parse dispatches to the parser registered for the given network; returns ErrUnsupportedNetwork if none is registered.
 func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error) {
 	p, found := mod.parser.Get(network)
 	if found {

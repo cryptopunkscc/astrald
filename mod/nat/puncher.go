@@ -19,6 +19,8 @@ type Puncher interface {
 	// Close releases any resources held by the puncher (open sockets).
 	Close() error
 
+	// Session returns the opaque byte sequence embedded in punch packets to
+	// distinguish this puncher's traffic from other concurrent punch attempts.
 	Session() []byte
 }
 

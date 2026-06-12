@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
+// Loader implements core.ModuleLoader; it constructs and registers the NAT module instance.
 type Loader struct{}
 
 func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {

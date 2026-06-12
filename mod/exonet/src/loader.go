@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
+// Loader registers the exonet module with the core module registry on init.
 type Loader struct{}
 
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {

@@ -8,12 +8,15 @@ import (
 	"time"
 )
 
+// Server is the contract for a forwarding listener: it can run, report its target, and format itself for logging.
 type Server interface {
 	tasks.Runner
 	fmt.Stringer
 	Target() astral.Router
 }
 
+// ServerRunner wraps a Server with a cancellable context and a done signal.
+// note: the done channel is nil until Run is called; callers must not invoke Done before Run.
 type ServerRunner struct {
 	Server
 	startedAt time.Time
@@ -34,6 +37,7 @@ func NewServerRunner(ctx *astral.Context, s Server) *ServerRunner {
 	}
 }
 
+// Run initializes the done channel, delegates to the wrapped Server, and closes done on return.
 func (srv *ServerRunner) Run(ctx *astral.Context) error {
 	srv.done = make(chan struct{})
 	defer close(srv.done)

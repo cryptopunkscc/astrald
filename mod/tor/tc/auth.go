@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 )
 
+// Authenticate selects an auth method supported by both the daemon and this client and performs it.
+// Returns an error if no mutually supported method is available.
 func (ctl *Control) Authenticate() error {
 	if ctl.ProtocolInfo().HasAuthMethod(authMethodCookie) {
 		return ctl.authenticateWithCookie()

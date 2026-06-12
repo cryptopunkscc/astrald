@@ -45,6 +45,7 @@ func (e *Endpoint) PortNumber() int {
 	return int(e.Port)
 }
 
+// Pack serializes the endpoint to its wire representation; returns nil on encoding error.
 func (e *Endpoint) Pack() []byte {
 	var b = &bytes.Buffer{}
 	if _, err := e.WriteTo(b); err != nil {
@@ -87,6 +88,7 @@ func (e *Endpoint) String() string {
 	return e.Address()
 }
 
+// IsZero reports whether the endpoint is unset; safe to call on a nil receiver.
 func (e *Endpoint) IsZero() bool {
 	return e == nil || e.IP == nil
 }

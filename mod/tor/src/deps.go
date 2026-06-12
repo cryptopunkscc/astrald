@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
+// LoadDependencies injects module dependencies and registers mod as the tor dialer, parser, unpacker, and endpoint resolver.
 func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

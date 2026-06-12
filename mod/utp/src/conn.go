@@ -5,6 +5,8 @@ import (
 	"github.com/cryptopunkscc/utp"
 )
 
+// WrappedConn adapts a raw utp.Conn to the exonet.Conn interface, carrying
+// pre-resolved endpoints and a direction flag so callers never re-parse addresses.
 type WrappedConn struct {
 	*utp.Conn
 	remote   exonet.Endpoint

@@ -33,6 +33,10 @@ func NewServer(module *Module, listenPort astral.Uint16, onAccept exonet.Ephemer
 	}
 }
 
+// Run binds the UDP port, starts accepting KCP sessions, and blocks until
+// the context is cancelled or Close is called; each accepted session is
+// dispatched to onAccept in its own goroutine, and the server stops if
+// onAccept signals shouldClose.
 func (s *Server) Run(ctx *astral.Context) error {
 	addr := fmt.Sprintf(":%d", s.listenPort)
 	kcpListener, err := kcpgo.ListenWithOptions(addr, nil, 0, 0)
@@ -90,6 +94,9 @@ func (s *Server) Done() <-chan struct{} {
 	return s.closedCh
 }
 
+// Close stops the server idempotently; the first call closes the underlying
+// KCP listener (or the done channel if no listener was started yet), and
+// subsequent calls are no-ops.
 func (s *Server) Close() error {
 	if !s.closed.CompareAndSwap(false, true) {
 		return nil

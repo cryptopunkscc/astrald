@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
+// LoadDependencies injects hard dependencies and registers any already-loaded module that implements
+// PublicIPCandidateProvider as a candidate source.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {
