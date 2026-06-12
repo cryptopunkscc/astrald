@@ -126,6 +126,7 @@ func SplitQueryParams(query string) (path, params string) {
 	return query, ""
 }
 
+// ParseParams parses &-separated key=value pairs; an item without '=' becomes a value under the empty key.
 func ParseParams(params string) Params {
 	var p = map[string]string{}
 
@@ -151,6 +152,7 @@ func ParseQuery(query string) (path string, params Params) {
 	return
 }
 
+// Query builds a query string from path and params; param order is non-deterministic.
 func Query(path string, params Params) string {
 	var f = path
 	var l []string

@@ -15,6 +15,7 @@ const logTag = "node"
 
 var _ astral.Node = &Node{}
 
+// Node is the core astral node: identity, config, assets, modules, and the embedded query Router.
 type Node struct {
 	*Router
 	identity *astral.Identity
