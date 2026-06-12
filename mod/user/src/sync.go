@@ -159,6 +159,7 @@ func (mod *Module) pushActiveContract(ctx *astral.Context, remoteIdentity *astra
 	mod.Objects.Push(ctx, remoteIdentity, contract)
 }
 
+// PushToLocalSwarm broadcasts obj to every member of the local swarm except the node itself.
 func (mod *Module) PushToLocalSwarm(ctx *astral.Context, obj astral.Object) {
 	for _, sib := range mod.LocalSwarm() {
 		if sib.IsEqual(mod.node.Identity()) {

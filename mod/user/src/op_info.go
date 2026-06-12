@@ -11,6 +11,8 @@ type opInfoArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpInfo returns identity and contract metadata for this node's active contract.
+// Accessible only to the contract issuer or a current swarm member; rejects all others.
 func (mod *Module) OpInfo(ctx *astral.Context, q *routing.IncomingQuery, args opInfoArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {

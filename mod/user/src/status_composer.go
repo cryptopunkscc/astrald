@@ -7,6 +7,10 @@ import (
 
 var _ nearby.Composer = &Module{}
 
+// ComposeStatus attaches identity claims to a nearby composition based on the active mode.
+// In Visible mode, attaches the active contract or a claimable flag with a public profile.
+// In Stealth mode, attaches a StealthHint only when an active contract exists; emits nothing otherwise.
+// In Silent mode, does nothing.
 func (mod *Module) ComposeStatus(a nearby.Composition) {
 	switch mod.Nearby.Mode() {
 	case nearby.ModeSilent:

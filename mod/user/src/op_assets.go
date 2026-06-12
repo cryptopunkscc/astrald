@@ -10,6 +10,8 @@ type opAssetsArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpAssets streams all module assets to the caller, terminating with EOS.
+// On send failure it attempts to deliver an error frame before returning.
 func (mod *Module) OpAssets(ctx *astral.Context, q *routing.IncomingQuery, args opAssetsArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()

@@ -6,6 +6,9 @@ import (
 
 var _ core.QueryPreprocessor = &Module{}
 
+// PreprocessQuery attaches routing context to outgoing queries based on the active contract.
+// Attaches the active contract to any query whose caller is the issuer.
+// Adds relay nodes: all linked siblings when the target is the issuer; all active nodes otherwise.
 func (mod *Module) PreprocessQuery(qm *core.QueryModifier) error {
 	// get the active contract
 	ac := mod.ActiveContract()

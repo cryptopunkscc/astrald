@@ -10,6 +10,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// ReceiveObject handles ether broadcast and network-change events; it silently
+// ignores drops that did not originate from the local node.
 func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	// only receive objects from the local node
 	if !drop.SenderID().IsEqual(mod.node.Identity()) {

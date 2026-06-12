@@ -17,6 +17,9 @@ type opNewNodeContractArgs struct {
 	Out      string `query:"optional"`
 }
 
+// OpNewNodeContract constructs and returns an unsigned node contract.
+// Defaults to the module's own identity for user and the local node identity for node when omitted.
+// note: the contract is not signed or stored; the caller is responsible for the signing ceremony.
 func (mod *Module) OpNewNodeContract(ctx *astral.Context, query *routing.IncomingQuery, args opNewNodeContractArgs) (err error) {
 	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

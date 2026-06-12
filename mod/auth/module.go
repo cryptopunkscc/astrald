@@ -12,6 +12,8 @@ const (
 	MethodSignContract = "auth.sign_contract"
 )
 
+// ContractQueryBuilder builds and executes queries for active signed contracts.
+// Filters are cumulative; call Find to execute.
 type ContractQueryBuilder interface {
 	WithIssuer(*astral.Identity) ContractQueryBuilder
 	WithSubject(*astral.Identity) ContractQueryBuilder

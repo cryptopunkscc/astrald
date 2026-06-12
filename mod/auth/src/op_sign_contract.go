@@ -12,6 +12,8 @@ type opSignContractArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpSignContract handles the sign-contract remote operation: reads a Contract from the
+// channel, signs it as the local node, and writes the resulting SignedContract back.
 func (mod *Module) OpSignContract(ctx *astral.Context, q *routing.IncomingQuery, args opSignContractArgs) error {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

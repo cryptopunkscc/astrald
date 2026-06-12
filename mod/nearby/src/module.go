@@ -17,6 +17,9 @@ var _ nearby.Module = &Module{}
 
 const statusExpiration = 5 * time.Minute
 
+// Module implements the nearby protocol: it broadcasts the local node's status over
+// the ether layer, caches peer status messages, and resolves peer identities and
+// endpoints from those caches.
 type Module struct {
 	Deps
 	node   astral.Node
@@ -47,6 +50,9 @@ func (c *cache) GetIdentity() *astral.Identity {
 	return profile[0].NodeID
 }
 
+// Run blocks until ctx is cancelled; it waits for the user identity to be ready,
+// applies the configured mode, then drives periodic status broadcasts and an
+// initial network scan in the background.
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
@@ -82,6 +88,8 @@ func (mod *Module) AddStatusComposer(composer nearby.Composer) {
 	mod.composers.Add(composer)
 }
 
+// Mode returns the current broadcast mode; falls back to ModeVisible when no user
+// identity is set (node is unowned), and to ModeStealth when the mode is unset.
 func (mod *Module) Mode() nearby.Mode {
 	if mod.User.Identity() == nil {
 		return nearby.ModeVisible
@@ -98,6 +106,7 @@ func (mod *Module) SetMode(ctx *astral.Context, m nearby.Mode) error {
 	return mod.mode.Set(ctx, &m)
 }
 
+// Cache returns the live peer-status map after evicting entries older than statusExpiration.
 func (mod *Module) Cache() *sig.Map[string, *cache] {
 	mod.expireCache()
 	return &mod.cache
@@ -142,6 +151,8 @@ func (mod *Module) periodicUpdater(ctx *astral.Context) {
 	}
 }
 
+// Broadcast pushes the current status to all reachable peers; no-ops silently in
+// ModeSilent without returning an error.
 func (mod *Module) Broadcast() error {
 	if mod.Mode() == nearby.ModeSilent {
 		return nil
@@ -164,6 +175,8 @@ func (mod *Module) canBroadcast(s *nearby.StatusMessage) bool {
 	return mod.Mode() != nearby.ModeStealth || len(s.Attachments.Objects()) > 0
 }
 
+// Status assembles a StatusMessage by invoking every registered Composer; pass nil
+// to address the message to astral.Anyone (broadcast semantics).
 func (mod *Module) Status(receiver *astral.Identity) *nearby.StatusMessage {
 	s := &nearby.StatusMessage{
 		Attachments: astral.NewBundle(),

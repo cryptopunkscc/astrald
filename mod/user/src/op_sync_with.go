@@ -12,6 +12,7 @@ type opSyncWithArgs struct {
 	Out   string        `query:"optional"`
 }
 
+// OpSyncWith triggers an outbound asset sync with the specified node over the network zone.
 func (mod *Module) OpSyncWith(ctx *astral.Context, q *routing.IncomingQuery, args opSyncWithArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()

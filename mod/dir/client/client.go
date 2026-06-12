@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Client is a dir module RPC client; when EnableCache is true, resolved identities
+// and aliases are memoized for the lifetime of the client.
 type Client struct {
 	EnableCache  bool
 	targetID     *astral.Identity

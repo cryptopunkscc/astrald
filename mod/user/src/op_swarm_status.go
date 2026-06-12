@@ -12,6 +12,8 @@ type opSwarmStatusArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpSwarmStatus streams the status of every active node in the issuer's swarm.
+// Each entry includes the node identity, its display alias, and whether it is currently linked.
 func (mod *Module) OpSwarmStatus(ctx *astral.Context, q *routing.IncomingQuery, args opSwarmStatusArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {

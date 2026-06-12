@@ -8,6 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nearby"
 )
 
+// ResolveStatus extracts the sender identity from a StatusMessage using three strategies
+// in priority order: visible mode (PublicProfile or SignedContract attachment), then
+// stealth mode (commitment verification and XOR-unmasking against the local user identity).
 func (mod *Module) ResolveStatus(status *nearby.StatusMessage) *astral.Identity {
 	// visible mode: identity from signed contract
 	if c, ok := astral.First[*nearby.PublicProfile](status.Attachments.Objects()); ok {

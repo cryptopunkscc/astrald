@@ -9,6 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// IndexContract verifies and stores sc in the local DB; skips silently if already indexed.
+// Callers must hold no locks — the method acquires indexMu internally.
 func (mod *Module) IndexContract(ctx *astral.Context, sc *auth.SignedContract) error {
 	mod.indexMu.Lock()
 	defer mod.indexMu.Unlock()

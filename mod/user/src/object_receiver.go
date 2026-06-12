@@ -13,6 +13,8 @@ import (
 
 var _ objects.Receiver = &Module{}
 
+// ReceiveObject handles pushed objects: indexes incoming signed contracts and triggers sibling sync on new node-contract arrivals.
+// Accepts a LinkCreatedEvent from a swarm member to kick off endpoint synchronization without persisting the event.
 func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 	switch o := drop.Object().(type) {
 	case *auth.SignedContract:

@@ -13,6 +13,8 @@ func ApplyFilters(ctx *astral.Context, identity *astral.Identity, filters ...str
 	return Default().ApplyFilters(ctx, identity, filters...)
 }
 
+// ApplyFilters tests identity against the named server-side filters and returns
+// true if the identity matches all of them.
 func (client *Client) ApplyFilters(ctx *astral.Context, identity *astral.Identity, filters ...string) (bool, error) {
 	ch, err := client.queryCh(ctx, dir.MethodSetAlias, query.Args{
 		"id":      identity,

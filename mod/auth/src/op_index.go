@@ -13,6 +13,8 @@ type opIndexArgs struct {
 	Out string           `query:"optional"`
 }
 
+// OpIndex handles the index remote operation: loads a SignedContract by object ID and
+// indexes it into the local DB, responding with Ack on success or an error frame.
 func (mod *Module) OpIndex(ctx *astral.Context, q *routing.IncomingQuery, args opIndexArgs) error {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

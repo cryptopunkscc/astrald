@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
+// NewContract requests a new node-binding contract for the user identified by alias from the remote user module.
 func (client *Client) NewContract(ctx *astral.Context, alias string) (contract *auth.Contract, err error) {
 	ch, err := client.queryCh(ctx, user.OpNewNodeContract, query.Args{"user": alias})
 	if err != nil {
