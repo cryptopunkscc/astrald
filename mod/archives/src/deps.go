@@ -12,6 +12,8 @@ type Deps struct {
 	Objects objects.Module
 }
 
+// LoadDependencies injects required modules and registers the object-read
+// authorizer as a side effect.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	if err = core.Inject(mod.node, &mod.Deps); err != nil {
 		return

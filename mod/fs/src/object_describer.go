@@ -8,6 +8,7 @@ import (
 
 var _ objects.Describer = &Module{}
 
+// DescribeObject returns file-location descriptors for objectID; restricted to ZoneDevice callers.
 func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded

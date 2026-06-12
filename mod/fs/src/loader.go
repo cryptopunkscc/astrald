@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/resources"
 )
 
+// Loader constructs the Module and registers it with the core module registry.
 type Loader struct{}
 
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {

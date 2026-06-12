@@ -8,6 +8,7 @@ import (
 	modindexing "github.com/cryptopunkscc/astrald/mod/indexing"
 )
 
+// EnableRepo persists repoName in the tree and launches its sync goroutine.
 func (mod *Module) EnableRepo(ctx *astral.Context, repoName string) error {
 	_, err := mod.repos.Create(ctx, repoName)
 	if err != nil {
@@ -17,6 +18,8 @@ func (mod *Module) EnableRepo(ctx *astral.Context, repoName string) error {
 	return mod.startRepoSync(repoName)
 }
 
+// DisableRepo cancels the repo's sync goroutine and removes it from the
+// persisted tree; no-ops silently if the tree node is absent.
 func (mod *Module) DisableRepo(ctx *astral.Context, repoName string) error {
 	mod.stopRepoSync(repoName)
 

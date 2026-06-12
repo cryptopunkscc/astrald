@@ -12,6 +12,9 @@ const zipMimeType = "application/zip"
 
 var _ archives.Module = &Module{}
 
+// Module is the archives module implementation; it indexes ZIP archives,
+// serves their entries as virtual objects, and authorizes access through
+// the parent archive.
 type Module struct {
 	Deps
 	config Config
@@ -23,6 +26,8 @@ type Module struct {
 	autoIndexZone astral.Zone
 }
 
+// Run parses the AutoIndexZones config string into a Zone bitmask used to
+// filter which network zones trigger automatic archive indexing.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 

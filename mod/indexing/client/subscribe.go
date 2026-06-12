@@ -18,6 +18,8 @@ type Subscription struct {
 	closeMu sync.Once
 }
 
+// Subscribe opens a live change stream for the indexer identified by nonce.
+// A background goroutine closes the subscription when ctx is done.
 func (c *Client) Subscribe(ctx *astral.Context, nonce astral.Nonce) (*Subscription, error) {
 	ch, err := c.queryCh(ctx, indexing.MethodSubscribe, query.Args{
 		"nonce": nonce,

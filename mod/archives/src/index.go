@@ -10,6 +10,9 @@ import (
 
 type entryFunc func(*archives.Entry)
 
+// Index scans and persists the archive for objectID, returning a cached result
+// if one already exists. Emits EventArchiveIndexed on success.
+// note: serialized under mod.mu to prevent concurrent scans of the same object.
 func (mod *Module) Index(ctx context.Context, objectID *astral.ObjectID) (archive *archives.Archive, err error) {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()

@@ -15,6 +15,7 @@ type opNewRepoArgs struct {
 	Out   string `query:"optional"`
 }
 
+// OpNewRepo registers a new writable repository at the given path and adds it to the local group.
 func (mod *Module) OpNewRepo(ctx *astral.Context, q *routing.IncomingQuery, args opNewRepoArgs) (err error) {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

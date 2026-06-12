@@ -9,6 +9,7 @@ import (
 const ModuleName = "archives"
 const DBPrefix = "archives__"
 
+// Module indexes archive objects and evicts them from the index on demand.
 type Module interface {
 	Index(context.Context, *astral.ObjectID) (*Archive, error)
 	Forget(objectID *astral.ObjectID) error

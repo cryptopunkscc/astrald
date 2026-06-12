@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// SearchObject performs a case-insensitive path substring search over indexed
+// archive entries. Only serves ZoneVirtual; requires the "path" or "archive" tag.
 func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded

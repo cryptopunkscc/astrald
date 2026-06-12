@@ -41,6 +41,8 @@ type fileEntry struct {
 	modTime int64
 }
 
+// Indexer tracks filesystem paths in a database, hashing files to derive object IDs.
+// It manages a bounded work queue, per-root scope, I/O rate limits, and an event fan-out for subscribers.
 type Indexer struct {
 	mod *Module
 	log *log.Logger
