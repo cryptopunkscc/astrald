@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"sync/atomic"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/sig"
@@ -16,7 +17,21 @@ type Printer struct {
 
 var viewBuilders sig.Map[string, ViewBuilder]
 
+// fallbackView builds a View for an astral.Object whose ObjectType has no entry in
+// viewBuilders. Blueprint-backed objects (RuntimeObject) carry a runtime-only type name the
+// per-type registry can never match, so they route here instead of the %v Stringify dump.
+// nil until SetFallbackView installs one. ViewBuilder is not comparable, so the slot is an
+// atomic.Pointer rather than a sig.Value.
+var fallbackView atomic.Pointer[ViewBuilder]
+
 type ViewBuilder func(astral.Object) View
+
+// SetFallbackView installs the builder ViewFor consults after a per-type registry miss, before
+// the Stringify path. A builder returning nil declines, leaving Stringify to handle the object.
+// Replaces any prior fallback.
+func SetFallbackView(fn ViewBuilder) {
+	fallbackView.Store(&fn)
+}
 
 func NewPrinter(writer io.Writer) *Printer {
 	return &Printer{Writer: writer}
@@ -256,6 +271,13 @@ func ViewFor(a any) (view View) {
 	if o, ok := a.(astral.Object); ok {
 		if builder, found := viewBuilders.Get(o.ObjectType()); found {
 			return builder(o)
+		}
+		// why: external types carry a runtime-only name viewBuilders can't key on; route them
+		// through the fallback (generic blueprint render) before the raw %v Stringify dump.
+		if fn := fallbackView.Load(); fn != nil {
+			if v := (*fn)(o); v != nil {
+				return v
+			}
 		}
 	}
 
