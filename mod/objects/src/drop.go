@@ -26,6 +26,8 @@ func (drop *Drop) Object() astral.Object {
 	return drop.object
 }
 
+// Accept marks the drop accepted and, if save is true, persists the object to
+// the target repo. Persistence is idempotent: a second save call is a no-op.
 func (drop *Drop) Accept(save bool) error {
 	drop.accepted.Set(true)
 	if !save {

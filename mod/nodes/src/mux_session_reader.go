@@ -50,6 +50,7 @@ func (r *muxSessionReader) Close() error {
 	return nil
 }
 
+// Push appends to the current buffer, falling through to the queued next buffer if the current one is already closed (mid-migration).
 func (r *muxSessionReader) Push(p []byte) error {
 	r.cond.L.Lock()
 	buf := r.buf
@@ -83,6 +84,7 @@ func (r *muxSessionReader) Resume() {
 	r.cond.Broadcast()
 }
 
+// Advance closes the current buffer and, once it has drained, promotes the queued next buffer; no-op if none is queued.
 func (r *muxSessionReader) Advance() {
 	r.cond.L.Lock()
 	defer r.cond.L.Unlock()
@@ -97,6 +99,7 @@ func (r *muxSessionReader) Advance() {
 	}
 }
 
+// Read blocks while paused or empty, transparently switching to the next buffer at EOF, so migration is invisible to the caller.
 func (r *muxSessionReader) Read(p []byte) (n int, err error) {
 	for {
 		r.cond.L.Lock()

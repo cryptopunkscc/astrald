@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+// ReadSeeker adapts a repository's offset-based Read into an io.ReadSeeker.
+// note: Seek reopens the underlying reader at the new position rather than seeking in place.
 type ReadSeeker struct {
 	readerID *astral.Identity
 	objectID *astral.ObjectID
@@ -43,6 +45,7 @@ func (r *ReadSeeker) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Seek reopens the underlying reader at the resolved position; it does not validate against object bounds.
 func (r *ReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

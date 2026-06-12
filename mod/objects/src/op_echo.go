@@ -20,6 +20,9 @@ type opEchoArgs struct {
 	Out    string  `query:"optional"`
 }
 
+// OpEcho relays received objects back, optionally filtered by Only/Except and
+// stopped on the Stop type. Strict mode fails on objects whose blueprint isn't
+// registered; lenient mode passes them through unparsed.
 func (mod *Module) OpEcho(ctx *astral.Context, q *routing.IncomingQuery, args opEchoArgs) (err error) {
 	// prepare lists
 	var only, except []string

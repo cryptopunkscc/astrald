@@ -4,12 +4,17 @@ import (
 	"time"
 )
 
+// LinkPressureDetector tracks per-link throughput and RTT to decide when a link is
+// under enough pressure to warrant upgrading to a better transport. Fed via OnBytes
+// and OnRTT; IsHigh reports the current state and the onHigh callback fires on entry.
 type LinkPressureDetector interface {
 	OnBytes(n int, now time.Time)
 	OnRTT(rtt time.Duration, now time.Time)
 	IsHigh() bool
 }
 
+// LinkPressureConfig tunes the leaky-bucket throughput score and RTT EMA that combine,
+// with hysteresis between Enter and Exit, into the HIGH-pressure trigger.
 type LinkPressureConfig struct {
 	// LeakRate is how fast the token bucket drains in bytes/sec.
 	// Traffic below this rate does not accumulate pressure; only sustained

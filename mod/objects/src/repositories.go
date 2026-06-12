@@ -21,6 +21,7 @@ func (mod *Module) GetRepository(name string) (repo objects.Repository) {
 	return
 }
 
+// RemoveRepository removes the named repository, drops it from every group, and fires its AfterRemoved callback if implemented.
 func (mod *Module) RemoveRepository(name string) error {
 	if len(name) == 0 {
 		return errors.New("name is empty")

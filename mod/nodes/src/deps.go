@@ -25,6 +25,8 @@ type Deps struct {
 	Events    events.Module
 }
 
+// LoadDependencies injects deps and registers the "linked" directory filter and
+// the relay-for authorizer.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

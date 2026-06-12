@@ -10,6 +10,8 @@ import (
 	_ "github.com/cryptopunkscc/astrald/mod/all/pub"
 )
 
+// Describe streams descriptors on the returned channel until EOS, then closes it.
+// The error pointer is only valid once the channel is closed.
 func (client *Client) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, *error) {
 	ch, err := client.queryCh(ctx, objects.MethodDescribe, query.Args{
 		"id": objectID.String(),

@@ -51,6 +51,7 @@ type Module struct {
 	privateKey *crypto.PrivateKey
 }
 
+// Run schedules the endpoint-cleanup task and blocks until ctx is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Deps.Scheduler.Ready()

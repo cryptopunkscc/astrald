@@ -12,6 +12,8 @@ type opRegisterDescriberArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpRegisterDescriber registers the caller as an external describer.
+// Rejects network-origin callers and self-registration by the node.
 func (mod *Module) OpRegisterDescriber(ctx *astral.Context, q *routing.IncomingQuery, args opRegisterDescriberArgs) error {
 	// Keep this local for now; extract shared external registration validation once the API settles.
 	if q.Origin() == astral.OriginNetwork {

@@ -13,6 +13,8 @@ type opPushArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpPush receives pushed objects from the caller and replies with a Bool
+// per object indicating whether it was accepted.
 func (mod *Module) OpPush(ctx *astral.Context, q *routing.IncomingQuery, args opPushArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

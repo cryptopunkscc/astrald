@@ -14,6 +14,7 @@ type File struct {
 	io.ReadCloser
 }
 
+// Seek delegates to the underlying reader, or returns ErrUnsupported if it is not a Seeker.
 func (f File) Seek(offset int64, whence int) (int64, error) {
 	if s, ok := f.ReadCloser.(io.Seeker); ok {
 		return s.Seek(offset, whence)

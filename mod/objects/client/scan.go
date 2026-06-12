@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// Scan streams the repo's object IDs over the returned channel; the error pointer is valid only after it closes.
+// With follow, a nil ID separates the initial snapshot from subsequent live updates.
 func (client *Client) Scan(ctx *astral.Context, repo string, follow bool) (<-chan *astral.ObjectID, *error) {
 	ch, err := client.queryCh(ctx, objects.MethodScan, query.Args{
 		"repo":   repo,

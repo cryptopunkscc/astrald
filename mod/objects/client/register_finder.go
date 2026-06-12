@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// RegisterFinder registers the caller as a finder provider and blocks until acked.
 func (client *Client) RegisterFinder(ctx *astral.Context) error {
 	ch, err := client.queryCh(ctx, objects.MethodRegisterFinder, nil)
 	if err != nil {

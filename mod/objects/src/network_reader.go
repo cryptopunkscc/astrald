@@ -9,6 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
+// NetworkReader streams an object from a remote provider. Seeking reopens the
+// underlying connection at a new offset rather than seeking in place.
 type NetworkReader struct {
 	mod      *Module
 	objectID *astral.ObjectID
@@ -25,6 +27,8 @@ func (r *NetworkReader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Seek closes the current network read and reopens it at the resolved offset by
+// issuing a fresh read query to the provider. Returns 0, not the new position.
 func (r *NetworkReader) Seek(offset int64, whence int) (int64, error) {
 	r.ReadCloser.Close()
 

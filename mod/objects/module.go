@@ -110,6 +110,7 @@ type Receiver interface {
 	ReceiveObject(Drop) error
 }
 
+// Drop is a received object pending a decision; Accept resolves it, persisting when save is true.
 type Drop interface {
 	SenderID() *astral.Identity
 	Object() astral.Object
@@ -124,6 +125,8 @@ type Holder interface {
 	HoldObject(*astral.ObjectID) bool
 }
 
+// IsOffsetLimitValid reports whether the offset/limit window fits within the object.
+// A limit of 0 is treated as a valid zero-length window, not "read to end".
 func IsOffsetLimitValid(objectID *astral.ObjectID, offset int64, limit int64) bool {
 	// offset has to be non-negative and cannot be larger than the object
 	if offset < 0 || offset > int64(objectID.Size) {

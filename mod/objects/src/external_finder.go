@@ -31,6 +31,9 @@ func NewExternalFinder(mod *Module, id *astral.Identity) *ExternalFinder {
 
 func (f *ExternalFinder) SourceIdentity() *astral.Identity { return f.id }
 
+// FindObject queries the remote peer and relays the provider identities it
+// returns. The stream runs under a per-call timeout and closes when it ends,
+// errors, or the timeout fires.
 func (f *ExternalFinder) FindObject(ctx *astral.Context, id *astral.ObjectID) (<-chan *astral.Identity, error) {
 	providerCtx, cancel := ctx.WithTimeout(f.timeout)
 

@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// RegisterDescriber registers the caller as a describer provider and blocks until acked.
 func (client *Client) RegisterDescriber(ctx *astral.Context) error {
 	ch, err := client.queryCh(ctx, objects.MethodRegisterDescriber, nil)
 	if err != nil {

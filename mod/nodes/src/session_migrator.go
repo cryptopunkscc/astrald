@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
+// SessionMigrator moves an open session from one link to another.
+// Call Begin, SendMigrateFrame, WaitClosed, then Complete in that order.
 type SessionMigrator struct {
 	mod            *Module
 	session        *session
@@ -31,6 +33,8 @@ func (mod *Module) newSessionMigrator(session *session) (*SessionMigrator, error
 	return &SessionMigrator{mod: mod, session: session, reader: reader, writer: writer}, nil
 }
 
+// Begin transitions the session to migrating, pauses the writer, and swaps
+// reader/writer buffers onto target. Fails unless the session is open.
 func (m *SessionMigrator) Begin(target *Link) error {
 	if !m.session.swapState(stateOpen, stateMigrating) {
 		m.mod.log.Logv(1, "session %v in state %v, cannot migrate", m.session.Nonce, m.session.getState())
@@ -58,11 +62,13 @@ func (m *SessionMigrator) Begin(target *Link) error {
 	return nil
 }
 
+// SendMigrateFrame tells the peer to migrate, sent on the old link after Begin.
 func (m *SessionMigrator) SendMigrateFrame() error {
 	m.mod.log.Logv(1, "sending migrate frame for session %v on link %v", m.session.Nonce, m.oldLink.id)
 	return m.oldLink.GetMux().SendMigrateFrame(m.session.Nonce)
 }
 
+// WaitClosed blocks until the old link drains its input buffer or ctx ends.
 func (m *SessionMigrator) WaitClosed(ctx context.Context) error {
 	m.mod.log.Logv(1, "waiting for old input buffer to close for session %v", m.session.Nonce)
 	select {
@@ -78,6 +84,8 @@ func (m *SessionMigrator) SetPeerBuffer(n int) {
 	m.peerBuffer = n
 }
 
+// Complete reattaches the session to the new link's mux, reopens it, and
+// resumes the writer grown to the peer's advertised buffer.
 func (m *SessionMigrator) Complete() error {
 	m.mod.log.Logv(1, "resuming session %v on link %v (peer buffer %v)", m.session.Nonce, m.newLink.id, m.peerBuffer)
 

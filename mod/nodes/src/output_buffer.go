@@ -25,6 +25,8 @@ func NewOutputBuffer(write func([]byte) error) *OutputBuffer {
 	return &OutputBuffer{write: write}
 }
 
+// Write never blocks: with no available space it returns *ErrBufferEmpty whose channel
+// closes once Grow adds space. It may consume only part of p, bounded by available space.
 func (b *OutputBuffer) Write(p []byte) (int, error) {
 	b.mu.Lock()
 	if b.closed {

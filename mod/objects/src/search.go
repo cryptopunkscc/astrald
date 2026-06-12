@@ -10,6 +10,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Search runs all local searchers, and network searchers when the context zone permits, merging their results into one channel.
+// The channel closes once every searcher finishes; the returned error reports only setup failures.
 func (mod *Module) Search(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	search := &objects.Search{
 		CallerID: ctx.Identity(),
@@ -105,6 +107,7 @@ func (mod *Module) Search(ctx *astral.Context, query objects.SearchQuery) (<-cha
 	return results, nil
 }
 
+// AddSearcher registers a searcher, deduplicating by source identity so each source is added at most once.
 func (mod *Module) AddSearcher(searcher objects.Searcher) error {
 	source, ok, err := objects.SourceIdentity(searcher)
 	if err != nil {

@@ -12,6 +12,8 @@ type opPurgeArgs struct {
 	Zone *astral.Zone `query:"optional"`
 }
 
+// OpPurge deletes unheld objects from a repository, streaming each purged ObjectID
+// then a final error or EOS. Defaults to ZoneAll when no zone is given.
 func (mod *Module) OpPurge(ctx *astral.Context, q *routing.IncomingQuery, args opPurgeArgs) error {
 	ctx = ctx.WithIdentity(q.Caller())
 	if args.Zone == nil {

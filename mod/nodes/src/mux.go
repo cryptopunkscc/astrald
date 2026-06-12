@@ -16,6 +16,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Mux multiplexes many query sessions over one link channel, dispatching inbound frames and tracking per-session state.
 type Mux struct {
 	mod *Module
 	ch  *channel.Channel
@@ -66,6 +67,7 @@ func (m *Mux) SendMigrateFrame(nonce astral.Nonce) error {
 	return m.ch.Send(&frames.Migrate{Nonce: nonce})
 }
 
+// SetRouter installs the router once; subsequent calls are ignored. Unblocks waitRouter.
 func (m *Mux) SetRouter(r astral.Router) {
 	if !m.routerOnce.CompareAndSwap(false, true) {
 		return
@@ -74,6 +76,7 @@ func (m *Mux) SetRouter(r astral.Router) {
 	close(m.routerSet)
 }
 
+// RouteQuery opens a session and sends a query (or relay query) frame, then blocks for the peer's routing result or ctx cancellation; on accept it pumps the session into w.
 func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (_ io.WriteCloser, err error) {
 	sourceID := m.RemoteIdentity()
 	if q.Caller.IsEqual(ctx.Identity()) {
@@ -124,6 +127,7 @@ func (m *Mux) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Writ
 	}
 }
 
+// Handle dispatches one inbound frame; query frames are handled in their own goroutine, the rest inline on the read loop.
 func (m *Mux) Handle(obj astral.Object) error {
 	frame, ok := obj.(frames.Frame)
 	if !ok {

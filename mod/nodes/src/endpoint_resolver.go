@@ -10,6 +10,8 @@ import (
 	nodescli "github.com/cryptopunkscc/astrald/mod/nodes/client"
 )
 
+// ResolveEndpoints fans out to all registered resolvers and merges their results
+// into one channel, closed once every resolver finishes.
 func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan *nodes.EndpointWithTTL, err error) {
 	var ch = make(chan *nodes.EndpointWithTTL)
 
@@ -62,6 +64,8 @@ func (mod *Module) runResolver(ctx *astral.Context, r nodes.EndpointResolver, no
 	}
 }
 
+// UpdateNodeEndpoints asks a remote resolver node for identity's endpoints and
+// stores them locally. Per-endpoint store errors are logged, not returned.
 func (mod *Module) UpdateNodeEndpoints(ctx *astral.Context, resolver *astral.Identity, identity *astral.Identity) error {
 	client := nodescli.New(resolver, astrald.Default())
 

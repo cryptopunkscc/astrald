@@ -13,6 +13,8 @@ type opProbeArgs struct {
 	Out  string           `query:"optional"`
 }
 
+// OpProbe probes a single object when args.ID is set, otherwise streams probes
+// for ObjectIDs received over the channel until EOS.
 func (mod *Module) OpProbe(ctx *astral.Context, q *routing.IncomingQuery, args opProbeArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

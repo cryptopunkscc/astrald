@@ -6,11 +6,14 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// Frame is a message exchanged over a node link.
 type Frame interface {
 	astral.Object
 	fmt.Stringer
 }
 
+// FrameTypes maps frame opcodes to object types by slice index.
+// note: order is the wire opcode; never reorder or remove entries.
 var FrameTypes = []string{
 	"nodes.frames.ping",
 	"nodes.frames.query",
