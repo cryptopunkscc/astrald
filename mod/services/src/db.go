@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// DB wraps gorm.DB and provides the persistence layer for the services module.
 type DB struct {
 	db *gorm.DB
 }

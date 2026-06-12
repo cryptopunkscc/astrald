@@ -11,6 +11,8 @@ import (
 
 var _ exonet.Parser = &Module{}
 
+// Parse decodes a "gatewayID:targetID" address string into a gateway Endpoint.
+// Returns an error if either identity is unresolvable or if gatewayID equals targetID.
 func (mod *Module) Parse(network string, address string) (exonet.Endpoint, error) {
 	if network != NetworkName {
 		return nil, exonet.ErrUnsupportedNetwork

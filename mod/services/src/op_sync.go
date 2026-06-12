@@ -13,6 +13,8 @@ type opSyncArgs struct {
 	Out    string `query:"optional"`
 }
 
+// OpSync fetches and caches services for the requested identity over ZoneNetwork.
+// Any inbound channel message cancels the sync, allowing the caller to abort early.
 func (mod *Module) OpSync(ctx *astral.Context, q *routing.IncomingQuery, args opSyncArgs) (err error) {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

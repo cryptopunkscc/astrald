@@ -8,6 +8,8 @@ import (
 
 var _ services.Discoverer = &Module{}
 
+// DiscoverServices advertises the gateway service when enabled.
+// If follow is true, the channel stays open (with a nil sentinel after the initial update) until ctx is done.
 func (mod *Module) DiscoverServices(
 	ctx *astral.Context,
 	caller *astral.Identity,

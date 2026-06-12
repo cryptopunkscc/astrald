@@ -2,6 +2,7 @@ package gateway
 
 import "github.com/cryptopunkscc/astrald/astral"
 
+// Visibility controls whether a registered gateway node is advertised publicly or kept private.
 type Visibility = astral.String8
 
 const (

@@ -11,11 +11,13 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/services"
 )
 
+// Client queries the services module for service discovery on a target node.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity
 }
 
+// New returns a Client targeting targetID; a nil targetID targets the local node via astrald.Default().
 func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 	if astral == nil {
 		astral = astrald.Default()
@@ -25,6 +27,7 @@ func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 
 var defaultClient *Client
 
+// Default returns the package-level singleton Client, initializing it lazily on first call.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(nil, astrald.Default())
@@ -32,6 +35,9 @@ func Default() *Client {
 	return defaultClient
 }
 
+// Discover streams service updates from the target node. The channel first delivers the current
+// snapshot; when follow is true a nil sentinel marks the snapshot/live boundary, followed by
+// live updates until ctx is cancelled. When follow is false the channel closes after the snapshot.
 func (client *Client) Discover(ctx *astral.Context, follow bool) (<-chan *services.Update, error) {
 	ch, err := client.queryCh(ctx, services.MethodDiscover, query.Args{
 		"follow": follow,

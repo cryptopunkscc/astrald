@@ -10,6 +10,8 @@ import (
 
 var _ nearby.Composer = &Module{}
 
+// ComposeStatus attaches gateway endpoints to the nearby composition only in ModeVisible.
+// Silent and stealth modes suppress all gateway advertisement.
 func (mod *Module) ComposeStatus(a nearby.Composition) {
 	switch mod.Nearby.Mode() {
 	case nearby.ModeSilent:

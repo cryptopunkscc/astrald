@@ -11,6 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/exonet"
 )
 
+// Endpoint identifies a routable destination through a specific gateway node:
+// traffic to TargetID is forwarded via GatewayID over the "gw" exonet network.
 type Endpoint struct {
 	GatewayID *astral.Identity
 	TargetID  *astral.Identity
@@ -97,6 +99,7 @@ func (e *Endpoint) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// ParseEndpoint parses a gateway endpoint from the canonical "<gatewayID>:<targetID>" text form.
 func ParseEndpoint(s string) (*Endpoint, error) {
 	// expected: <gateway_id>:<target_id>
 	parts := strings.SplitN(s, ":", 2)

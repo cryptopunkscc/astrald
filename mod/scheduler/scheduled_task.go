@@ -10,6 +10,7 @@ type ScheduledTask interface {
 	Task() Task
 	State() State
 	ScheduledAt() time.Time
+	// CancelWithError cancels the task and sets the error returned by Err.
 	CancelWithError(error)
 	Cancel()
 	Err() error

@@ -30,6 +30,8 @@ func (mod *Module) newConnPool(ctx *astral.Context, gatewayID *astral.Identity, 
 	}
 }
 
+// Run keeps the pool at minIdleConns connections, retrying on dial failure with exponential backoff.
+// Returns gateway.ErrSocketUnreachable after maxDialFails consecutive failures, or the context error on shutdown.
 func (p *ConnPool) Run() error {
 	retry, err := sig.NewRetry(time.Second, 30*time.Second, 2)
 	if err != nil {

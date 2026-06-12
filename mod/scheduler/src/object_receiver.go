@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
+// ReceiveObject fans out incoming event objects to all currently running tasks that implement EventReceiver.
 func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 	switch o := drop.Object().(type) {
 	case *events.Event:

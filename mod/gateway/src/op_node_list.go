@@ -11,6 +11,7 @@ type opListArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpNodeList streams the identities of all publicly visible registered nodes, terminated by EOS.
 func (mod *Module) OpNodeList(ctx *astral.Context, q *routing.IncomingQuery, args opListArgs) error {
 	ch := q.Accept(channel.WithOutputFormat(args.Out))
 	defer ch.Close()

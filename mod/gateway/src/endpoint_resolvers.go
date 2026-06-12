@@ -11,6 +11,9 @@ import (
 
 var _ nodes.EndpointResolver = &Module{}
 
+// ResolveEndpoints returns gateway-wrapped endpoints only for this node's own
+// identity; requests for any other node return an empty result immediately.
+// note: could be extended to resolve endpoints for nodes this module gateways for.
 func (mod *Module) ResolveEndpoints(context *astral.Context, nodeID *astral.Identity) (<-chan *nodes.EndpointWithTTL, error) {
 	if !nodeID.IsEqual(mod.node.Identity()) {
 		// note: we might resolve endpoints if we act as their gateway

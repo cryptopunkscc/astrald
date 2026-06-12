@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tree"
 )
 
+// Client is a typed RPC client for the tree service.
+// A nil targetID routes queries to the local node.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity
@@ -14,6 +16,7 @@ type Client struct {
 
 var defaultClient *Client
 
+// New creates a Client targeting targetID; a nil astral falls back to the process default.
 func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 	if astral == nil {
 		astral = astrald.Default()
