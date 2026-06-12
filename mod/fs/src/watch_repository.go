@@ -18,6 +18,9 @@ import (
 var _ objects.Repository = &WatchRepository{}
 var _ objects.AfterRemovedCallback = &WatchRepository{}
 
+// WatchRepository is a read-only, database-indexed repository that watches a directory tree for
+// filesystem events and keeps the index up to date via the module's indexer.
+// scanCancel stops any in-progress initial scan when the repository is removed.
 type WatchRepository struct {
 	mod        *Module
 	label      string
@@ -26,6 +29,9 @@ type WatchRepository struct {
 	scanCancel context.CancelFunc
 }
 
+// NewWatchRepository creates a WatchRepository for an absolute directory path, wires inotify
+// callbacks, and registers the root with the module's indexer for initial and incremental indexing.
+// Returns an error if root is relative, does not exist, or is not a directory.
 func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepository, err error) {
 	if !filepath.IsAbs(root) {
 		return nil, fs.ErrNotAbsolute
@@ -71,6 +77,7 @@ func NewWatchRepository(mod *Module, root string, label string) (repo *WatchRepo
 
 var _ objects.Repository = &WatchRepository{}
 
+// Contains checks the database index rather than the filesystem directly.
 func (repo *WatchRepository) Contains(ctx *astral.Context, objectID *astral.ObjectID) (bool, error) {
 	return repo.mod.db.ObjectExists(repo.root, objectID)
 }
@@ -83,6 +90,8 @@ func (repo *WatchRepository) onRemove(path string) {
 	repo.mod.indexer.deletePath(path)
 }
 
+// Scan emits all known object IDs from the database, then — when follow is true — sends a nil
+// sentinel before streaming live indexer events filtered to this repository's root.
 func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
 	ch := make(chan *astral.ObjectID)
 
@@ -128,6 +137,8 @@ func (repo *WatchRepository) Scan(ctx *astral.Context, follow bool) (<-chan *ast
 	return ch, nil
 }
 
+// Read resolves the object to a filesystem path via the database index and tries each candidate
+// in order, returning the first file that opens and seeks successfully.
 func (repo *WatchRepository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	rows, err := repo.mod.db.FindObject(repo.root, objectID)
 	if err != nil {
@@ -160,6 +171,7 @@ func (repo *WatchRepository) Read(ctx *astral.Context, objectID *astral.ObjectID
 	return nil, objects.ErrNotFound
 }
 
+// Create is not supported; WatchRepository is read-only.
 func (repo *WatchRepository) Create(ctx *astral.Context, opts *objects.CreateOpts) (objects.Writer, error) {
 	return nil, errors.ErrUnsupported
 }
@@ -168,10 +180,12 @@ func (repo *WatchRepository) Label() string {
 	return repo.label
 }
 
+// Delete is not supported; WatchRepository is read-only.
 func (repo *WatchRepository) Delete(ctx *astral.Context, objectID *astral.ObjectID) error {
 	return errors.ErrUnsupported
 }
 
+// Free always returns 0 because the repository does not allocate storage; writes are unsupported.
 func (repo *WatchRepository) Free(ctx *astral.Context) (int64, error) {
 	return 0, nil
 }
@@ -180,6 +194,8 @@ func (repo *WatchRepository) String() string {
 	return repo.label
 }
 
+// AfterRemoved is called by the objects system when this repository is unregistered.
+// It cancels any in-flight scan, closes the filesystem watcher, and deregisters the root from the indexer.
 func (repo *WatchRepository) AfterRemoved(name string) {
 	if repo.scanCancel != nil {
 		repo.scanCancel()

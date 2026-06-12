@@ -12,8 +12,12 @@ import (
 	"time"
 )
 
+// DefaultWriteTimeout is the quiet-period after the last write event before OnWriteDone is fired.
 const DefaultWriteTimeout = 3 * time.Second
 
+// Watcher wraps fsnotify with per-file write debouncing: OnWriteDone fires only after no further
+// write events arrive within WriteTimeout, preventing partial-file processing.
+// All callback fields are optional; a nil callback is silently skipped.
 type Watcher struct {
 	OnWrite       func(string)
 	OnWriteDone   func(string) // called WriteTimeout after last write
@@ -30,6 +34,7 @@ type Watcher struct {
 	mu       sync.Mutex
 }
 
+// NewWatcher creates a Watcher and starts its background event-dispatch goroutine.
 func NewWatcher() (*Watcher, error) {
 	var err error
 	var w = &Watcher{

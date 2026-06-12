@@ -15,6 +15,9 @@ var _ objects.Writer = &Writer{}
 
 const tempFilePrefix = ".tmp."
 
+// Writer streams object data to a randomly named temp file and computes the content-addressed
+// ObjectID on the fly; Commit renames the temp file to its final name, Discard removes it.
+// Either Commit or Discard must be called exactly once.
 type Writer struct {
 	repo      *Repository
 	path      string
@@ -46,6 +49,7 @@ func NewWriter(repo *Repository, path string) (*Writer, error) {
 	}, nil
 }
 
+// Write feeds bytes to both the backing file and the content-address resolver simultaneously.
 func (w *Writer) Write(p []byte) (n int, err error) {
 	n, err = w.file.Write(p)
 
@@ -56,6 +60,9 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Commit finalizes the object: renames the temp file to its content-addressed name,
+// deduplicates silently if a file with that name already exists, then notifies the repository.
+// Returns an error if the writer was already closed or the rename fails.
 func (w *Writer) Commit() (*astral.ObjectID, error) {
 	if !w.finalized.CompareAndSwap(false, true) {
 		return nil, errors.New("writer closed")

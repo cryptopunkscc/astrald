@@ -10,6 +10,8 @@ import (
 
 var _ objects.Describer = &Module{}
 
+// DescribeObject returns a descriptor for a previously-indexed archive.
+// Only serves ZoneDevice; returns ErrZoneExcluded for all other zones.
 func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded

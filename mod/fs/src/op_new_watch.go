@@ -15,6 +15,8 @@ type opNewWatchArgs struct {
 	Out   string `query:"optional"`
 }
 
+// OpNewWatch registers a new watched repository at the given path, starts an async background scan,
+// and adds the repository to both the objects store and the local group.
 func (mod *Module) OpNewWatch(ctx *astral.Context, q *routing.IncomingQuery, args opNewWatchArgs) (err error) {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

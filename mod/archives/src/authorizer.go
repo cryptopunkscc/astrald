@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// AuthorizeObjectsRead grants read access to an archive entry by recursively
+// verifying that the actor can read the parent archive that contains it.
 func (mod *Module) AuthorizeObjectsRead(ctx *astral.Context, action *objects.ReadObjectAction) bool {
 	var rows []*dbEntry
 

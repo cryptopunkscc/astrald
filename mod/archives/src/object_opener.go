@@ -7,6 +7,8 @@ import (
 	"io"
 )
 
+// OpenObject serves an archive entry as a readable stream by locating it
+// across all known parent archives. Only serves ZoneVirtual.
 func (mod *Module) OpenObject(ctx *astral.Context, objectID *astral.ObjectID) (io.ReadCloser, error) {
 	if !ctx.Zone().Is(astral.ZoneVirtual) {
 		return nil, astral.ErrZoneExcluded

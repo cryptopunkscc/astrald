@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// Reader wraps a file with an optional byte limit and a back-reference to the owning repository.
+// A limit of -1 disables enforcement; 0 signals EOF immediately.
 type Reader struct {
 	io.ReadSeekCloser
 	name  string
@@ -24,6 +26,7 @@ func NewReader(f *os.File, name string, limit int64, repo objects.Repository) *R
 	}
 }
 
+// Read enforces the remaining byte limit, reducing it with each successful read.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	switch {
 	case r.limit < 0:
