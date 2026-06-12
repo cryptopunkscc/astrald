@@ -24,10 +24,12 @@ type Modules struct {
 	log     *log2.Logger
 }
 
+// Module runs its services for the lifetime of the context and returns when the context ends.
 type Module interface {
 	Run(*astral.Context) error
 }
 
+// ModuleLoader instantiates a module. Load must not access other modules; load order is undefined.
 type ModuleLoader interface {
 	Load(astral.Node, assets.Assets, *log2.Logger) (Module, error)
 }
@@ -46,6 +48,7 @@ func NewModules(n *Node, mods []string, assets assets.Assets, log *log2.Logger) 
 	return m, nil
 }
 
+// Run drives all enabled modules through the load, dependency, prepare, and run stages in order, then blocks until the context ends.
 func (m *Modules) Run(ctx *astral.Context) error {
 	// Load enabled modules. Loaders should only return a new instance of the module and must not try
 	// to access other modules, as the order of loading is undefined.
@@ -220,6 +223,7 @@ func (m *Modules) Loaded() []Module {
 	return mods
 }
 
+// RegisterModule adds a loader to the global registry; fails if the name is already taken.
 func RegisterModule(name string, loader ModuleLoader) error {
 	if _, ok := modules.Set(name, loader); !ok {
 		return errors.New("module already added")
@@ -228,6 +232,7 @@ func RegisterModule(name string, loader ModuleLoader) error {
 	return nil
 }
 
+// Load returns the named module type-asserted to M, or ErrModuleUnavailable if missing or of the wrong type.
 func Load[M any](node astral.Node, name string) (M, error) {
 	cnode, ok := node.(*Node)
 	if !ok {
@@ -282,10 +287,12 @@ func Inject(node astral.Node, target any) (err error) {
 	return
 }
 
+// DependencyLoader is optionally implemented by modules to resolve dependencies in the dependency stage, before Prepare.
 type DependencyLoader interface {
 	LoadDependencies(ctx *astral.Context) error
 }
 
+// Preparer is optionally implemented by modules to configure themselves in the prepare stage, before Run.
 type Preparer interface {
 	Prepare(context.Context) error
 }

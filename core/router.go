@@ -14,6 +14,7 @@ var _ astral.Router = &Router{}
 
 const routingTimeout = 60 * time.Second
 
+// Router wraps a PriorityRouter, tracking live connections and running query preprocessors around each route.
 type Router struct {
 	node *Node
 	*routing.PriorityRouter
@@ -21,6 +22,7 @@ type Router struct {
 	preprocessors sig.Set[QueryPreprocessor]
 }
 
+// QueryPreprocessor inspects and mutates each query before routing; returning an error or blocking rejects it.
 type QueryPreprocessor interface {
 	PreprocessQuery(*QueryModifier) error
 }
@@ -38,6 +40,7 @@ func (r *Router) AddQueryPreprocessor(f QueryPreprocessor) error {
 	return r.preprocessors.Add(f)
 }
 
+// RouteQuery defaults missing caller/target to this node, runs preprocessors (any block yields RouteNotFound), then routes and logs the outcome.
 func (r *Router) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (target io.WriteCloser, err error) {
 	if q.Caller == nil {
 		q.Caller = r.node.identity

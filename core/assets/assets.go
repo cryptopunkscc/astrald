@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Assets is the contract for node-local storage: raw resources, YAML config, and a shared database handle.
 type Assets interface {
 	Res() resources.Resources
 	Read(name string) ([]byte, error)
