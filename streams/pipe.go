@@ -6,6 +6,8 @@ import (
 
 var _ io.ReadWriteCloser = PipeEnd{}
 
+// PipeEnd is one end of a bidirectional pipe; reading from it consumes data written by the remote end and vice versa.
+// A read or write error on one side automatically closes the opposite direction.
 type PipeEnd struct {
 	r *io.PipeReader
 	w *io.PipeWriter
@@ -25,7 +27,7 @@ func Pipe() (left PipeEnd, right PipeEnd) {
 		}
 }
 
-// io.ErrClosedPipe, io.EOF
+// Read reads from the remote writer's data; closes the local write side on any error so the remote end sees EOF.
 func (pipe PipeEnd) Read(p []byte) (n int, err error) {
 	n, err = pipe.r.Read(p)
 	if err != nil {
@@ -34,6 +36,7 @@ func (pipe PipeEnd) Read(p []byte) (n int, err error) {
 	return
 }
 
+// Write sends data to the remote reader; closes the local read side on any error.
 func (pipe PipeEnd) Write(p []byte) (n int, err error) {
 	n, err = pipe.w.Write(p)
 	if err != nil {

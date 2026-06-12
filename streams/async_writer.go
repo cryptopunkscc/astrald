@@ -8,6 +8,8 @@ import (
 
 var ErrBufferOverflow = errors.New("buffer overflow")
 
+// AsyncWriter buffers writes in memory and flushes them to the underlying WriteCloser in a background goroutine.
+// Writes return immediately as long as buffer capacity is available; they fail with ErrBufferOverflow if not.
 type AsyncWriter struct {
 	writer     io.WriteCloser
 	afterFlush func([]byte)
@@ -21,6 +23,7 @@ type AsyncWriter struct {
 	done       chan struct{}
 }
 
+// NewAsyncWriter creates an AsyncWriter and starts the background flusher goroutine.
 func NewAsyncWriter(output io.WriteCloser, bufferSize int) *AsyncWriter {
 	var w = &AsyncWriter{
 		writer:     output,
@@ -36,6 +39,8 @@ func NewAsyncWriter(output io.WriteCloser, bufferSize int) *AsyncWriter {
 
 }
 
+// Write enqueues p for asynchronous delivery; returns ErrBufferOverflow immediately if buffer space is exhausted.
+// The caller retains ownership of p until AfterFlush fires.
 func (b *AsyncWriter) Write(p []byte) (int, error) {
 	b.cond.L.Lock()
 	defer b.cond.L.Unlock()
@@ -60,6 +65,8 @@ func (b *AsyncWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// Close signals the flusher to stop after draining the current buffer; it does not wait for completion.
+// Use Sync or Done to wait for the flusher to exit.
 func (b *AsyncWriter) Close() error {
 	b.cond.L.Lock()
 	defer b.cond.L.Unlock()
@@ -120,6 +127,7 @@ func (b *AsyncWriter) SetWriter(output io.WriteCloser) {
 	b.writer = output
 }
 
+// Sync blocks until the write buffer is empty or a write error has occurred.
 func (b *AsyncWriter) Sync() error {
 	b.cond.L.Lock()
 	defer b.cond.L.Unlock()
@@ -135,10 +143,12 @@ func (b *AsyncWriter) Sync() error {
 	}
 }
 
+// Done returns a channel that is closed when the flusher goroutine has exited and the underlying writer is closed.
 func (b *AsyncWriter) Done() <-chan struct{} {
 	return b.done
 }
 
+// Err returns the last error from the flusher goroutine without holding the lock; safe to call only after Done is closed.
 func (b *AsyncWriter) Err() error {
 	return b.writeErr
 }

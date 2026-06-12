@@ -26,6 +26,7 @@ type WriteCounter struct {
 	n int64
 }
 
+// NewWriteCounter wraps w in a WriteCounter; if w is nil, writes are discarded and only the total is tracked.
 func NewWriteCounter(w io.Writer) *WriteCounter {
 	if w == nil {
 		w = NilWriter{}

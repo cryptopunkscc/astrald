@@ -4,6 +4,8 @@ import "io"
 
 var _ io.ReadCloser = &LimitedReader{}
 
+// LimitedReader wraps a ReadCloser and returns io.EOF once exactly Limit bytes have been read.
+// Unlike io.LimitedReader, it also propagates Close to the underlying reader.
 type LimitedReader struct {
 	io.ReadCloser
 	Limit uint64
