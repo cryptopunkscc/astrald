@@ -13,6 +13,7 @@ type opDeriveKeyArgs struct {
 	Out  string `query:"optional"`
 }
 
+// OpDeriveKey receives a Seed over the channel and replies with the key derived along Path.
 func (mod *Module) OpDeriveKey(
 	ctx *astral.Context,
 	q *routing.IncomingQuery,

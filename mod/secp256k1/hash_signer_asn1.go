@@ -9,6 +9,8 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
+// HashSignerASN1 is a crypto.HashSigner that emits ASN.1-encoded ECDSA signatures.
+// Holds the decoded private key for repeated signing.
 type HashSignerASN1 struct {
 	key *ecdsa.PrivateKey
 }

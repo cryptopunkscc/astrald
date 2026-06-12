@@ -125,6 +125,8 @@ func MnemonicToSeed(words []string, passphrase string) (Seed, error) {
 	return Seed(pbkdf2.Key([]byte(mnemonic), []byte(salt), 2048, SeedLengthBytes, sha512.New)), nil
 }
 
+// NewEntropy returns cryptographically random entropy of the given size.
+// bits must be 128-256 in 32-bit increments.
 func NewEntropy(bits int) (Entropy, error) {
 	if bits%EntropyStepBits != 0 || bits < MinEntropyBits || bits > MaxEntropyBits {
 		return nil, fmt.Errorf("invalid entropy size: %d", bits)

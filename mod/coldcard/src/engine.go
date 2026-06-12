@@ -14,6 +14,8 @@ type Engine struct {
 	mod *Module
 }
 
+// NewTextSigner returns a BIP137 signer only for a secp256k1 key whose pubkey
+// matches a currently-connected ColdCard; otherwise ErrUnsupported.
 func (e *Engine) NewTextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	switch {
 	case scheme != "bip137":
@@ -37,6 +39,8 @@ type MessageSigner struct {
 	path string
 }
 
+// SignText signs on the hardware device; the device returns base64 which is
+// decoded into the raw BIP137 signature.
 func (m *MessageSigner) SignText(ctx *astral.Context, msg string) (*crypto.Signature, error) {
 	sigBase64, err := m.dev.Msg(msg, m.path)
 	if err != nil {

@@ -43,6 +43,7 @@ func (mod *Module) String() string {
 	return bip137sig.ModuleName
 }
 
+// DeriveKey derives a secp256k1 private key from seed along the BIP-32 path on mainnet.
 func (mod *Module) DeriveKey(seed bip137sig.Seed, path string) (privateKey crypto.PrivateKey, err error) {
 	derivationPath, err := bip137sig.ParseDerivationPath(path)
 	if err != nil {
@@ -72,6 +73,7 @@ func (mod *Module) DeriveKey(seed bip137sig.Seed, path string) (privateKey crypt
 	}, nil
 }
 
+// GenerateSeed builds a seed from fresh default-strength entropy with an empty passphrase.
 func (mod *Module) GenerateSeed() (seed bip137sig.Seed, err error) {
 	entropy, err := bip137sig.NewEntropy(bip137sig.DefaultEntropyBits)
 	if err != nil {
