@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// ErrNoValue is returned when a node holds no value; it also implements astral.Object so it can be transmitted over the wire.
 type ErrNoValue struct {
 	astral.EmptyObject
 }

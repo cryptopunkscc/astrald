@@ -11,6 +11,8 @@ type Deps struct {
 	Dir dir.Module
 }
 
+// LoadDependencies injects required module dependencies and registers any already-loaded
+// modules that implement services.Discoverer as discoverers on this module.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

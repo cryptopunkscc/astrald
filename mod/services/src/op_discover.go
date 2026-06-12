@@ -13,6 +13,9 @@ type opDiscoverArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpDiscover handles the discover query: streams service updates to the caller,
+// sending astral.EOS as a snapshot/stream separator when follow is true, and a
+// final astral.EOS when the stream ends.
 func (mod *Module) OpDiscover(
 	ctx *astral.Context,
 	q *routing.IncomingQuery,

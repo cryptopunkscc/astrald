@@ -7,6 +7,10 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 )
 
+// LoadDependencies injects module dependencies and registers the module as a
+// "gw" dialer, endpoint unpacker, and address parser with the Exonet module,
+// and as a service discoverer and node-endpoint resolver with the respective
+// modules. It also pre-parses any statically configured gateway endpoints.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

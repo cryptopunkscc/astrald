@@ -13,6 +13,7 @@ type opNodeRegisterArgs struct {
 	Out        string `query:"optional"`
 }
 
+// OpNodeRegister registers the caller as a gateway-reachable node and returns the socket (nonce + TCP endpoint) the caller must listen on.
 func (mod *Module) OpNodeRegister(
 	ctx *astral.Context,
 	q *routing.IncomingQuery,

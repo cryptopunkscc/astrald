@@ -23,6 +23,8 @@ func (node *Node) Name() string {
 	return node.path[len(node.path)-1]
 }
 
+// Get fetches the node's current value; when follow is true the returned channel
+// stays open and emits successive updates until ctx is cancelled or the server closes.
 func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, error) {
 	ch, err := node.client.queryCh(ctx, tree.MethodGet, query.Args{
 		"path":   node.Path(),
@@ -115,6 +117,7 @@ func (node *Node) Delete(ctx *astral.Context) error {
 	}
 }
 
+// Sub returns the immediate children of the node keyed by their names.
 func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 	var sub = make(map[string]tree.Node)
 
@@ -141,6 +144,7 @@ func (node *Node) Sub(ctx *astral.Context) (map[string]tree.Node, error) {
 	return sub, nil
 }
 
+// Create opens a child node at name, creating it server-side without setting a value.
 func (node *Node) Create(ctx *astral.Context, name string) (tree.Node, error) {
 	newPath := "/" + strings.Join(append(node.path, name), "/")
 

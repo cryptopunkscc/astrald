@@ -13,10 +13,12 @@ import (
 
 // Value wraps an astral.Object type with type-safe access.
 type Value[T astral.Object] struct {
-	node    Node
-	cached  T
-	queue   *sig.Queue[T]
-	NoInit  bool
+	node   Node
+	cached T
+	queue  *sig.Queue[T]
+	// NoInit is currently unused — Bind does not consult this field.
+	NoInit bool
+	// NoLocal suppresses the fallback that applies a Set locally when the backing node rejects it.
 	NoLocal bool
 	mu      sync.Mutex
 }

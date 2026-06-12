@@ -12,6 +12,9 @@ import (
 
 var _ exonet.Dialer = &Module{}
 
+// Dial connects to a gateway endpoint by first attempting the fast socket path
+// (reserve an idle connection via the gateway's Connect RPC, then dial the raw
+// socket), and falling back to the slower link-routed path if either step fails.
 func (mod *Module) Dial(ctx *astral.Context, endpoint exonet.Endpoint) (exonet.Conn, error) {
 	if endpoint.Network() != NetworkName {
 		return nil, exonet.ErrUnsupportedNetwork
