@@ -2,6 +2,7 @@ package ipc
 
 import "net"
 
+// Conn wraps a net.Conn with the IPC protocol and address used to establish it.
 type Conn struct {
 	net.Conn
 	protocol string

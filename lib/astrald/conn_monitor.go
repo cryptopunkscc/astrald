@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// ConnMonitor wraps an astral.Conn to track transferred bytes and fire optional callbacks on close or I/O errors.
+// Callbacks are invoked synchronously at the point of the error or close call.
 type ConnMonitor struct {
 	OnClose      func()
 	OnReadError  func(error)

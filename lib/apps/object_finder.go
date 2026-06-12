@@ -22,6 +22,8 @@ type objectFindArgs struct {
 	Out string `query:"optional"`
 }
 
+// WithObjectFinder mounts the objects.find IPC op and registers the app as a Finder with the node.
+// All provided finders are fanned out concurrently per find request.
 func WithObjectFinder(finders ...objects.Finder) ServeOption {
 	return func(cfg *serveConfig) error {
 		if len(finders) == 0 {

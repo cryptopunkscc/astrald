@@ -12,6 +12,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// OpRouter dispatches incoming queries by matching the first path segment of
+// the query string against a fixed map of named Op handlers.
 type OpRouter struct {
 	routes sig.Map[string, *Op]
 }
@@ -46,6 +48,8 @@ func (router *OpRouter) AddOp(name string, op *Op) error {
 	return nil
 }
 
+// AddScopedOp rejects any non-empty scope; OpRouter is flat and cannot host
+// scoped routes — use ScopeRouter to compose scoped hierarchies.
 func (router *OpRouter) AddScopedOp(scope string, name string, op *Op) error {
 	if scope != "" {
 		return errors.New("op router cannot add scoped route")

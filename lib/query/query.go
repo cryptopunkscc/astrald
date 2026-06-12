@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// DefaultArgKey is the map key used for positional (non-flagged) arguments.
 const DefaultArgKey = "arg"
 const maxQueryTimeout = 60 * time.Second
 

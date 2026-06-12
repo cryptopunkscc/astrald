@@ -31,8 +31,12 @@ type regRequest struct {
 	done chan error
 }
 
+// RegistrationHook is called after every successful (re)connect and handler re-registration.
+// Errors abort the reconnect cycle and trigger a reconnect attempt.
 type RegistrationHook func(ctx *astral.Context) error
 
+// RegistrationHookRegistrar is an optional extension of Registrar for components that support
+// post-registration lifecycle hooks.
 type RegistrationHookRegistrar interface {
 	AddRegistrationHooks(hooks ...RegistrationHook)
 }
@@ -72,6 +76,8 @@ func WithEvents(e AppRegistrarEvents) AppRegistrarOption {
 	return func(s *AppRegistrar) { s.events = e }
 }
 
+// WithRegistrarRegistrationHooks adds RegistrationHooks at construction time.
+// Use WithRegistrationHooks (a ServeOption) to add hooks via Serve/ServeWith instead.
 func WithRegistrarRegistrationHooks(hooks ...RegistrationHook) AppRegistrarOption {
 	return func(s *AppRegistrar) { s.AddRegistrationHooks(hooks...) }
 }
@@ -93,7 +99,7 @@ func NewAppRegistrar(ctx *astral.Context, opts ...AppRegistrarOption) *AppRegist
 	return s
 }
 
-// NewDefaultAppRegistrar creates an AppRegistrar with default options and starts its run loop.
+// NewDefaultAppRegistrar is an alias for NewAppRegistrar; prefer NewAppRegistrar directly.
 func NewDefaultAppRegistrar(ctx *astral.Context, opts ...AppRegistrarOption) *AppRegistrar {
 	return NewAppRegistrar(ctx, opts...)
 }

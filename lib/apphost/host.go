@@ -9,6 +9,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// Host represents an authenticated session with an apphost node, providing
+// message framing via an embedded Channel and query routing over the IPC conn.
 type Host struct {
 	*channel.Channel
 	conn      *ipc.Conn

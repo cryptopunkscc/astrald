@@ -36,10 +36,14 @@ func Edit(s any) *Editor {
 	return edit(s, false)
 }
 
+// EditCamel returns an Editor for s, preserving the original field name casing
+// instead of converting to snake_case as Edit does.
 func EditCamel(args any) *Editor {
 	return edit(args, true)
 }
 
+// EditValue returns an Editor from an already-obtained reflect.Value; useful
+// when the caller already holds a reflected struct pointer.
 func EditValue(v reflect.Value) *Editor {
 	return editValue(v, false)
 }
@@ -143,6 +147,8 @@ func (editor *Editor) Field(name string) (*FieldEditor, error) {
 	return nil, ErrFieldNotFound
 }
 
+// SetMany applies a map of values to the editor's fields, silently skipping
+// unknown keys; returns an error only on type-conversion failures.
 func (editor *Editor) SetMany(vals map[string]string) error {
 	for key, value := range vals {
 		err := editor.Set(key, value)
@@ -157,6 +163,8 @@ func (editor *Editor) SetMany(vals map[string]string) error {
 	return nil
 }
 
+// SetArgs parses a "-key value" argument slice into the editor's fields,
+// returning unconsumed (non-flag) args and an error for any unknown flag.
 func (editor *Editor) SetArgs(args []string) (unparsed []string, err error) {
 	var i = 0
 

@@ -78,7 +78,9 @@ func NewOp(fn any) (*Op, error) {
 	return op, nil
 }
 
-// RouteQuery routes the query directly to the op
+// RouteQuery dispatches the query to the op in a new goroutine with a detached
+// context; the caller blocks until the op calls Accept/Reject or the 5-second
+// deadline expires.
 func (op *Op) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, remoteWriter io.WriteCloser) (io.WriteCloser, error) {
 	var origin string
 	if o, found := q.Extra.Get("origin"); found {

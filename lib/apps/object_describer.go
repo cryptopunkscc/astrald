@@ -22,6 +22,8 @@ type objectDescribeArgs struct {
 	Out string `query:"optional"`
 }
 
+// WithObjectDescriber mounts the objects.describe IPC op and registers the app as a Describer with the node.
+// All provided describers are fanned out concurrently per describe request.
 func WithObjectDescriber(describers ...objects.Describer) ServeOption {
 	return func(cfg *serveConfig) error {
 		if len(describers) == 0 {

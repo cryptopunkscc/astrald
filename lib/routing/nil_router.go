@@ -9,6 +9,8 @@ import (
 
 var _ astral.Router = &NilRouter{}
 
+// NilRouter is a terminal router that always rejects queries; set Soft=true to
+// return ErrRouteNotFound instead, allowing upstream routers to continue trying.
 type NilRouter struct {
 	Soft bool // return ErrRouteNotFound instead of ErrRejected
 }

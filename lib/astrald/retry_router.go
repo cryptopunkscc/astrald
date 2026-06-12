@@ -8,6 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// RetryRouter wraps a Router and retries queries that fail with ErrNodeUnavailable,
+// waiting between attempts according to the provided sig.Retry policy.
+// maxAttempts == 0 means unlimited retries.
 type RetryRouter struct {
 	Router
 	retry       *sig.Retry
@@ -28,6 +31,8 @@ func NewNoRetryRouter(r Router) *RetryRouter {
 	return &RetryRouter{Router: r, maxAttempts: 1}
 }
 
+// RouteQuery retries the query on ErrNodeUnavailable; any other error is returned immediately.
+// On success the retry policy is reset so the next call starts fresh.
 func (rr *RetryRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery) (astral.Conn, error) {
 	for attempt := 0; ; attempt++ {
 		conn, err := rr.Router.RouteQuery(ctx, q)
