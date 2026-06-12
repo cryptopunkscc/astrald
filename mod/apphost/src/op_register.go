@@ -19,6 +19,8 @@ type opRegisterArgs struct {
 	Out string
 }
 
+// OpRegister provisions a brand-new identity: generates a key pair, issues a signed app contract, and returns an access token.
+// The caller receives a ready-to-use guest identity without providing any pre-existing credentials.
 func (mod *Module) OpRegister(ctx *astral.Context, query *routing.IncomingQuery, args opRegisterArgs) (err error) {
 	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

@@ -5,6 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 )
 
+// LoadDependencies injects required and optional module dependencies.
+// Optional deps (User) are injected on a best-effort basis; failure is silently ignored.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	if err = core.Inject(mod.node, &mod.Deps); err != nil {
 		return

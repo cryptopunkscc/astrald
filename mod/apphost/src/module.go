@@ -30,6 +30,8 @@ type OptionalDeps struct {
 	User user.Module
 }
 
+// Module is the apphost service that brokers connections between local apps and the Astral network.
+// It manages IPC/WS handler registrations, in-flight query routing, and object holds.
 type Module struct {
 	Deps
 	OptionalDeps
@@ -48,6 +50,8 @@ type Module struct {
 	pendingInboundQueries sig.Map[astral.Nonce, *pendingInboundQuery]
 }
 
+// Run starts the listener, spawns the configured worker pool, and launches the HTTP object server.
+// Blocks until all workers exit; worker errors are logged but do not stop the pool.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 

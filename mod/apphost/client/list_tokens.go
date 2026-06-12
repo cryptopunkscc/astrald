@@ -11,6 +11,7 @@ func ListTokens(ctx *astral.Context, identity *astral.Identity) ([]*apphost.Acce
 	return Default().ListTokens(ctx, identity)
 }
 
+// ListTokens returns all access tokens; passing a zero identity omits the identity filter.
 func (client *Client) ListTokens(ctx *astral.Context, identity *astral.Identity) (tokens []*apphost.AccessToken, err error) {
 	args := query.Args{}
 	if !identity.IsZero() {

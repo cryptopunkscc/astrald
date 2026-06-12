@@ -37,6 +37,8 @@ func (mod *Module) CreateAccessToken(identity *astral.Identity, d astral.Duratio
 	}, nil
 }
 
+// AuthenticateToken resolves a bearer token to the identity it was issued for.
+// Any lookup or expiry failure is collapsed into a single opaque error to avoid leaking token existence.
 func (mod *Module) AuthenticateToken(token string) (*astral.Identity, error) {
 	dbToken, err := mod.db.FindAccessToken(token)
 	if err != nil || dbToken == nil {

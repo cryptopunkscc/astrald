@@ -20,6 +20,9 @@ type IPCHandler struct {
 
 var errEndpointUnavailable = errors.New("endpoint unavailable")
 
+// RouteQuery dials the IPC endpoint, forwards the HandleQueryMsg, and pipes both
+// directions between the caller and the local app process.
+// A new connection is dialled for each query; the endpoint is expected to be a long-running daemon.
 func (handler *IPCHandler) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	conn, err := ipc.DialContext(ctx, handler.Endpoint)
 	if err != nil {

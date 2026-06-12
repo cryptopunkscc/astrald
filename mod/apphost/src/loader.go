@@ -10,8 +10,11 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// Loader is the module factory registered with the core module registry for apphost.
 type Loader struct{}
 
+// Load instantiates the apphost Module: loads config, auto-migrates the database schema,
+// and registers Op-prefixed struct methods as router operations.
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 

@@ -46,6 +46,9 @@ func (db *DB) ListLocalApps() (list []*dbLocalApp, err error) {
 	return list, db.Find(&list).Error
 }
 
+// HoldObject records that appID wants objectID retained.
+// A nil duration creates a permanent hold; a non-nil duration sets an expiry.
+// Duplicate holds are silently ignored (ON CONFLICT DO NOTHING).
 func (db *DB) HoldObject(appID *astral.Identity, objectID *astral.ObjectID, duration *astral.Duration) error {
 	// note: apps may hold object IDs before this node has fetched the object.
 	row := &dbObjectHold{AppID: appID, ObjectID: objectID, CreatedAt: time.Now()}
@@ -63,6 +66,7 @@ func (db *DB) UnholdObject(appID *astral.Identity, objectID *astral.ObjectID) er
 		Error
 }
 
+// ListHeldObjects returns only the non-expired holds for appID.
 func (db *DB) ListHeldObjects(appID *astral.Identity) (list []*dbObjectHold, err error) {
 	err = db.
 		Where("app_id = ?", appID).
@@ -72,6 +76,7 @@ func (db *DB) ListHeldObjects(appID *astral.Identity) (list []*dbObjectHold, err
 	return
 }
 
+// ObjectHeld reports whether any app currently holds objectID (expired holds are excluded).
 func (db *DB) ObjectHeld(objectID *astral.ObjectID) (held bool, err error) {
 	err = db.
 		Model(&dbObjectHold{}).

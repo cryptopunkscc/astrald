@@ -11,6 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects/fs"
 )
 
+// HTTPObjectHandler serves stored objects over HTTP, guarding each request with
+// an objects.ReadObjectAction authorization check before delegating to the embedded file server.
 type HTTPObjectHandler struct {
 	*Module
 	Identity   *astral.Identity

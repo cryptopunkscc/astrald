@@ -12,9 +12,14 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects/fs"
 )
 
+// HTTPAuthTokenHeader is the request header carrying the bearer token for HTTP clients.
 const HTTPAuthTokenHeader = "X-Astral-Auth-Token"
+
+// HTTPTargetHeader optionally overrides the query target identity for a request.
 const HTTPTargetHeader = "X-Astral-Target"
 
+// HTTPServer is the HTTP gateway for apphost, handling REST queries, object downloads,
+// and WebSocket guest connections on a single listener.
 type HTTPServer struct {
 	*Module
 	fileSystem *fs.FS
@@ -33,6 +38,8 @@ func NewHTTPServer(mod *Module) *HTTPServer {
 	return srv
 }
 
+// Run binds the HTTP listener and blocks until ctx is done.
+// Returns nil immediately when BindHTTP is empty (HTTP disabled).
 func (srv *HTTPServer) Run(ctx *astral.Context) error {
 	srv.ctx = ctx
 

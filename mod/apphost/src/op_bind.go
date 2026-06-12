@@ -11,6 +11,8 @@ type opBindArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpBind keeps a session alive so the caller can associate cleanup actions (handler removal) with its lifetime.
+// Each BindMsg received during the session registers a token whose handlers are removed on session close.
 func (mod *Module) OpBind(ctx *astral.Context, q *routing.IncomingQuery, args opBindArgs) error {
 	// only local apps can bind
 	if q.Origin() == astral.OriginNetwork {
