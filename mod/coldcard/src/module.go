@@ -27,12 +27,15 @@ type Module struct {
 	devices sig.Map[string, string]
 }
 
+// Run scans once in the background then blocks until the context is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.Scan()
 	<-ctx.Done()
 	return nil
 }
 
+// Scan enumerates connected ColdCards and records each serial to pubkey;
+// devices whose pubkey cannot be read are skipped.
 func (mod *Module) Scan() error {
 	devices, err := ckcc.List()
 	if err != nil {

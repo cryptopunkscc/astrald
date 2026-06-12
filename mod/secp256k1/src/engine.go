@@ -18,6 +18,7 @@ func (e Engine) DerivePublicKey(ctx *astral.Context, key *crypto.PrivateKey) (*c
 	return modSecp256k1.PublicKey(key), nil
 }
 
+// NewHashSigner only supports secp256k1 keys with the asn1 scheme.
 func (e Engine) NewHashSigner(key *crypto.PublicKey, scheme string) (crypto.HashSigner, error) {
 	switch {
 	case key.Type != modSecp256k1.KeyType:

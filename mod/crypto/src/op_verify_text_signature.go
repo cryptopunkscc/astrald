@@ -15,6 +15,10 @@ type opVerifyTextSignatureArgs struct {
 	Out  string `query:"optional"`
 }
 
+// OpVerifyTextSignature accepts a raw channel and verifies a text signature.
+// Public key and text may come from query args or be streamed as channel
+// messages; a Signature message triggers verification and ends the exchange.
+// Defaults the public key to the caller's identity when none is supplied.
 func (mod *Module) OpVerifyTextSignature(ctx *astral.Context, q *routing.IncomingQuery, args opVerifyTextSignatureArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

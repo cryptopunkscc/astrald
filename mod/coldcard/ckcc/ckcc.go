@@ -18,6 +18,7 @@ func NewDevice(serial string) *Device {
 	return &Device{Serial: serial}
 }
 
+// List enumerates connected Coldcards by parsing the output of the external ckcc CLI.
 func List() (devices []*Device, err error) {
 	cmd := exec.Command("ckcc", "list")
 
@@ -46,6 +47,7 @@ func List() (devices []*Device, err error) {
 	return
 }
 
+// PubKey returns the public key at the given derivation path; an empty path defaults to coldcard.BIP44Path.
 func (c *Device) PubKey(path string) (string, error) {
 	if len(path) == 0 {
 		path = coldcard.BIP44Path
@@ -65,6 +67,7 @@ func (c *Device) PubKey(path string) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
+// Msg signs msg with the key at the given derivation path; an empty path defaults to coldcard.BIP44Path.
 func (c *Device) Msg(msg string, path string) (string, error) {
 	if len(path) == 0 {
 		path = coldcard.BIP44Path

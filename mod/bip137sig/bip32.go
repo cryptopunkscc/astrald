@@ -8,6 +8,9 @@ import (
 
 // reference: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 
+// ParseDerivationPath parses a BIP-32 path into child indices.
+// "m" or "" yields a nil path. A trailing ' or h marks a hardened index,
+// setting bit 31 (0x80000000) on the value.
 func ParseDerivationPath(path string) ([]uint32, error) {
 	const hardenedOffset uint32 = 0x80000000
 

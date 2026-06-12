@@ -36,6 +36,8 @@ type Module struct {
 
 var _ crypto.Module = &Module{}
 
+// Run launches one background indexing goroutine per configured repo and
+// blocks until the context is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
@@ -113,6 +115,8 @@ func (mod *Module) NewHashSigner(key *crypto.PublicKey, scheme string) (crypto.H
 	)
 }
 
+// NodeSigner returns a signer for the node's own secp256k1 key.
+// Panics if no engine can provide one.
 func (mod *Module) NodeSigner() crypto.HashSigner {
 	signer, err := mod.NewHashSigner(&crypto.PublicKey{
 		Type: "secp256k1",

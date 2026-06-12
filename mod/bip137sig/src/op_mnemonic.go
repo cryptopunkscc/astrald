@@ -14,6 +14,7 @@ type opMnemonicArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpMnemonic receives Entropy over the channel and replies with the space-joined mnemonic words.
 func (mod *Module) OpMnemonic(
 	ctx *astral.Context,
 	q *routing.IncomingQuery,

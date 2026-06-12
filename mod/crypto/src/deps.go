@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 )
 
+// LoadDependencies injects deps, auto-loads crypto engines from every module
+// implementing crypto.EngineProvider, then stores and indexes the node key.
 func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

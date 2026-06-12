@@ -15,6 +15,7 @@ type opSeedArgs struct {
 	Out        string `query:"optional"`
 }
 
+// OpSeed receives a whitespace-separated mnemonic and replies with the seed derived under Passphrase.
 func (mod *Module) OpSeed(
 	ctx *astral.Context,
 	q *routing.IncomingQuery,
