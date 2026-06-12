@@ -11,6 +11,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
+// IncomingQuery is a server-side view of an in-flight query that must be
+// resolved exactly once via Accept* or Reject* before the 5-second deadline
+// expires or the context is cancelled.
 type IncomingQuery struct {
 	*astral.Query
 	origin       string

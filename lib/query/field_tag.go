@@ -9,6 +9,8 @@ type FieldTag struct {
 	Other    map[string]string
 }
 
+// ParseTag parses a semicolon-separated struct tag value of the form
+// "key:<name>;skip;required" into a FieldTag.
 func ParseTag(tag string) *FieldTag {
 	var fieldTag = FieldTag{Other: make(map[string]string)}
 

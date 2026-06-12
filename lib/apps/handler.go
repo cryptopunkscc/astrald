@@ -14,6 +14,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// Handler accepts inbound IPC queries from an apphost-registered endpoint.
+// Close or context cancellation terminates all blocking calls.
 type Handler struct {
 	listener net.Listener
 	ipcToken astral.Nonce

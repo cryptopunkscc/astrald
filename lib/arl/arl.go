@@ -22,6 +22,7 @@ func New(caller *astral.Identity, target *astral.Identity, query string) *ARL {
 	return &ARL{Caller: caller, Target: target, Query: query}
 }
 
+// Split parses a raw ARL string of the form [caller@][target:]query into its three components.
 func Split(s string) (caller, target, query string) {
 	matches := callerExp.FindStringSubmatch(s)
 	if len(matches) > 0 {
@@ -40,6 +41,7 @@ func Split(s string) (caller, target, query string) {
 	return
 }
 
+// Parse parses an ARL string (with or without the astral:// scheme) into an ARL; if resolver is non-nil it is used to resolve identity strings, otherwise raw key parsing is attempted.
 func Parse(s string, resolver dir.Resolver) (arl *ARL, err error) {
 	if after, found := strings.CutPrefix(s, "astral://"); found {
 		s = after

@@ -8,6 +8,7 @@ type ReadyGate interface {
 	Ready() <-chan struct{}
 }
 
+// GateRouter wraps a Router and blocks every outbound query until the gate signals ready.
 type GateRouter struct {
 	Router
 	gate ReadyGate
@@ -19,6 +20,7 @@ func NewGateRouter(r Router, g ReadyGate) *GateRouter {
 	return &GateRouter{Router: r, gate: g}
 }
 
+// RouteQuery blocks until the gate is open or ctx is cancelled, then delegates to the inner router.
 func (gr *GateRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery) (astral.Conn, error) {
 	select {
 	case <-gr.gate.Ready():
