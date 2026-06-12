@@ -8,6 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Describe fans the query out to all registered describers in parallel and
+// merges their descriptors onto one channel, closed when every describer is
+// done or ctx is cancelled.
 func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	var results = make(chan *objects.Descriptor)
 
@@ -50,6 +53,8 @@ func (mod *Module) Describe(ctx *astral.Context, objectID *astral.ObjectID) (<-c
 	return results, nil
 }
 
+// AddDescriber registers a describer, skipping it if one with the same source
+// identity is already registered.
 func (mod *Module) AddDescriber(describer objects.Describer) error {
 	source, ok, err := objects.SourceIdentity(describer)
 	if err != nil {

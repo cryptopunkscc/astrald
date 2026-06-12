@@ -29,6 +29,7 @@ var _ nodes.LinkStrategy = &NATLinkStrategy{}
 
 func (s *NATLinkStrategy) Name() string { return nodes.StrategyNAT }
 
+// Signal starts a NAT-traversal attempt in the background; a no-op if one is already running.
 func (s *NATLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.done != nil {
@@ -183,6 +184,7 @@ func (s *NATLinkStrategy) signalDone() {
 	}
 }
 
+// Done returns a channel closed when the current attempt finishes; already closed when no attempt is running.
 func (s *NATLinkStrategy) Done() <-chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -17,6 +17,8 @@ type opReadArgs struct {
 	Repo   string        `query:"optional"`
 }
 
+// OpRead authorizes the caller, then streams raw object bytes over the accepted
+// connection. Records the access in the reads journal, which feeds purge ordering.
 func (mod *Module) OpRead(ctx *astral.Context, q *routing.IncomingQuery, args opReadArgs) (err error) {
 	ctx = ctx.IncludeZone(args.Zone)
 	repo := mod.ReadDefault()

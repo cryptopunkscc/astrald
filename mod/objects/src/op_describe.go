@@ -19,6 +19,8 @@ type opDescribeArgs struct {
 	Except *string     `query:"optional"`
 }
 
+// OpDescribe streams an object's descriptors, filtered by the Only/Except type
+// lists, and terminates the stream with an EOS marker.
 func (mod *Module) OpDescribe(ctx *astral.Context, q *routing.IncomingQuery, args opDescribeArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()

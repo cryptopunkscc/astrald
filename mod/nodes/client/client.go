@@ -20,6 +20,7 @@ func New(targetID *astral.Identity, client *astrald.Client) *Client {
 	return &Client{astral: client, targetID: targetID}
 }
 
+// Default returns the shared package-level client, lazily creating it on first use.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(nil, astrald.Default())
@@ -27,6 +28,7 @@ func Default() *Client {
 	return defaultClient
 }
 
+// WithTarget returns a copy retargeted at the given identity; the receiver is unchanged.
 func (client *Client) WithTarget(target *astral.Identity) *Client {
 	return &Client{astral: client.astral, targetID: target}
 }

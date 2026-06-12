@@ -35,6 +35,8 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Commit resolves the buffered bytes to an object ID and stores them.
+// Idempotent: only the first call succeeds; later calls return ErrClosedPipe.
 func (w *Writer) Commit() (*astral.ObjectID, error) {
 	if !w.closed.CompareAndSwap(false, true) {
 		return nil, objects.ErrClosedPipe

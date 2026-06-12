@@ -26,6 +26,7 @@ func NewLinkPool(mod *Module) *LinkPool {
 	}
 }
 
+// AddLink registers link, wires its mux router, emits a created event, and spawns a goroutine that removes it and closes its sessions when it dies.
 func (pool *LinkPool) AddLink(link *Link) error {
 	dir := "in"
 	netName := "unknown network"
@@ -158,6 +159,7 @@ func (pool *LinkPool) getOrCreateNodeLinker(target *astral.Identity) *NodeLinker
 	return linker
 }
 
+// RetrieveLink returns a matching existing link immediately unless ForceNew is set; otherwise it activates linking strategies and delivers the first link that matches, ctx cancellation, or ErrLinkNotProduced.
 func (pool *LinkPool) RetrieveLink(
 	ctx *astral.Context,
 	target *astral.Identity,

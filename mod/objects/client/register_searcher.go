@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// RegisterSearcher registers the caller as a searcher provider and blocks until acked.
 func (client *Client) RegisterSearcher(ctx *astral.Context) error {
 	ch, err := client.queryCh(ctx, objects.MethodRegisterSearcher, nil)
 	if err != nil {

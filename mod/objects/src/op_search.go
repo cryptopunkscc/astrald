@@ -18,6 +18,8 @@ type SearchArgs struct {
 	Out   string      `query:"optional"`
 }
 
+// OpSearch streams matches for the query, deduplicated by ObjectID and
+// optionally filtered to objects the named repo contains. Bounded to one minute.
 func (mod *Module) OpSearch(ctx *astral.Context, q *routing.IncomingQuery, args SearchArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithTimeout(time.Minute)
 	defer cancel()

@@ -12,6 +12,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/utp"
 )
 
+// ReceiveObject dispatches an inbound object by type, accepting observed-endpoint
+// messages and reacting to link events with connectivity upgrades and endpoint
+// refreshes. Unhandled types are ignored without accepting the drop.
 func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	switch object := drop.Object().(type) {
 	case *nodes.ObservedEndpointMessage:

@@ -58,6 +58,7 @@ func (repo *Repository) Contains(ctx *astral.Context, objectID *astral.ObjectID)
 	return slices.Contains(repo.objects.Keys(), objectID.String()), nil
 }
 
+// Read serves only the device zone; other zones are excluded.
 func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
@@ -76,6 +77,8 @@ func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, off
 	return NewReader(bytes[s:e], repo), nil
 }
 
+// Scan streams existing object IDs, then closes unless follow is set.
+// When following, a nil sentinel separates the initial set from live additions.
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
 	ch := make(chan *astral.ObjectID)
 

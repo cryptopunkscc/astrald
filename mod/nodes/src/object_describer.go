@@ -9,6 +9,9 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// DescribeObject fans out to every provider returned by FindObject and merges their
+// descriptors into the result channel. Filtered providers are skipped. Requires the
+// network zone. The channel closes once all providers are exhausted.
 func (mod *Module) DescribeObject(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	if !ctx.Zone().Is(astral.ZoneNetwork) {
 		return nil, astral.ErrZoneExcluded

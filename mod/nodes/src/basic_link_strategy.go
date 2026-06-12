@@ -24,6 +24,8 @@ var _ nodes.LinkStrategy = &BasicLinkStrategy{}
 
 func (s *BasicLinkStrategy) Name() string { return nodes.StrategyBasic }
 
+// Signal starts a dialing round in the background; concurrent calls while a round
+// is still active are ignored. The first successful link wins, the rest are closed.
 func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.activeDone != nil {
@@ -101,6 +103,8 @@ func (s *BasicLinkStrategy) Signal(ctx *astral.Context) {
 	}()
 }
 
+// Done returns a channel closed when the active round finishes; a closed channel
+// is returned immediately when no round is running.
 func (s *BasicLinkStrategy) Done() <-chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()

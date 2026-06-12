@@ -32,6 +32,9 @@ func NewExternalSearcher(mod *Module, id *astral.Identity) *ExternalSearcher {
 
 func (s *ExternalSearcher) SourceIdentity() *astral.Identity { return s.id }
 
+// SearchObject runs the query against the remote peer and relays its results,
+// stamping each with the peer's identity. The stream runs under a per-call
+// timeout and closes when it ends, errors, or the timeout fires.
 func (s *ExternalSearcher) SearchObject(ctx *astral.Context, q objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	providerCtx, cancel := ctx.WithTimeout(s.timeout)
 	in, errPtr := s.client.Search(providerCtx, q)

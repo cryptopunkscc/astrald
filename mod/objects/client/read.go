@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// Read returns a stream of the object's bytes from offset; caller must Close it.
 func (client *Client) Read(ctx *astral.Context, objectID *astral.ObjectID, offset, limit int64) (io.ReadCloser, error) {
 	return client.query(ctx, objects.MethodRead, query.Args{
 		"id":     objectID,

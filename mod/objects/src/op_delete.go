@@ -13,6 +13,9 @@ type opDeleteArgs struct {
 	Zone *astral.Zone `query:"optional"`
 }
 
+// OpDelete deletes one object (ID arg) or a stream of objects read from the
+// channel. Requires an explicit repository — there is no default, to avoid
+// accidental deletion.
 func (mod *Module) OpDelete(ctx *astral.Context, q *routing.IncomingQuery, args opDeleteArgs) (err error) {
 	// prepare the context
 	ctx = ctx.WithIdentity(q.Caller())
