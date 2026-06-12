@@ -12,6 +12,9 @@ type opClaimArgs struct {
 	Out    string `query:"optional"`
 }
 
+// OpClaim invites a target node into the active contract and indexes the signed result.
+// Requires an active contract; caller must be the contract issuer (code 3 otherwise).
+// Pushes the signed contract to the local swarm asynchronously after indexing.
 func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args opClaimArgs) (err error) {
 	// get the active contract
 	ac := mod.ActiveContract()

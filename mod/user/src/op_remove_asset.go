@@ -11,6 +11,8 @@ type opRemoveAssetArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpRemoveAsset removes an asset by object ID.
+// Rejects the query with an internal error code if removal fails, before the channel is accepted.
 func (mod *Module) OpRemoveAsset(ctx *astral.Context, q *routing.IncomingQuery, args opRemoveAssetArgs) (err error) {
 	err = mod.RemoveAsset(args.ID)
 

@@ -10,6 +10,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/secp256k1"
 )
 
+// SignIssuer signs the contract as the issuer; returns auth.ErrAlreadySigned if IssuerSig is already set.
 func (mod *Module) SignIssuer(ctx *astral.Context, signed *auth.SignedContract) (*crypto.Signature, error) {
 	if signed.IssuerSig != nil {
 		return nil, auth.ErrAlreadySigned
@@ -22,6 +23,7 @@ func (mod *Module) SignIssuer(ctx *astral.Context, signed *auth.SignedContract) 
 	return sig, nil
 }
 
+// SignSubject signs the contract as the subject; returns auth.ErrAlreadySigned if SubjectSig is already set.
 func (mod *Module) SignSubject(ctx *astral.Context, signed *auth.SignedContract) (*crypto.Signature, error) {
 	if signed.SubjectSig != nil {
 		return nil, auth.ErrAlreadySigned
@@ -60,6 +62,7 @@ func (mod *Module) signAs(ctx *astral.Context, key *crypto.PublicKey, c *auth.Co
 	return nil, fmt.Errorf("no signing scheme available for key %v", key)
 }
 
+// VerifyIssuer checks that IssuerSig is present and cryptographically valid for the contract.
 func (mod *Module) VerifyIssuer(sc *auth.SignedContract) error {
 	if sc.IssuerSig == nil {
 		return errors.New("issuer signature is missing")
@@ -70,6 +73,7 @@ func (mod *Module) VerifyIssuer(sc *auth.SignedContract) error {
 	return nil
 }
 
+// VerifySubject checks that SubjectSig is present and cryptographically valid for the contract.
 func (mod *Module) VerifySubject(sc *auth.SignedContract) error {
 	if sc.SubjectSig == nil {
 		return errors.New("subject signature is missing")

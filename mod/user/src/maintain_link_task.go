@@ -36,6 +36,8 @@ func (mod *Module) NewMaintainLinkTask(target *astral.
 
 func (a *MaintainLinkTask) String() string { return "nodes.maintain_link" }
 
+// Run loops forever, attempting to re-establish the link to Target whenever it drops.
+// Retries with exponential backoff up to 15 minutes; exits only when ctx is cancelled.
 func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 	a.mod.log.Log("starting to maintain link to %v", a.Target)
 	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)
@@ -90,6 +92,8 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 	}
 }
 
+// ReceiveEvent wakes the reconnect loop when the last link to Target is closed.
+// Ignores events for other identities and partial disconnects (LinkCount != 0).
 func (a *MaintainLinkTask) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *nodes.LinkClosedEvent:

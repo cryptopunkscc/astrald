@@ -32,6 +32,9 @@ type Deps struct {
 	Tree    tree.Module
 }
 
+// LoadDependencies injects module deps, binds the mode setting to the config tree,
+// registers this module as a dir and nodes resolver, and auto-discovers any loaded
+// module that implements nearby.Composer to receive status-composition callbacks.
 func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

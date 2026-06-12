@@ -4,6 +4,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// FindObject streams the identities of all currently-linked sibling nodes as candidate holders for any object.
+// The object ID is intentionally ignored — every sibling may hold the object.
 func (mod *Module) FindObject(ctx *astral.Context, id *astral.ObjectID) (<-chan *astral.Identity, error) {
 	out := make(chan *astral.Identity)
 	go func() {

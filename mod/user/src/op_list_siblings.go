@@ -11,6 +11,8 @@ type opListSiblingsArgs struct {
 	Zone astral.Zone `query:"optional"`
 }
 
+// OpListSiblings streams the identities of all currently linked sibling nodes.
+// Derives the context from the caller's identity and the requested zone.
 func (mod *Module) OpListSiblings(ctx *astral.Context, q *routing.IncomingQuery, args opListSiblingsArgs) (err error) {
 	ctx, cancel := ctx.WithIdentity(q.Caller()).IncludeZone(args.Zone).WithCancel()
 	defer cancel()

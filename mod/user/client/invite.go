@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
+// Invite submits a signed contract to the remote user node and returns the subject's countersignature.
+// The caller must supply the issuer's signature; the remote signs back as the subject.
 func (client *Client) Invite(ctx *astral.Context, contract *auth.Contract, issuerSig *crypto.Signature) (subjectSig *crypto.Signature, err error) {
 	ch, err := client.queryCh(ctx, user.OpInvite, nil)
 	if err != nil {

@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 )
 
+// Client is an RPC client for the auth module.
+// targetID selects the remote node; nil targets the local node.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity
@@ -13,6 +15,7 @@ type Client struct {
 
 var defaultClient *Client
 
+// New creates a Client targeting targetID; a nil astrald.Client falls back to astrald.Default().
 func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	if a == nil {
 		a = astrald.Default()

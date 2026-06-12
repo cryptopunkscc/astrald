@@ -13,6 +13,8 @@ import (
 
 var _ auth.Module = &Module{}
 
+// Module is the runtime implementation of auth.Module; it owns the contract DB,
+// the per-action-type handler registry, and the background contract indexer.
 type Module struct {
 	Deps
 	config   Config
@@ -33,6 +35,7 @@ func (mod *Module) String() string {
 	return auth.ModuleName
 }
 
+// Run starts the background contract indexer and blocks until the context is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.indexer(ctx)
 	<-ctx.Done()

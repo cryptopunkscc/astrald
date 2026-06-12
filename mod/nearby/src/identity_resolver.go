@@ -10,6 +10,9 @@ import (
 
 var _ dir.Resolver = &Module{}
 
+// ResolveIdentity resolves a dot-prefixed alias (e.g. ".phone") by scanning the
+// nearby cache for a matching dir.Alias attachment; returns an error if no peer
+// has announced that alias or the prefix is absent.
 func (mod *Module) ResolveIdentity(s string) (*astral.Identity, error) {
 	s, found := strings.CutPrefix(s, aliasPrefix)
 	if !found {

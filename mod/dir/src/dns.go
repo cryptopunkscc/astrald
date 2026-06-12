@@ -12,6 +12,7 @@ import (
 var domainRegex = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$`)
 var _ dir.Resolver = &DNS{}
 
+// DNS resolves identities from DNS TXT records published under the _astral.<domain> subdomain.
 type DNS struct {
 	*Module
 }
@@ -20,6 +21,7 @@ func isValidDomain(domain string) bool {
 	return domainRegex.MatchString(domain)
 }
 
+// ResolveIdentity looks up the identity published in a TXT record at _astral.<s> with the prefix "id=".
 func (dns DNS) ResolveIdentity(s string) (identity *astral.Identity, err error) {
 	if !isValidDomain(s) {
 		return &astral.Identity{}, fmt.Errorf("cannot resolve")
@@ -46,6 +48,7 @@ func (dns DNS) ResolveIdentity(s string) (identity *astral.Identity, err error) 
 	return &astral.Identity{}, fmt.Errorf("cannot resolve")
 }
 
+// DisplayName always returns an empty string; DNS resolution provides no human-readable display names.
 func (dns DNS) DisplayName(identity *astral.Identity) string {
 	return ""
 }

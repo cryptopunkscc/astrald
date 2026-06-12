@@ -25,6 +25,7 @@ func (mod *Module) AssetsContain(objectID *astral.ObjectID) bool {
 	return mod.db.assetExists(objectID)
 }
 
+// Assets returns all object IDs in the user's asset set that have not been removed.
 func (mod *Module) Assets() []*astral.ObjectID {
 	assets, err := mod.db.Assets()
 	if err != nil {

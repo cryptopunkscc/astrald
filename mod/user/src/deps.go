@@ -28,6 +28,7 @@ type Deps struct {
 	Tree      tree.Module
 }
 
+// LoadDependencies injects module dependencies, binds the config tree, registers authorizers, and installs directory filters for localswarm and localuser.
 func (mod *Module) LoadDependencies(ctx *astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

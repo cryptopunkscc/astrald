@@ -16,6 +16,10 @@ type opInviteArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpInvite handles the node side of the contract signing ceremony.
+// Rejects if an active contract already exists (code 2).
+// Validates contract subject, identity match, and minimum remaining validity before applying the invite policy.
+// On success, stores the signed contract and sets it as the active contract.
 func (mod *Module) OpInvite(ctx *astral.Context, q *routing.IncomingQuery, args opInviteArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac != nil {

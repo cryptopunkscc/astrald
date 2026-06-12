@@ -41,6 +41,7 @@ type Module struct {
 
 var _ dir.Module = &Module{}
 
+// Run blocks until the context is cancelled; this module has no background work of its own.
 func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	return nil
@@ -50,6 +51,8 @@ func (mod *Module) AddResolver(resolver dir.Resolver) error {
 	return mod.resolvers.Add(resolver)
 }
 
+// ResolveIdentity resolves a name to an identity in priority order: special keywords ("", "anyone", "localnode"),
+// raw identity string, local alias DB, then registered external resolvers.
 func (mod *Module) ResolveIdentity(s string) (identity *astral.Identity, err error) {
 	if s == "" || s == "anyone" {
 		return &astral.Identity{}, nil
@@ -82,6 +85,8 @@ func (mod *Module) ResolveIdentity(s string) (identity *astral.Identity, err err
 	return nil, fmt.Errorf("unknown identity: %s", s)
 }
 
+// DisplayName returns a human-readable name for an identity, falling back through alias, registered resolvers,
+// and finally the identity fingerprint. Returns ZeroIdentity for the zero value.
 func (mod *Module) DisplayName(identity *astral.Identity) string {
 	if identity.IsZero() {
 		return ZeroIdentity
@@ -122,6 +127,8 @@ func (mod *Module) SetDefaultFilters(filters ...string) {
 	mod.defaultFilters = filters
 }
 
+// ApplyFilters returns true if the identity passes any of the named filters (OR semantics).
+// Unknown filter names are silently skipped.
 func (mod *Module) ApplyFilters(identity *astral.Identity, filter ...string) bool {
 	for _, f := range filter {
 		filter := mod.GetFilter(f)

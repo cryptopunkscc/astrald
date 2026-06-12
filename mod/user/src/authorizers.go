@@ -19,6 +19,7 @@ func (mod *Module) AuthorizeRelayFor(ctx *astral.Context, a *nodes.RelayForActio
 	return false
 }
 
+// AuthorizeReadObject grants read access to the user identity itself and to any node in the local swarm.
 func (mod *Module) AuthorizeReadObject(ctx *astral.Context, a *objects.ReadObjectAction) bool {
 	if a.Actor().IsEqual(mod.Identity()) {
 		return true

@@ -8,6 +8,8 @@ import (
 
 var _ nodes.EndpointResolver = &Module{}
 
+// ResolveEndpoints returns endpoints for a node by scanning cached nearby status messages
+// for EndpointWithTTL attachments that match the given identity.
 func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan *nodes.EndpointWithTTL, err error) {
 	var list []*nodes.EndpointWithTTL
 
