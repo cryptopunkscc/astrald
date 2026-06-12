@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// Stringify renders any value as a string, trying Stringer, then TextMarshaler, then string, then fmt %v.
 func Stringify(v any) string {
 	if v == nil {
 		return "nil"

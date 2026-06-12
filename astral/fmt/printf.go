@@ -88,6 +88,8 @@ func (p *Printer) Printf(f string, args ...any) (n int, err error) {
 	return
 }
 
+// PrintfOld is the legacy direct-write formatter superseded by Printf, which renders via Format.
+// Kept for reference; prefer Printf.
 func (p *Printer) PrintfOld(format string, args ...any) (n int, err error) {
 	var token string
 	var written int
@@ -239,10 +241,15 @@ func Fprintln(w io.Writer, args ...any) (n int, err error) {
 	return NewPrinter(w).Println(args...)
 }
 
+// Fprint ignores any writer and always prints to os.Stdout.
+// note: takes no io.Writer despite its F-prefix, unlike Fprintf and Fprintln.
 func Fprint(args ...any) (n int, err error) {
 	return NewPrinter(os.Stdout).Print(args...)
 }
 
+// SetView registers fn as the view builder for objects of type T, keyed by T's ObjectType.
+// Replaces any prior builder for that type. Objects not assignable to T at render time get an
+// error view. T's zero value supplies the key, so pointer types are allocated first via reflection.
 func SetView[T astral.Object](fn func(T) View) {
 	var zero T
 

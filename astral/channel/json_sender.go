@@ -20,6 +20,7 @@ func NewJSONSender(w io.Writer) *JSONSender {
 	return &JSONSender{w: w, enc: json.NewEncoder(w)}
 }
 
+// Send rejects UnparsedObjects, which carry no JSON-marshalable form.
 func (w JSONSender) Send(object astral.Object) (err error) {
 	switch object.(type) {
 	case *astral.UnparsedObject:

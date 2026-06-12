@@ -21,6 +21,8 @@ func NewBinaryReceiver(r io.Reader) *BinaryReceiver {
 	return &BinaryReceiver{r: r}
 }
 
+// Receive reads one type-prefixed, length-framed object.
+// An empty type yields a *astral.Blob; an unknown type yields an UnparsedObject only if AllowUnparsed.
 func (b BinaryReceiver) Receive() (object astral.Object, err error) {
 	// read the object type
 	var objectType astral.ObjectType

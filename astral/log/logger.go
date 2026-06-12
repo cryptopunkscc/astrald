@@ -11,6 +11,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Logger writes log entries. Child loggers created via SetPrefix/Tag share the
+// root's filter and registered EntryLoggers; only the root holds that state.
 type Logger struct {
 	id      *astral.Identity
 	w       io.Writer
@@ -21,6 +23,8 @@ type Logger struct {
 	loggers sig.Set[EntryLogger]
 }
 
+// SetFilter sets the filter on the root; an entry is emitted only when filter is
+// nil or returns true.
 func (l *Logger) SetFilter(filter func(*Entry) bool) {
 	if l.parent != nil {
 		l.parent.SetFilter(filter)
@@ -52,6 +56,7 @@ func (l *Logger) Logv(level int, format string, v ...interface{}) {
 	l.logf(uint8(level), format, v...)
 }
 
+// note: Info/Infov/Error/Errorv carry no severity; they are aliases of Log/Logv.
 func (l *Logger) Info(format string, v ...interface{}) {
 	l.logf(0, format, v...)
 }
@@ -68,6 +73,8 @@ func (l *Logger) Errorv(level int, format string, v ...interface{}) {
 	l.logf(uint8(level), format, v...)
 }
 
+// SetPrefix returns a new child logger that prepends obj to every entry; the
+// receiver is unchanged.
 func (l *Logger) SetPrefix(obj ...astral.Object) *Logger {
 	return &Logger{
 		parent: l,

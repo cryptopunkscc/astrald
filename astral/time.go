@@ -28,6 +28,7 @@ func (t *Time) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+// Time returns the value as a standard time.Time, normalized to UTC.
 func (t Time) Time() time.Time {
 	return time.Time(t).UTC()
 }

@@ -36,6 +36,8 @@ func consumePresenceFlag(r io.Reader) (int64, error) {
 	return 1, nil
 }
 
+// Objectified is an Object view over a pointer to an arbitrary Go value, dispatching encode/decode
+// through reflection. Construct it with Objectify; the wrapped Value must be an addressable pointer.
 type Objectified struct {
 	reflect.Value
 }

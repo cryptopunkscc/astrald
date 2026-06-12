@@ -60,6 +60,8 @@ func WithLockedWrites() func(*Config) {
 	}
 }
 
+// WithTimeout closes the channel after the given duration elapses. Only Switch honors it, and it
+// installs a cancelStop the consumer must call to stop the underlying timer.
 func WithTimeout(t time.Duration) func(*Config) {
 	return func(config *Config) {
 		ch := make(chan struct{})

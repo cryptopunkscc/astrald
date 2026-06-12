@@ -142,6 +142,8 @@ func (s *RuntimeSlice) At(i int) Object {
 	return s.ptr.Elem().Index(i).Interface().(Object)
 }
 
+// Append rejects o if its runtime type is not assignable to the carrier's element type;
+// a homogeneous slice will not silently accept a foreign element.
 func (s *RuntimeSlice) Append(o Object) error {
 	elemT := s.ptr.Elem().Type().Elem()
 	rv := reflect.ValueOf(o)

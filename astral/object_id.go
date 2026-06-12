@@ -180,6 +180,7 @@ func (id *ObjectID) IsEqual(other *ObjectID) bool {
 	return bytes.Compare(id.Hash[:], other.Hash[:]) == 0
 }
 
+// IsZero reports whether the id is the zero value (all-zero hash). A nil receiver counts as zero.
 func (id *ObjectID) IsZero() bool {
 	if id == nil {
 		return true
