@@ -45,6 +45,13 @@ func (mod *Module) purgeRepository(ctx *astral.Context, repo objects.Repository)
 				err := repo.Delete(ctx, id)
 				switch {
 				case err == nil:
+					// why: the object is gone, so its tracking row must go too —
+					// otherwise it lingers as the oldest entry and every later
+					// purge re-deletes it before reaching real candidates.
+					derr := mod.db.DeleteObjectCacheByID(id)
+					if derr != nil {
+						mod.log.Error("purge: drop cache row %v: %v", id, derr)
+					}
 					err = sig.Send(ctx, out, id)
 					if err != nil {
 						*errPtr = err
