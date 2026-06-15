@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
+// SignContract submits contract for remote signing; the contract is sent after the channel is
+// established, not as query args.
 func (c *Client) SignContract(ctx *astral.Context, contract *auth.Contract) (*auth.SignedContract, error) {
 	ch, err := c.queryCh(ctx, auth.MethodSignContract, nil)
 	if err != nil {

@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
+// ResolveIdentity resolves a name to an Identity: tries direct public-key parse first,
+// then the in-memory cache (when EnableCache is set), then the remote dir resolver.
 func (client *Client) ResolveIdentity(ctx *astral.Context, name string) (identity *astral.Identity, err error) {
 	// try to parse the public key first
 	if id, err := astral.ParseIdentity(name); err == nil {

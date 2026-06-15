@@ -16,11 +16,16 @@ const (
 	MethodSetAlias     = "dir.set_alias"
 )
 
+// Module is the directory service: it maps identities to human-readable aliases,
+// resolves names to identities, and applies named identity filters.
 type Module interface {
 	SetAlias(*astral.Identity, string) error
 	GetAlias(*astral.Identity) (string, error)
 	ResolveIdentity(string) (*astral.Identity, error)
+	// DisplayName returns the best available human-readable name for the identity,
+	// falling back to a default representation when no alias is set.
 	DisplayName(*astral.Identity) string
+	// AddResolver registers an additional resolver consulted during identity lookups.
 	AddResolver(Resolver) error
 
 	// SetFilter sets a function for a named filter
@@ -42,6 +47,7 @@ type Module interface {
 	ApplyFilters(identity *astral.Identity, filter ...string) bool
 }
 
+// Resolver is implemented by any source that can map names to identities or supply display names.
 type Resolver interface {
 	ResolveIdentity(string) (*astral.Identity, error)
 	DisplayName(*astral.Identity) string

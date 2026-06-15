@@ -21,6 +21,7 @@ func (db *DB) assetExists(objectID *astral.ObjectID) (exists bool) {
 	return
 }
 
+// AssetHeight returns the maximum height across all asset rows, or -1 on query error.
 func (db *DB) AssetHeight() int {
 	var height uint64
 
@@ -45,6 +46,7 @@ func (db *DB) NonceExists(nonce astral.Nonce) (exists bool) {
 	return
 }
 
+// AddAsset inserts a new asset row with a fresh nonce; returns an error if the object already exists unless force is true.
 func (db *DB) AddAsset(objectID *astral.ObjectID, force bool) (nonce astral.Nonce, err error) {
 	if !force && db.assetExists(objectID) {
 		return nonce, errors.New("asset already exists")
@@ -59,6 +61,7 @@ func (db *DB) AddAsset(objectID *astral.ObjectID, force bool) (nonce astral.Nonc
 	}).Error
 }
 
+// AddAssetWithNonce is idempotent: if the nonce already exists it is a no-op, enabling replay-safe replication.
 func (db *DB) AddAssetWithNonce(objectID *astral.ObjectID, nonce astral.Nonce) error {
 	if db.NonceExists(nonce) {
 		return nil
@@ -71,6 +74,7 @@ func (db *DB) AddAssetWithNonce(objectID *astral.ObjectID, nonce astral.Nonce) e
 	}).Error
 }
 
+// RemoveAsset marks all non-removed rows for objectID as removed and advances their height; rows are never deleted.
 func (db *DB) RemoveAsset(objectID *astral.ObjectID) (err error) {
 	var rows []dbAsset
 
@@ -91,6 +95,7 @@ func (db *DB) RemoveAsset(objectID *astral.ObjectID) (err error) {
 	return
 }
 
+// RemoveAssetByNonce marks the row with the given nonce as removed; if the nonce is unknown it upserts a tombstone so that late-arriving adds are suppressed.
 func (db *DB) RemoveAssetByNonce(nonce astral.Nonce, objectID *astral.ObjectID) (err error) {
 	var row dbAsset
 
@@ -119,6 +124,7 @@ func (db *DB) RemoveAssetByNonce(nonce astral.Nonce, objectID *astral.ObjectID) 
 	return db.Save(row).Error
 }
 
+// Assets returns the distinct set of object IDs that have at least one non-removed row.
 func (db *DB) Assets() (assets []*astral.ObjectID, err error) {
 	err = db.
 		Model(&dbAsset{}).

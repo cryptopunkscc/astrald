@@ -10,6 +10,8 @@ import (
 
 type Loader struct{}
 
+// Load constructs and wires the auth module: reads config, registers the sudo handler,
+// opens the DB, and runs AutoMigrate before returning the module to the core runtime.
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 	var mod = &Module{

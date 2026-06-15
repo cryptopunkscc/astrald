@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 )
 
+// Client is an RPC client for the auth module.
+// targetID selects the remote node; nil targets the local node.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity

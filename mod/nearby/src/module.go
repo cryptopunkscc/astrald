@@ -82,6 +82,8 @@ func (mod *Module) AddStatusComposer(composer nearby.Composer) {
 	mod.composers.Add(composer)
 }
 
+// Mode returns the current broadcast mode; falls back to ModeVisible when no user
+// identity is set (node is unowned), and to ModeStealth when the mode is unset.
 func (mod *Module) Mode() nearby.Mode {
 	if mod.User.Identity() == nil {
 		return nearby.ModeVisible
@@ -98,6 +100,7 @@ func (mod *Module) SetMode(ctx *astral.Context, m nearby.Mode) error {
 	return mod.mode.Set(ctx, &m)
 }
 
+// Cache returns the live peer-status map after evicting entries older than statusExpiration.
 func (mod *Module) Cache() *sig.Map[string, *cache] {
 	mod.expireCache()
 	return &mod.cache
@@ -142,6 +145,8 @@ func (mod *Module) periodicUpdater(ctx *astral.Context) {
 	}
 }
 
+// Broadcast pushes the current status to all reachable peers; no-ops silently in
+// ModeSilent without returning an error.
 func (mod *Module) Broadcast() error {
 	if mod.Mode() == nearby.ModeSilent {
 		return nil
@@ -164,6 +169,8 @@ func (mod *Module) canBroadcast(s *nearby.StatusMessage) bool {
 	return mod.Mode() != nearby.ModeStealth || len(s.Attachments.Objects()) > 0
 }
 
+// Status assembles a StatusMessage by invoking every registered Composer; pass nil
+// to address the message to astral.Anyone (broadcast semantics).
 func (mod *Module) Status(receiver *astral.Identity) *nearby.StatusMessage {
 	s := &nearby.StatusMessage{
 		Attachments: astral.NewBundle(),

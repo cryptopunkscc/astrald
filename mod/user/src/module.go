@@ -51,6 +51,7 @@ func (mod *Module) Router() astral.Router {
 	return &mod.router
 }
 
+// Ready returns a channel that is closed once Run has applied the initial active contract and is fully initialized.
 func (mod *Module) Ready() <-chan struct{} {
 	return mod.ready
 }

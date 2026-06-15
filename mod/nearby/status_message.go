@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// StatusMessage is the raw broadcast payload received over the wire; the sender's identity
+// has not yet been resolved (use Module.ResolveStatus for that).
 type StatusMessage struct {
 	Attachments *astral.Bundle
 }

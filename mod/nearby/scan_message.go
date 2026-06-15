@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// ScanMessage is the discovery probe sent to request a status broadcast from nearby nodes.
 type ScanMessage struct{}
 
 // astral

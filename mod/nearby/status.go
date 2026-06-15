@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// Status is a resolved broadcast: the sender's identity has been determined and is paired
+// with the attachment bundle it carried.
 type Status struct {
 	Identity    *astral.Identity
 	Attachments *astral.Bundle

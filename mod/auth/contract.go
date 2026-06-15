@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/crypto"
 )
 
+// Contract is the unsigned body of an authorization grant from Issuer to Subject.
+// Wrap it in SignedContract before indexing or verifying.
 type Contract struct {
 	Issuer  *astral.Identity
 	Subject *astral.Identity
@@ -32,6 +34,8 @@ func (p *Permit) ReadFrom(r io.Reader) (int64, error) { return astral.Objectify(
 func (p Permit) MarshalJSON() ([]byte, error)  { return astral.Objectify(&p).MarshalJSON() }
 func (p *Permit) UnmarshalJSON(b []byte) error { return astral.Objectify(p).UnmarshalJSON(b) }
 
+// Allows reports whether any permit in the contract matches the action.
+// Actions not implementing Constrainable pass constraint checks automatically.
 func (c *Contract) Allows(action ActionObject) bool {
 	if c.Permits == nil {
 		return false

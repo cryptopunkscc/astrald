@@ -7,6 +7,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
+// SwarmAccessAction is the permit type embedded in node contracts; its
+// ObjectType string is what IsNodeContract checks to identify a valid swarm
+// membership contract.
 type SwarmAccessAction struct {
 	auth.Action
 }

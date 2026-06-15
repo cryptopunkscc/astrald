@@ -7,6 +7,8 @@ import (
 
 var _ nearby.Composer = &Module{}
 
+// ComposeStatus attaches the node's directory alias to the nearby composition when the node is in visible mode.
+// Silent and stealth modes produce no attachment.
 func (mod *Module) ComposeStatus(a nearby.Composition) {
 	switch mod.Nearby.Mode() {
 	case nearby.ModeSilent:

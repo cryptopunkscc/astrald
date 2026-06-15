@@ -90,6 +90,8 @@ func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 	}
 }
 
+// ReceiveEvent wakes the reconnect loop when the last link to Target is closed.
+// Ignores events for other identities and partial disconnects (LinkCount != 0).
 func (a *MaintainLinkTask) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *nodes.LinkClosedEvent:

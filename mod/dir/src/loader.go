@@ -11,6 +11,8 @@ import (
 
 type Loader struct{}
 
+// Load initializes the dir module: migrates the alias DB schema, sets a default node alias if absent,
+// registers the DNS resolver, and installs the built-in "all" and "localnode" identity filters.
 func (Loader) Load(node astral.Node, assets assets.Assets, l *log.Logger) (core.Module, error) {
 	var err error
 	var mod = &Module{

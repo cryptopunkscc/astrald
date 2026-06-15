@@ -5,6 +5,8 @@ import (
 	"github.com/cryptopunkscc/astrald/core"
 )
 
+// PreprocessQuery blocks outgoing queries whose target fails the active directory filters.
+// Queries to the local node are always allowed; filters may be overridden per-query via the "filters" extra key.
 func (mod *Module) PreprocessQuery(m *core.QueryModifier) error {
 	q := m.Query()
 

@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
+// Sibling tracks a connected peer node that shares the same active contract (user).
+// Cancel terminates the background goroutine that maintains the sibling link.
 type Sibling struct {
 	ID     *astral.Identity
 	Cancel context.CancelFunc

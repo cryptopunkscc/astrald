@@ -35,6 +35,7 @@ func (mod *Module) ActiveContract() *auth.SignedContract {
 	return mod.activeContract
 }
 
+// Identity returns the user identity (the issuer of the active contract), not the local node identity.
 func (mod *Module) Identity() *astral.Identity {
 	ac := mod.ActiveContract()
 	if ac == nil {
@@ -96,6 +97,8 @@ func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 	return mod.ActiveNodes(ac.Issuer)
 }
 
+// InviteNode issues a SwarmAccess contract to nodeID, collects the remote node's subject signature, and verifies both before returning.
+// Requires an active contract; the user identity becomes the issuer.
 func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (signed *auth.SignedContract, err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {

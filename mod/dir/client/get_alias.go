@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/dir"
 )
 
+// GetAlias returns the human-readable alias for the given identity, consulting the
+// in-memory cache before making a remote query when EnableCache is set.
 func (client *Client) GetAlias(ctx *astral.Context, identity *astral.Identity) (alias string, err error) {
 	// check cache
 	if client.EnableCache {

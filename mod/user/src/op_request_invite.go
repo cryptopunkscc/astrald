@@ -12,6 +12,9 @@ type opRequestInviteArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpRequestInvite allows a caller node to request membership in this node's swarm.
+// Requires an active contract; applies the swarm join-request policy to the caller before inviting.
+// Pushes the resulting signed contract to the local swarm asynchronously.
 func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery, args opRequestInviteArgs) (err error) {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
