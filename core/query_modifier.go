@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// QueryModifier is handed to preprocessors to inspect and mutate an in-flight query before routing.
 type QueryModifier struct {
 	query   *astral.InFlightQuery
 	blocked sig.Value[error]
@@ -17,6 +18,7 @@ func (q *QueryModifier) Query() *astral.InFlightQuery {
 	return q.query
 }
 
+// Block marks the query as rejected; routing returns RouteNotFound. Only the first block takes effect.
 func (q *QueryModifier) Block(err error) {
 	q.blocked.Swap(nil, err)
 }
@@ -25,6 +27,7 @@ func (q *QueryModifier) Attach(object astral.Object) {
 	q.query.Extra.Set(nodes.ExtraCallerProof, object)
 }
 
+// AddRelay appends a relay identity to the query, skipping duplicates.
 func (q *QueryModifier) AddRelay(identity *astral.Identity) {
 	if l, ok := q.query.Extra.Get(nodes.ExtraRelayVia); ok {
 		if l, ok := l.([]*astral.Identity); ok {

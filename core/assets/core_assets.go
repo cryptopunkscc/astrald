@@ -24,6 +24,7 @@ type CoreAssets struct {
 	db  *gorm.DB
 }
 
+// NewCoreAssets opens the default database eagerly; fails if it cannot be reached.
 func NewCoreAssets(res resources.Resources, log *log2.Logger) (*CoreAssets, error) {
 	var err error
 	var a = &CoreAssets{
@@ -51,6 +52,7 @@ func (assets *CoreAssets) Write(name string, data []byte) error {
 	return assets.res.Write(name, data)
 }
 
+// LoadYAML appends a .yaml suffix to name if missing.
 func (assets *CoreAssets) LoadYAML(name string, out interface{}) error {
 	if !strings.HasSuffix(strings.ToLower(name), ".yaml") {
 		name = name + ".yaml"
@@ -64,6 +66,7 @@ func (assets *CoreAssets) LoadYAML(name string, out interface{}) error {
 	return yaml.Unmarshal(bytes, out)
 }
 
+// StoreYAML appends a .yaml suffix to name if missing.
 func (assets *CoreAssets) StoreYAML(name string, in interface{}) error {
 	if !strings.HasSuffix(strings.ToLower(name), ".yaml") {
 		name = name + ".yaml"
@@ -81,6 +84,8 @@ func (assets *CoreAssets) Database() *gorm.DB {
 	return assets.db
 }
 
+// OpenDatabase resolves name to a file path under FileResources or a shared in-memory db under MemResources.
+// Appends a .db suffix if missing; errors when the resource backend supports neither.
 func (assets *CoreAssets) OpenDatabase(name string) (*gorm.DB, error) {
 	if name == "" {
 		return nil, errors.New("invalid name")
