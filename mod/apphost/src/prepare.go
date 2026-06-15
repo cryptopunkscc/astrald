@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// Prepare seeds fixed access tokens from the module config into the database.
+// Each token is upserted (deleted then re-created) with a 100-year expiry so it
+// persists across restarts without manual renewal.
 func (mod *Module) Prepare(ctx context.Context) error {
 	// load fixed access tokens from the config
 	for token, name := range mod.config.Tokens {

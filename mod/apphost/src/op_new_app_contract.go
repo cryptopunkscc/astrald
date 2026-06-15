@@ -13,6 +13,8 @@ type opNewAppContractArgs struct {
 	Out      string          `query:"optional"`
 }
 
+// OpNewAppContract creates an unsigned app contract for the given identity.
+// The contract is returned to the caller for signing; use OpSignAppContract or OpInstallApp to complete the flow.
 func (mod *Module) OpNewAppContract(ctx *astral.Context, q *routing.IncomingQuery, args opNewAppContractArgs) error {
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()

@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// Bind opens a persistent channel to the apphost; the caller must close it when done.
 func (client *Client) Bind(ctx *astral.Context) (*channel.Channel, error) {
 	ch, err := client.queryCh(ctx, apphost.MethodBind, nil)
 	if err != nil {

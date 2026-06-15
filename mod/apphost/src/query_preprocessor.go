@@ -8,6 +8,12 @@ import (
 
 var _ core.QueryPreprocessor = &Module{}
 
+// PreprocessQuery enriches outgoing queries with relay information.
+// For queries from a locally-hosted app it attaches a relay-for contract so the
+// remote node can verify the app's identity. For queries targeting an app it
+// discovers the app's hosting nodes via relay-for contracts and registers them as
+// relay candidates on the modifier.
+// note: uses a local-only context (ZoneNetwork excluded) to avoid network calls during preprocessing.
 func (mod *Module) PreprocessQuery(qm *core.QueryModifier) error {
 	ctx := astral.NewContext(nil).WithIdentity(mod.node.Identity()).ExcludeZone(astral.ZoneNetwork)
 

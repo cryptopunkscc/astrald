@@ -12,6 +12,8 @@ import (
 
 type Loader struct{}
 
+// Load instantiates the apphost Module: loads config, auto-migrates the database schema,
+// and registers Op-prefixed struct methods as router operations.
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 

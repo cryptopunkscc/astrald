@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// HoldObject pins the object in the apphost for as long as ctx is live.
 func (client *Client) HoldObject(ctx *astral.Context, objectID *astral.ObjectID) error {
 	ch, err := client.queryCh(ctx, apphost.MethodHoldObject, query.Args{
 		"id": objectID,

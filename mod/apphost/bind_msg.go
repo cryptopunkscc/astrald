@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// BindMsg associates a set of handler registrations with a nonce token so the
+// host can remove them all when the bind connection closes.
 type BindMsg struct {
 	Token astral.Nonce
 }

@@ -8,6 +8,10 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
+// RouteQuery dispatches an inbound query to a registered IPC or WS handler whose
+// identity matches the query target. IPC handlers are tried first; WS handlers are
+// tried second. An unresponsive or closed handler is automatically removed from the
+// registry so stale registrations do not accumulate.
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	for _, handler := range mod.ipcHandlers.Clone() {
 		if !handler.Identity.IsEqual(q.Target) {

@@ -14,6 +14,9 @@ type opInstallAppArgs struct {
 	Out      string          `query:"optional"`
 }
 
+// OpInstallApp creates, signs, and indexes an app contract for an existing identity, then records it as a local app.
+// The node signs as both issuer and subject because it holds both keys at install time.
+// On success the signed contract is pushed to the local user swarm.
 func (mod *Module) OpInstallApp(ctx *astral.Context, q *routing.IncomingQuery, args opInstallAppArgs) error {
 	if q.Origin() == astral.OriginNetwork {
 		return q.RejectWithCode(3)

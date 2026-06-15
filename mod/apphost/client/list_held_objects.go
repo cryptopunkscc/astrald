@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// ListHeldObjects streams held object IDs asynchronously; the error pointer is populated only after the channel closes.
 func (client *Client) ListHeldObjects(ctx *astral.Context) (<-chan *astral.ObjectID, *error) {
 	ch, err := client.queryCh(ctx, apphost.MethodListHeldObjects, nil)
 	if err != nil {

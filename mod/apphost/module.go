@@ -23,6 +23,7 @@ const (
 	MethodListHeldObjects = "apphost.list_held_objects"
 )
 
+// Module is the public API surface of the apphost module.
 type Module interface {
 	CreateAccessToken(*astral.Identity, astral.Duration) (*AccessToken, error)
 	LocalApps() ([]*App, error)

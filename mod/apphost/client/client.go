@@ -8,6 +8,7 @@ import (
 
 var DefaultProtocol = "tcp"
 
+// Client sends apphost RPC requests on behalf of an application identity.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity
