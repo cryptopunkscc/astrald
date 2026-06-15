@@ -25,8 +25,6 @@ func NewRouter(endpoint string, token string) *Router {
 	return &Router{endpoint: endpoint, token: token}
 }
 
-// DefaultRouter returns the package-level Router initialised from DefaultEndpoint
-// and the AuthTokenEnv environment variable.
 func DefaultRouter() *Router {
 	return defaultRouter
 }

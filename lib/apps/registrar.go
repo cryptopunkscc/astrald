@@ -99,7 +99,6 @@ func NewAppRegistrar(ctx *astral.Context, opts ...AppRegistrarOption) *AppRegist
 	return s
 }
 
-// NewDefaultAppRegistrar is an alias for NewAppRegistrar; prefer NewAppRegistrar directly.
 func NewDefaultAppRegistrar(ctx *astral.Context, opts ...AppRegistrarOption) *AppRegistrar {
 	return NewAppRegistrar(ctx, opts...)
 }

@@ -20,7 +20,6 @@ func New(router Router) *Client {
 	return &Client{Router: router}
 }
 
-// Default returns the package-level client, initialising it from libapphost.DefaultRouter on first call.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(libapphost.DefaultRouter())
