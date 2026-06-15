@@ -32,6 +32,8 @@ type Module struct {
 	ctx *astral.Context
 }
 
+// Run starts the broadcast receiver loop and holds a platform multicast lock for the lifetime of ctx.
+// When socket is nil (UDP bind failed at load), Run exits cleanly without any network activity.
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 
@@ -260,6 +262,8 @@ func isInterfaceEnabled(iface NetInterface) bool {
 		(iface.Flags&net.FlagLoopback == 0)
 }
 
+// BroadcastAddr derives the IPv4 broadcast address from a CIDR net.Addr.
+// note: slices IPv4-in-IPv6 addresses down to 4 bytes before applying the mask.
 func BroadcastAddr(addr net.Addr) (net.IP, error) {
 	ip, ipnet, err := net.ParseCIDR(addr.String())
 	if err != nil {

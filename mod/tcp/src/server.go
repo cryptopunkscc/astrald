@@ -14,6 +14,8 @@ import (
 
 var _ exonet.EphemeralListener = &Server{}
 
+// Server is a TCP listener that wraps accepted connections and dispatches them through a caller-supplied handler.
+// It supports graceful shutdown via Close or context cancellation; both paths are idempotent.
 type Server struct {
 	*Module
 	listenPort astral.Uint16
@@ -89,6 +91,7 @@ func (s *Server) Done() <-chan struct{} {
 	return s.closedCh
 }
 
+// Close stops the server idempotently; concurrent or repeated calls are safe.
 func (s *Server) Close() error {
 	if !s.closed.CompareAndSwap(false, true) {
 		return nil

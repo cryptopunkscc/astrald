@@ -14,6 +14,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tor"
 )
 
+// Deps holds optional module dependencies; Tor may be nil when the tor driver is absent.
 type Deps struct {
 	Dir dir.Module
 	TCP tcp.Module
@@ -51,6 +52,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
+// CreateForward parses the server and target URIs, constructs the appropriate server, and starts it in a goroutine.
 func (mod *Module) CreateForward(server, target string) error {
 	t, err := mod.parseTarget(target)
 	if err != nil {

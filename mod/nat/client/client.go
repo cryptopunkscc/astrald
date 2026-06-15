@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 )
 
+// Client sends NAT module queries to a specific node; a nil targetID routes to the local node.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity

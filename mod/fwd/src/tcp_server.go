@@ -10,6 +10,7 @@ import (
 
 var _ Server = &TCPServer{}
 
+// TCPServer accepts TCP connections and forwards each as a query to the configured target router.
 type TCPServer struct {
 	*Module
 	bind     string
@@ -17,6 +18,7 @@ type TCPServer struct {
 	listener _net.Listener
 }
 
+// NewTCPServer binds the TCP listener immediately at construction; the port is held before Run is called.
 func NewTCPServer(mod *Module, bind string, target astral.Router) (*TCPServer, error) {
 	var err error
 	var srv = &TCPServer{

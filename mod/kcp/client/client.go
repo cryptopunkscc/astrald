@@ -18,6 +18,7 @@ func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	return &Client{astral: a, targetID: targetID}
 }
 
+// WithTarget returns a new Client bound to target, sharing the same underlying astral client.
 func (client *Client) WithTarget(target *astral.Identity) *Client {
 	return &Client{astral: client.astral, targetID: target}
 }

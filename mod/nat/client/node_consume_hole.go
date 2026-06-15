@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
+// NodeConsumeHole claims a hole identified by pair; when target is nil the caller acts as responder and drives
+// the lock/take handshake, otherwise it acts as initiator and waits for an ack.
 func (client *Client) NodeConsumeHole(ctx *astral.Context, pair astral.Nonce, target *astral.Identity) error {
 	args := query.Args{"pair": pair}
 	if target != nil {

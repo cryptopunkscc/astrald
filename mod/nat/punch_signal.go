@@ -8,6 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/ip"
 )
 
+// PunchSignalTypeOffer and friends define the five-step punch handshake order:
+// initiator sends offer → passive responds with answer → passive signals ready
+// → initiator signals go (both sides punch simultaneously) → initiator sends result.
 const (
 	PunchSignalTypeOffer  = "offer"
 	PunchSignalTypeAnswer = "answer"

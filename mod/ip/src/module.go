@@ -38,6 +38,7 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
+// LocalIPs returns all non-loopback IP addresses currently assigned to local network interfaces.
 func (mod *Module) LocalIPs() ([]ip.IP, error) {
 	return mod.localAddresses(false)
 }

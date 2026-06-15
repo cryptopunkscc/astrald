@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+// Control manages a single authenticated session with a Tor daemon over the control protocol.
+// protocolInfo is lazily fetched and cached on first use; closeCh is closed when the underlying transport dies.
 type Control struct {
 	Config
 	protocolInfo *ProtocolInfo
@@ -62,6 +64,8 @@ func Connect(cfg Config) (*Control, error) {
 	}, nil
 }
 
+// New wraps an already-established transport as a Control without dialing.
+// Useful for testing or when the caller manages the connection lifecycle.
 func New(rwc io.ReadWriteCloser) *Control {
 	c, ch := watchClosed(rwc)
 
@@ -118,6 +122,9 @@ func (ctl *Control) GetInfo(arg string) (string, error) {
 	return "", errors.New("no value set")
 }
 
+// AddOnion creates a new hidden service on the daemon.
+// Pass a KeyNew* sentinel as privateKey to have the daemon generate one; the returned Onion.PrivateKey holds it.
+// Pass an existing private key to restore a previously created service.
 func (ctl *Control) AddOnion(privateKey string, ports map[int]string) (Onion, error) {
 	portPart := portsToString(ports)
 
@@ -139,6 +146,7 @@ func (ctl *Control) DelOnion(serviceID string) error {
 	return err
 }
 
+// WaitClose returns a channel that is closed when the underlying transport is detected as closed.
 func (ctl *Control) WaitClose() <-chan struct{} {
 	return ctl.closeCh
 }

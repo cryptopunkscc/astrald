@@ -34,6 +34,8 @@ type Module struct {
 	ephemeralListeners sig.Map[astral.Uint16, exonet.EphemeralListener]
 }
 
+// Settings holds live, tree-bound toggles for the module; values may change at runtime
+// without a restart and are observed via Follow.
 type Settings struct {
 	Listen *tree.Value[*astral.Bool] `tree:"listen"`
 	Dial   *tree.Value[*astral.Bool] `tree:"dial"`

@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// ReceiveObject re-evaluates the enabled state when a new observed endpoint event arrives.
 func (mod *Module) ReceiveObject(drop objects.Drop) error {
 	switch object := drop.Object().(type) {
 	case *events.Event:

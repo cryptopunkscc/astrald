@@ -13,6 +13,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Server manages the Tor hidden-service lifecycle for the module, including its advertised onion endpoint.
 type Server struct {
 	*Module
 	endpoint *tor.Endpoint
@@ -22,6 +23,8 @@ func NewServer(module *Module) *Server {
 	return &Server{Module: module}
 }
 
+// Run acquires or generates the node's private key, registers a Tor onion service via the control port,
+// and dispatches each accepted connection to the nodes layer for inbound link establishment.
 func (srv *Server) Run(ctx *astral.Context) error {
 	key, err := srv.getPrivateKey()
 	if err != nil {

@@ -26,6 +26,8 @@ func (b *SignedBroadcast) ReadFrom(r io.Reader) (n int64, err error) {
 	return astral.Objectify(b).ReadFrom(r)
 }
 
+// Hash returns the object ID hash of the embedded Broadcast, not the full SignedBroadcast,
+// so the signature covers only the payload and not the signature field itself.
 func (b SignedBroadcast) Hash() []byte {
 	objectID, err := astral.ResolveObjectID(&b.Broadcast)
 	if err != nil {

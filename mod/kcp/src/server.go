@@ -90,6 +90,9 @@ func (s *Server) Done() <-chan struct{} {
 	return s.closedCh
 }
 
+// Close stops the server idempotently; the first call closes the underlying
+// KCP listener (or the done channel if no listener was started yet), and
+// subsequent calls are no-ops.
 func (s *Server) Close() error {
 	if !s.closed.CompareAndSwap(false, true) {
 		return nil

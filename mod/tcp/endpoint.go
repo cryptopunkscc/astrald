@@ -112,6 +112,8 @@ func (e *Endpoint) String() string {
 	return e.Address()
 }
 
+// IsZero reports whether the endpoint is unset.
+// note: safe to call on a nil pointer; nil IP also counts as zero.
 func (e *Endpoint) IsZero() bool {
 	return e == nil || e.IP == nil
 }

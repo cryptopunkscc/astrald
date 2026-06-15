@@ -11,6 +11,8 @@ import (
 
 var _ nodes.EndpointResolver = &Module{}
 
+// ResolveEndpoints returns KCP endpoints only for the local node identity;
+// requests for any other identity yield an empty channel.
 func (mod *Module) ResolveEndpoints(ctx *astral.Context, nodeID *astral.Identity) (_ <-chan *nodes.EndpointWithTTL, err error) {
 	if !nodeID.IsEqual(mod.node.Identity()) {
 		return sig.ArrayToChan([]*nodes.EndpointWithTTL{}), nil

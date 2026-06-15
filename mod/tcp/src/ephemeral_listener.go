@@ -8,6 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/tcp"
 )
 
+// CreateEphemeralListener starts a TCP server on port and registers it in the ephemeral listener map.
+// The server runs in a background goroutine and removes itself from the map when it stops.
+// Returns an error if a listener on that port already exists.
 func (mod *Module) CreateEphemeralListener(ctx *astral.Context, port astral.Uint16, handler exonet.EphemeralHandler) error {
 	mod.mu.Lock()
 	defer mod.mu.Unlock()

@@ -10,6 +10,9 @@ import (
 	"github.com/cryptopunkscc/astrald/astral/channel"
 )
 
+// ConsumeHoleSignalTypeLock and friends are the four signal types for the
+// two-phase consume-hole handshake: initiator sends lock, holder replies
+// locked; initiator sends take, holder replies taken.
 const (
 	ConsumeHoleSignalTypeLock   = "lock"
 	ConsumeHoleSignalTypeLocked = "locked"
@@ -78,6 +81,7 @@ func ExpectConsumeHoleSignal(pair astral.Nonce, signalType astral.String8, on fu
 	}
 }
 
+// HandleFailedConsumeHoleSignal returns the signal's error when Ok is false, nil otherwise.
 func HandleFailedConsumeHoleSignal(sig *ConsumeHoleSignal) error {
 	if !sig.Ok {
 		return sig.Err()

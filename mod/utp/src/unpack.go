@@ -19,6 +19,7 @@ func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) 
 	return Unpack(data)
 }
 
+// Unpack deserializes a binary-encoded uTP endpoint from buf.
 func Unpack(buf []byte) (e *utp.Endpoint, err error) {
 	e = &utp.Endpoint{}
 	_, err = e.ReadFrom(bytes.NewReader(buf))

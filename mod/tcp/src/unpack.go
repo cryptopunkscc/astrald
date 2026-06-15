@@ -17,6 +17,7 @@ func (mod *Module) Unpack(network string, data []byte) (exonet.Endpoint, error) 
 	return Unpack(data)
 }
 
+// Unpack deserializes a TCP endpoint from its binary wire representation.
 func Unpack(buf []byte) (e *tcp.Endpoint, err error) {
 	e = &tcp.Endpoint{}
 	_, err = e.ReadFrom(bytes.NewReader(buf))

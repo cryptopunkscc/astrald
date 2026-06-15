@@ -6,6 +6,8 @@ import (
 
 var _ nearby.Composer = &Module{}
 
+// ComposeStatus attaches the local onion endpoint to the nearby composition only in ModeVisible;
+// the endpoint is withheld in ModeSilent and ModeStealth.
 func (mod *Module) ComposeStatus(a nearby.Composition) {
 	switch mod.Nearby.Mode() {
 	case nearby.ModeSilent:

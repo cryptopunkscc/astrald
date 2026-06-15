@@ -20,6 +20,9 @@ var resolvers = []string{
 	"resolver4.opendns.com:53",
 }
 
+// LookupMyIP queries a randomly chosen OpenDNS resolver for the caller's public IP address
+// by resolving the special domain myip.opendns.com, which OpenDNS resolvers answer with
+// the source IP of the incoming query.
 func LookupMyIP() (string, error) {
 	// Randomly select a resolver
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))

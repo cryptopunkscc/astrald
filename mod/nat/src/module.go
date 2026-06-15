@@ -76,6 +76,7 @@ func (mod *Module) Router() astral.Router {
 	return &mod.router
 }
 
+// SetEnabled updates the enabled flag and broadcasts to all waiters if the value changed.
 func (mod *Module) SetEnabled(enabled bool) {
 	if mod.enabled.Swap(enabled) != enabled {
 		mod.cond.Broadcast()

@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nat"
 )
 
+// ListHoles returns known NAT holes, optionally filtered to those involving the peer identity string with.
 func (client *Client) ListHoles(ctx *astral.Context, with string) ([]*nat.Hole, error) {
 	args := query.Args{}
 	if with != "" {

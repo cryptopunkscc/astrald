@@ -15,6 +15,7 @@ type TorTarget struct {
 	endpoint exonet.Endpoint
 }
 
+// NewTorTarget parses addr into a Tor endpoint at construction time via the tor driver.
 func NewTorTarget(drv tor.Module, addr string, identity *astral.Identity) (*TorTarget, error) {
 	var err error
 	var t = &TorTarget{
@@ -30,6 +31,7 @@ func NewTorTarget(drv tor.Module, addr string, identity *astral.Identity) (*TorT
 	return t, nil
 }
 
+// RouteQuery dials the Tor endpoint and pumps conn→w in a background goroutine to bridge the two streams.
 func (t *TorTarget) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (io.WriteCloser, error) {
 	conn, err := t.tor.Dial(ctx, t.endpoint)
 	if err != nil {

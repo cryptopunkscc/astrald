@@ -20,6 +20,8 @@ func (info ProtocolInfo) HasAuthMethod(method string) bool {
 	return false
 }
 
+// ProtocolInfo returns the daemon's protocol information, fetching and caching it on first call.
+// Returns nil if the underlying request fails.
 func (ctl *Control) ProtocolInfo() *ProtocolInfo {
 	var err error
 

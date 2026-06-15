@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Key holds a raw ED25519-V3 private key for a Tor hidden service.
 type Key []byte
 
 const privateKeyFileName = "tor.key"
