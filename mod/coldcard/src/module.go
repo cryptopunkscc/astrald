@@ -27,7 +27,6 @@ type Module struct {
 	devices sig.Map[string, string]
 }
 
-// Run scans once in the background then blocks until the context is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	go mod.Scan()
 	<-ctx.Done()

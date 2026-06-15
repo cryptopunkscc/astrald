@@ -13,7 +13,6 @@ type Client struct {
 
 var defaultClient *Client
 
-// New builds a client targeting targetID; a nil astral falls back to astrald.Default.
 func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 	if astral == nil {
 		astral = astrald.Default()
@@ -21,7 +20,6 @@ func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 	return &Client{astral: astral, targetID: targetID}
 }
 
-// Default returns the lazily-initialized package-wide client with no target set.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(nil, astrald.Default())

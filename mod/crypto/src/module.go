@@ -36,8 +36,6 @@ type Module struct {
 
 var _ crypto.Module = &Module{}
 
-// Run launches one background indexing goroutine per configured repo and
-// blocks until the context is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 

@@ -23,7 +23,6 @@ type Module struct {
 	db     *DB
 }
 
-// Run blocks until the context is cancelled; the module is passive and serves no background work.
 func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	return nil

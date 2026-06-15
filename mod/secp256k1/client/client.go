@@ -13,7 +13,6 @@ type Client struct {
 
 var defaultClient *Client
 
-// New falls back to the default astrald client when a is nil.
 func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	if a == nil {
 		a = astrald.Default()
@@ -21,7 +20,6 @@ func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	return &Client{astral: a, targetID: targetID}
 }
 
-// Default returns a lazily-initialized process-wide shared client.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(nil, astrald.Default())
