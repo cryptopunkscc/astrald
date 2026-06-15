@@ -16,7 +16,6 @@ type Deps struct {
 	Shell   shell.Module
 }
 
-// LoadDependencies injects module dependencies and registers repositories declared in the config.
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

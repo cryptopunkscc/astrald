@@ -13,8 +13,6 @@ type Client struct {
 	targetID *astral.Identity
 }
 
-// New creates a Client targeting the given identity. If a is nil, astrald.Default()
-// is used; if targetID is nil, calls are routed to the local node.
 func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	if a == nil {
 		a = astrald.Default()

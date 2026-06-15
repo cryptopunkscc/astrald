@@ -12,9 +12,6 @@ const zipMimeType = "application/zip"
 
 var _ archives.Module = &Module{}
 
-// Module is the archives module implementation; it indexes ZIP archives,
-// serves their entries as virtual objects, and authorizes access through
-// the parent archive.
 type Module struct {
 	Deps
 	config Config

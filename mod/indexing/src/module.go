@@ -21,8 +21,6 @@ type Deps struct {
 	Tree    tree.Module
 }
 
-// Module tracks enabled repos via syncing goroutines and notifies subscribed
-// indexers of changes through a broadcast channel.
 type Module struct {
 	Deps
 	config   Config
@@ -41,8 +39,6 @@ type Module struct {
 	notify   chan struct{}
 }
 
-// Run restores sync goroutines for all repos persisted in the tree and blocks
-// until ctx is cancelled; each repo runs in its own goroutine.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 

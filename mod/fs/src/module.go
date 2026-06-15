@@ -12,7 +12,6 @@ import (
 
 var _ fs.Module = &Module{}
 
-// Module is the fs module; it indexes local files and exposes them as object repositories.
 type Module struct {
 	Deps
 	config  Config
@@ -25,7 +24,6 @@ type Module struct {
 	router  routing.OpRouter
 }
 
-// Run starts indexer workers and kicks off a full scan in the background, then blocks until ctx is done.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
