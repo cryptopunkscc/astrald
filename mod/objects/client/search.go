@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Search streams results over the returned channel; the error pointer is valid only after it closes.
 func (client *Client) Search(ctx *astral.Context, q objects.SearchQuery) (<-chan *objects.SearchResult, *error) {
 	ch, err := client.queryCh(ctx, objects.MethodSearch, query.Args{
 		"q": q,

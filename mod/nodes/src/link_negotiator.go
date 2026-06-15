@@ -24,6 +24,7 @@ type muxLinkNegotiator struct {
 	ch  *channel.Channel
 }
 
+// NegotiateOutbound reads the peer's feature list, selects mux2, and waits for the link nonce; fails if mux2 is absent or rejected.
 func (n *muxLinkNegotiator) NegotiateOutbound() (*Link, error) {
 	var count *astral.Uint16
 	if err := n.ch.Switch(channel.Expect(&count), channel.PassErrors); err != nil {
@@ -71,6 +72,7 @@ func (n *muxLinkNegotiator) NegotiateOutbound() (*Link, error) {
 	return link, nil
 }
 
+// NegotiateInbound offers mux2, confirms the peer selected it, and assigns the link nonce.
 func (n *muxLinkNegotiator) NegotiateInbound() (*Link, error) {
 	if err := n.ch.Send(astral.NewUint16(1)); err != nil {
 		return nil, fmt.Errorf("send feature count: %w", err)
@@ -108,6 +110,7 @@ func (n *muxLinkNegotiator) NegotiateInbound() (*Link, error) {
 	return link, nil
 }
 
+// EstablishOutboundLink runs the noise handshake and mux negotiation over conn, then registers the link; closes conn on any error.
 func (mod *Module) EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (_ nodes.Link, err error) {
 	defer func() {
 		if err != nil {
@@ -142,6 +145,7 @@ func (mod *Module) EstablishOutboundLink(ctx context.Context, remoteID *astral.I
 	return link, nil
 }
 
+// EstablishInboundLink runs the inbound noise handshake and mux negotiation over conn, then registers the link; closes conn on any error.
 func (mod *Module) EstablishInboundLink(ctx context.Context, conn exonet.Conn) (err error) {
 	defer func() {
 		if err != nil {

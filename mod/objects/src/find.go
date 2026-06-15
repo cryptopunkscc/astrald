@@ -8,6 +8,9 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Find fans the query out to all registered finders in parallel and merges the
+// provider identities they return onto one channel, closed once every finder is
+// done or ctx is cancelled.
 func (mod *Module) Find(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *astral.Identity, error) {
 	finders := mod.finders.Clone()
 	results := make(chan *astral.Identity)
@@ -50,6 +53,8 @@ func (mod *Module) Find(ctx *astral.Context, objectID *astral.ObjectID) (<-chan 
 	return results, nil
 }
 
+// AddFinder registers a finder, skipping it if one with the same source
+// identity is already registered.
 func (mod *Module) AddFinder(finder objects.Finder) error {
 	source, ok, err := objects.SourceIdentity(finder)
 	if err != nil {

@@ -30,6 +30,7 @@ func (w *muxSessionWriter) Buf() *OutputBuffer {
 	return w.buf
 }
 
+// SwapBuf installs a new buffer and reset func for the new link, closing the old buffer.
 func (w *muxSessionWriter) SwapBuf(buf *OutputBuffer, reset func()) {
 	w.cond.L.Lock()
 	old := w.buf
@@ -41,6 +42,7 @@ func (w *muxSessionWriter) SwapBuf(buf *OutputBuffer, reset func()) {
 	}
 }
 
+// Close sends a Reset frame to the peer and closes the buffer; idempotent. Use PeerClose to skip the Reset.
 func (w *muxSessionWriter) Close() error {
 	w.cond.L.Lock()
 	if w.closed {
@@ -94,6 +96,7 @@ func (w *muxSessionWriter) Resume() {
 	w.cond.Broadcast()
 }
 
+// Write blocks while paused and retries when the buffer runs out of flow-control credit, until all of p is written or the writer closes.
 func (w *muxSessionWriter) Write(p []byte) (int, error) {
 	total := 0
 

@@ -12,6 +12,8 @@ type opRegisterFinderArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpRegisterFinder registers the caller as an external finder.
+// Rejects network-origin callers and self-registration by the node.
 func (mod *Module) OpRegisterFinder(ctx *astral.Context, q *routing.IncomingQuery, args opRegisterFinderArgs) error {
 	// Keep this local for now; extract shared external registration validation once the API settles.
 	if q.Origin() == astral.OriginNetwork {

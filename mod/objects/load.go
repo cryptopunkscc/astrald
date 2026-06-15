@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// Load reads an object from repo, decodes it, and type-asserts it to T.
+// Returns ErrObjectTooLarge if the object exceeds MaxObjectSize, or an error if the decoded type is not T.
 func Load[T astral.Object](ctx *astral.Context, repo Repository, objectID *astral.ObjectID) (o T, err error) {
 	if int64(objectID.Size) > MaxObjectSize {
 		return o, ErrObjectTooLarge

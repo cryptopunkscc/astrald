@@ -21,6 +21,7 @@ type Ping struct {
 	pong   chan struct{}
 }
 
+// Link is a live mux channel to a peer with its own ping/keepalive loop and pressure tracking; closes once on first error.
 type Link struct {
 	*channel.Channel
 	mux         *Mux
@@ -51,6 +52,7 @@ func (s *Link) RemoteIdentity() *astral.Identity {
 	return s.conn.RemoteIdentity()
 }
 
+// CloseWithError records err as the link's cause of death; only the first call's error is kept.
 func (s *Link) CloseWithError(err error) error {
 	if err == nil {
 		err = errors.New("link closed")
@@ -142,6 +144,7 @@ func (s *Link) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.Wri
 	return s.mux.RouteQuery(ctx, q, w)
 }
 
+// Ping sends one ping and blocks for the pong. Only one ping may be in flight; concurrent calls error.
 func (s *Link) Ping() (time.Duration, error) {
 	p := &Ping{
 		nonce: astral.NewNonce(),

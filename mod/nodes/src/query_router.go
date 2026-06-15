@@ -11,6 +11,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/nodes"
 )
 
+// RouteQuery routes a query to its target over a link, reusing an existing one or
+// retrieving a new one. On failure it falls back to relays listed in q.Extra, sending
+// caller proof first when the caller differs from the context identity. Network zone only.
 func (mod *Module) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (rw io.WriteCloser, err error) {
 	// check if the context allows for network queries
 	if !ctx.Zone().Is(astral.ZoneNetwork) {

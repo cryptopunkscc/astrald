@@ -10,6 +10,7 @@ import (
 )
 
 type RepoGroup struct {
+	// Concurrent makes Read race all members and return the first hit; otherwise members are tried in order.
 	Concurrent bool
 	mod        *Module
 	label      string
@@ -65,6 +66,8 @@ func (group *RepoGroup) Contains(ctx *astral.Context, objectID *astral.ObjectID)
 	return false, nil
 }
 
+// Scan merges the object streams of all members.
+// With follow, a nil sentinel is emitted once every member has drained its backlog, then live updates continue.
 func (group *RepoGroup) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
 	ch := make(chan *astral.ObjectID)
 

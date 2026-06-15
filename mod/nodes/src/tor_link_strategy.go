@@ -32,6 +32,7 @@ var _ nodes.LinkStrategy = &TorLinkStrategy{}
 
 func (s *TorLinkStrategy) Name() string { return nodes.StrategyTor }
 
+// Signal kicks off a connection attempt; idempotent while one is in flight.
 func (s *TorLinkStrategy) Signal(ctx *astral.Context) {
 	s.mu.Lock()
 	if s.done != nil {
@@ -202,6 +203,8 @@ func (s *TorLinkStrategy) tryEndpoint(ctx *astral.Context, endpoint *nodes.Endpo
 	return link
 }
 
+// Done closes once the quick (foreground) phase ends; background retries may
+// still be running. Returns an already-closed channel if Signal never ran.
 func (s *TorLinkStrategy) Done() <-chan struct{} {
 	s.mu.Lock()
 	defer s.mu.Unlock()

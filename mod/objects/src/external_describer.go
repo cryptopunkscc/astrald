@@ -32,6 +32,9 @@ func NewExternalDescriber(mod *Module, id *astral.Identity) *ExternalDescriber {
 
 func (d *ExternalDescriber) SourceIdentity() *astral.Identity { return d.id }
 
+// DescribeObject queries the remote peer and relays its descriptors, stamping
+// each with the peer's identity. The stream runs under a per-call timeout and
+// closes when it ends, errors, or the timeout fires.
 func (d *ExternalDescriber) DescribeObject(ctx *astral.Context, id *astral.ObjectID) (<-chan *objects.Descriptor, error) {
 	ctx, cancel := ctx.WithTimeout(d.timeout)
 

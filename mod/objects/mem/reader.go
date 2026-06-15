@@ -34,6 +34,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return r.r.Read(p)
 }
 
+// Seek is unsupported; this reader is forward-only.
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 	return 0, errors.ErrUnsupported
 }

@@ -32,6 +32,7 @@ func NewInputBuffer(size int, onRead func(int)) *InputBuffer {
 	return &InputBuffer{size: size, onRead: onRead, shut: make(chan struct{}), done: make(chan struct{})}
 }
 
+// Push appends a whole chunk. All-or-nothing: rejects with ErrBufferOverflow rather than storing a partial chunk.
 func (b *InputBuffer) Push(p []byte) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -49,6 +50,7 @@ func (b *InputBuffer) Push(p []byte) error {
 	return nil
 }
 
+// Read never blocks: on an empty open buffer it returns *ErrBufferEmpty carrying a wake channel; on an empty closed buffer it returns io.EOF.
 func (b *InputBuffer) Read(p []byte) (n int, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -101,10 +103,12 @@ func (b *InputBuffer) IsEmpty() bool {
 	return b.used == 0
 }
 
+// Closed is closed when Close is called, before remaining data is drained.
 func (b *InputBuffer) Closed() <-chan struct{} {
 	return b.shut
 }
 
+// Done is closed once the buffer is both closed and fully drained.
 func (b *InputBuffer) Done() <-chan struct{} {
 	return b.done
 }

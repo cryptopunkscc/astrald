@@ -8,6 +8,9 @@ type SourceIdentifier interface {
 	SourceIdentity() *astral.Identity
 }
 
+// SourceIdentity extracts the source identity from v if it implements SourceIdentifier.
+// The bool reports whether v implements the interface; err is non-nil only when it does
+// but yields a nil or invalid identity.
 func SourceIdentity(v any) (*astral.Identity, bool, error) {
 	source, ok := v.(SourceIdentifier)
 	if !ok {

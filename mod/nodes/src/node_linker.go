@@ -25,6 +25,7 @@ func NewNodeLinker(mod *Module, target *astral.Identity) *NodeLinker {
 	return linker
 }
 
+// Activate signals the named strategies and returns a channel closed once all of them finish; an already-closed channel if none match.
 func (linker *NodeLinker) Activate(ctx *astral.Context, strategies []string) <-chan struct{} {
 	var doneChannels []<-chan struct{}
 	for _, strategy := range strategies {

@@ -6,6 +6,9 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// LoadDependencies injects core deps, then scans every other loaded module and
+// auto-registers it under whichever objects extension interfaces it implements
+// (Describer, Searcher, Finder, etc).
 func (mod *Module) LoadDependencies(*astral.Context) (err error) {
 	err = core.Inject(mod.node, &mod.Deps)
 	if err != nil {

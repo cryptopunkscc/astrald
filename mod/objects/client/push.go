@@ -8,6 +8,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// Push sends the object and fails with "rejected" if the node does not accept it.
 func (client *Client) Push(ctx *astral.Context, object astral.Object) error {
 	ch, err := client.queryCh(ctx, objects.MethodPush, nil)
 	if err != nil {

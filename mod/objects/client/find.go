@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Find streams identities holding the object until EOS, then closes the channel.
+// Zero identities are skipped. The error pointer is only valid once the channel is closed.
 func (client *Client) Find(ctx *astral.Context, objectID *astral.ObjectID) (<-chan *astral.Identity, *error) {
 	ch, err := client.queryCh(ctx, objects.MethodFind, query.Args{
 		"id": objectID,

@@ -15,6 +15,7 @@ func (mod *Module) AddReceiver(receiver objects.Receiver) error {
 	return mod.receivers.Add(receiver)
 }
 
+// Receive dispatches obj to all registered receivers; returns an error if no receiver accepts it.
 func (mod *Module) Receive(obj astral.Object, source *astral.Identity) (err error) {
 	if source.IsZero() {
 		source = mod.node.Identity()

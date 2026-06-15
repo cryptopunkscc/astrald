@@ -38,6 +38,8 @@ const (
 	MaxDataFrameSize  = 8192
 )
 
+// Module manages encrypted links between nodes: establishing them, resolving
+// peer endpoints, and tracking liveness.
 type Module interface {
 	EstablishInboundLink(ctx context.Context, conn exonet.Conn) error
 	EstablishOutboundLink(ctx context.Context, remoteID *astral.Identity, conn exonet.Conn) (Link, error)
@@ -66,10 +68,13 @@ type Link interface {
 	Done() <-chan struct{}
 }
 
+// EndpointResolver resolves the network endpoints at which an identity can be reached.
 type EndpointResolver interface {
 	ResolveEndpoints(*astral.Context, *astral.Identity) (<-chan *EndpointWithTTL, error)
 }
 
+// LinkStrategy drives one approach to establishing a link (e.g. direct, NAT, Tor);
+// Done closes once the strategy has finished, whether or not it produced a link.
 type LinkStrategy interface {
 	Name() string
 	Signal(ctx *astral.Context)

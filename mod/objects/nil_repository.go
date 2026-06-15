@@ -6,6 +6,7 @@ import (
 	"io"
 )
 
+// NilRepository is a Repository stub whose every operation returns ErrUnsupported.
 type NilRepository struct {
 }
 

@@ -54,6 +54,8 @@ type Module struct {
 	objectsReadsJournal *objectsReadsJournal
 }
 
+// Run blocks until ctx is cancelled, then flushes any pending object reads
+// before returning.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 
@@ -67,6 +69,9 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
+// Load reads and decodes an object from repo. Data that isn't a valid astral
+// object is returned as an *astral.Blob rather than an error. Marks the read in
+// the reads journal and tracks the type for decoded objects.
 func (mod *Module) Load(ctx *astral.Context, repo objects.Repository, objectID *astral.ObjectID) (astral.Object, error) {
 	// read the object data
 	r, err := repo.Read(ctx, objectID, 0, 0)
@@ -154,6 +159,9 @@ func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (obje
 	return t.String(), nil
 }
 
+// Probe reads only the object's header and reports its type, MIME, source repo,
+// and read latency without loading the full payload. Tracks the type when the
+// object carries a valid astral stamp.
 func (mod *Module) Probe(ctx *astral.Context, repo objects.Repository, objectID *astral.ObjectID) (probe *objects.Probe, err error) {
 	probe = &objects.Probe{}
 

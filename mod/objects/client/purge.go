@@ -8,6 +8,8 @@ import (
 	"github.com/cryptopunkscc/astrald/sig"
 )
 
+// Purge streams the IDs of purged objects until EOS, then closes the channel.
+// The error pointer is only valid once the channel is closed.
 func (client *Client) Purge(ctx *astral.Context, repo string) (<-chan *astral.ObjectID, *error) {
 	ch, err := client.queryCh(ctx, objects.MethodPurge, query.Args{
 		"repo": repo,

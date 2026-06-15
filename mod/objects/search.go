@@ -9,6 +9,7 @@ type Searcher interface {
 	SearchObject(ctx *astral.Context, query SearchQuery) (<-chan *SearchResult, error)
 }
 
+// SearchPreprocessor is a hook that mutates a Search in place before it runs.
 type SearchPreprocessor interface {
 	PreprocessSearch(*Search)
 }

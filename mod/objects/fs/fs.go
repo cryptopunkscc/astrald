@@ -27,6 +27,8 @@ func (f *FS) Open(name string) (fs.File, error) {
 	return f.OpenContext(astral.NewContext(nil).WithZone(astral.ZoneAll), name)
 }
 
+// OpenContext opens an object by its ID; name must parse as an object ID, not a path.
+// The read is bounded by openTimeout.
 func (f *FS) OpenContext(ctx *astral.Context, name string) (fs.File, error) {
 	// parse object id
 	objectID, err := astral.ParseID(name)
