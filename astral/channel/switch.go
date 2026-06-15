@@ -122,6 +122,7 @@ func BreakOnEOS(*astral.EOS) error {
 	return ErrBreak
 }
 
+// PassErrors makes Switch surface received error objects instead of treating them as unexpected.
 func PassErrors(err error) error {
 	return err
 }
@@ -148,6 +149,7 @@ func Chan[T astral.Object](dst chan<- T) func(T) error {
 	}
 }
 
+// Expect captures the first matching object into object and breaks the Switch.
 func Expect[T astral.Object](object *T) func(T) error {
 	return func(v T) error {
 		*object = v

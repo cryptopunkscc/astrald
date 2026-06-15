@@ -2,6 +2,9 @@ package fmt
 
 import "github.com/cryptopunkscc/astrald/astral"
 
+// Format tokenizes format and returns the rendered arguments as astral objects, not a string.
+// Verbs %v keep the argument as-is; %s and %d Stringify it; \t \n \r expand; a missing arg
+// yields an error object in place rather than panicking.
 func Format(format string, args ...any) (list []any) {
 	var token string
 

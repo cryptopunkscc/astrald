@@ -72,6 +72,7 @@ func (zone *Zone) UnmarshalText(text []byte) error {
 
 // ...
 
+// Is reports whether zone contains every bit in check.
 func (zone Zone) Is(check Zone) bool {
 	return zone&check == check
 }

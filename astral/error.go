@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// Error is an error that is also a wire-serializable Object.
 type Error interface {
 	Object
 	error
@@ -22,6 +23,7 @@ func NewError(s string) Error {
 	}
 }
 
+// Err wraps any error into a transmittable Error, preserving only its message.
 func Err(err error) Error {
 	return NewError(err.Error())
 }

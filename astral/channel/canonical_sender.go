@@ -17,6 +17,7 @@ func NewCanonicalSender(w io.Writer) *CanonicalSender {
 	return &CanonicalSender{w: w}
 }
 
+// Send writes Stamp, type, then payload with no length framing.
 func (c CanonicalSender) Send(object astral.Object) (err error) {
 	_, err = astral.Stamp{}.WriteTo(c.w)
 	if err != nil {

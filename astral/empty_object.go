@@ -2,6 +2,7 @@ package astral
 
 import "io"
 
+// EmptyObject is a zero-byte Object; embed it to satisfy Object without carrying state.
 type EmptyObject struct{}
 
 // astral

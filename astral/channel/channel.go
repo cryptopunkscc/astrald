@@ -176,6 +176,7 @@ func (ch Channel) Transport() io.ReadWriter {
 	return ch.rw
 }
 
+// Send serializes concurrent writes when the channel was created with WithLockedWrites.
 func (ch Channel) Send(obj astral.Object) error {
 	if ch.wmu != nil {
 		ch.wmu.Lock()

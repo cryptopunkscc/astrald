@@ -73,6 +73,7 @@ func (r *ReadResolver) Resolve() *ObjectID {
 	return r.resolver.Resolve()
 }
 
+// Resolve reads r to EOF and returns the ID of the consumed bytes.
 func Resolve(r io.Reader) (id *ObjectID, err error) {
 	var p [8192]byte
 	rr := NewReadResolver(r)

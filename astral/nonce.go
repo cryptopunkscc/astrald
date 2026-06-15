@@ -13,6 +13,7 @@ import (
 
 type Nonce uint64
 
+// NewNonce returns a cryptographically random Nonce.
 func NewNonce() (nonce Nonce) {
 	binary.Read(rand.Reader, ByteOrder, &nonce)
 	return

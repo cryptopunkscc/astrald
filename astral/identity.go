@@ -36,6 +36,7 @@ func GenerateIdentity() *Identity {
 	}
 }
 
+// ParseIdentity parses a 66-char hex public key, or "anyone"/all-zero key as the Anyone identity.
 func ParseIdentity(s string) (*Identity, error) {
 	switch {
 	case s == anyoneKey, s == anonymous:
@@ -90,6 +91,7 @@ func (id *Identity) String() string {
 	return hex.EncodeToString(id.PublicKey().SerializeCompressed())
 }
 
+// Fingerprint returns a short colon-joined form: the first and last 8 hex chars of the key.
 func (id *Identity) Fingerprint() string {
 	hex := id.String()
 	return hex[0:8] + ":" + hex[len(hex)-8:]

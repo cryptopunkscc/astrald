@@ -11,6 +11,9 @@ type ParsedText struct {
 	Text string // the remaining text
 }
 
+// ParseText splits a channel line into its #[type] header, encoding, and remaining text.
+// The encoding is inferred from the first byte after the header: space/tab is "text",
+// "=" or ":" is "base64", a bare header is "none", anything else is "unknown".
 func ParseText(line string) (ParsedText, error) {
 	var parsed = ParsedText{Enc: "none"}
 

@@ -13,6 +13,7 @@ type ErrRejected struct {
 
 var _ error = &ErrRejected{}
 
+// NewErrRejected builds an ErrRejected, substituting DefaultRejectCode when code is 0.
 func NewErrRejected(code uint8) *ErrRejected {
 	if code == 0 {
 		code = DefaultRejectCode

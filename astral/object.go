@@ -104,6 +104,7 @@ func EncodeBytes(obj Object, config ...ConfigFunc) ([]byte, error) {
 }
 
 // DecodeAs decodes an object from data and type-asserts it to T.
+// Returns an error if the decoded object is not a T.
 func DecodeAs[T Object](data []byte, config ...ConfigFunc) (T, error) {
 	obj, _, err := Decode(bytes.NewReader(data), config...)
 	if err != nil {

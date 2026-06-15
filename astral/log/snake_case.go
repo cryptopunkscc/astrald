@@ -2,6 +2,8 @@ package log
 
 import "unicode"
 
+// ToSnakeCase inserts underscores at case boundaries and lowercases the result,
+// keeping runs of consecutive capitals (acronyms) and digits unsplit.
 func ToSnakeCase(str string) string {
 	var result []rune
 	var lastUpper bool

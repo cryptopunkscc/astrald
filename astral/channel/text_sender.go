@@ -20,6 +20,8 @@ func NewTextSender(w io.Writer) *TextSender {
 	return &TextSender{w: w}
 }
 
+// Send writes the object as one line: a #[type] header followed by a text-marshaled body,
+// or a base64-encoded body when Base64 is set or the object is not a TextMarshaler.
 func (sender TextSender) Send(obj astral.Object) (err error) {
 	// write the type
 	_, err = fmt.Fprintf(sender.w, "#[%s]", obj.ObjectType())
