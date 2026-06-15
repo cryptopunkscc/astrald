@@ -36,8 +36,6 @@ func (mod *Module) NewMaintainLinkTask(target *astral.
 
 func (a *MaintainLinkTask) String() string { return "nodes.maintain_link" }
 
-// Run loops forever, attempting to re-establish the link to Target whenever it drops.
-// Retries with exponential backoff up to 15 minutes; exits only when ctx is cancelled.
 func (a *MaintainLinkTask) Run(ctx *astral.Context) error {
 	a.mod.log.Log("starting to maintain link to %v", a.Target)
 	retry, err := sig.NewRetry(time.Second, 15*time.Minute, 2)

@@ -17,9 +17,6 @@ var _ nearby.Module = &Module{}
 
 const statusExpiration = 5 * time.Minute
 
-// Module implements the nearby protocol: it broadcasts the local node's status over
-// the ether layer, caches peer status messages, and resolves peer identities and
-// endpoints from those caches.
 type Module struct {
 	Deps
 	node   astral.Node
@@ -50,9 +47,6 @@ func (c *cache) GetIdentity() *astral.Identity {
 	return profile[0].NodeID
 }
 
-// Run blocks until ctx is cancelled; it waits for the user identity to be ready,
-// applies the configured mode, then drives periodic status broadcasts and an
-// initial network scan in the background.
 func (mod *Module) Run(ctx *astral.Context) (err error) {
 	mod.ctx = ctx
 

@@ -24,7 +24,6 @@ func New(targetID *astral.Identity, client *astrald.Client) *Client {
 	}
 }
 
-// Default returns a process-wide singleton Client with a nil target, initialized lazily on first call.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(nil, astrald.Default())

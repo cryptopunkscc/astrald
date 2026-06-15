@@ -28,8 +28,6 @@ type Module struct {
 	sibs sig.Map[string, Sibling]
 }
 
-// Run waits for the scheduler, applies and follows the active contract from config, closes the ready channel, then starts the sibling linker.
-// Blocks until ctx is cancelled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 	<-mod.Scheduler.Ready()

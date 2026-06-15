@@ -41,7 +41,6 @@ type Module struct {
 
 var _ dir.Module = &Module{}
 
-// Run blocks until the context is cancelled; this module has no background work of its own.
 func (mod *Module) Run(ctx *astral.Context) error {
 	<-ctx.Done()
 	return nil
