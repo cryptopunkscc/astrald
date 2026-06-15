@@ -9,6 +9,8 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
+// SignASN1 produces an ASN.1-encoded ECDSA signature over hash.
+// Rejects keys whose type is not KeyType.
 func SignASN1(key *crypto.PrivateKey, hash []byte) (*crypto.Signature, error) {
 	switch {
 	case key.Type != KeyType:
@@ -30,6 +32,8 @@ func SignASN1(key *crypto.PrivateKey, hash []byte) (*crypto.Signature, error) {
 	}, nil
 }
 
+// VerifyASN1 checks an ASN.1-encoded ECDSA signature over hash.
+// Accepts only KeyType keys and the "asn1" scheme; returns ErrInvalidSignature on mismatch.
 func VerifyASN1(key *crypto.PublicKey, hash []byte, sig *crypto.Signature) error {
 	switch {
 	case key.Type != KeyType:

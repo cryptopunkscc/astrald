@@ -12,6 +12,7 @@ type opNewArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpNew generates a fresh secp256k1 key and sends it over the accepted channel.
 func (mod *Module) OpNew(ctx *astral.Context, q *routing.IncomingQuery, args opNewArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

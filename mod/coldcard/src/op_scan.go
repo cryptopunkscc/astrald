@@ -11,6 +11,8 @@ type opScanArgs struct {
 	Out string `query:"optional"`
 }
 
+// OpScan triggers a device rescan and replies over the channel with an Ack on
+// success or an Error.
 func (mod *Module) OpScan(ctx *astral.Context, q *routing.IncomingQuery, args opScanArgs) (err error) {
 	ch := channel.New(q.AcceptRaw(), channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

@@ -13,6 +13,7 @@ type opNewEntropyArgs struct {
 	Out  string `query:"optional"`
 }
 
+// OpNewEntropy replies with fresh entropy of Bits length, defaulting to DefaultEntropyBits.
 func (mod *Module) OpNewEntropy(
 	ctx *astral.Context,
 	q *routing.IncomingQuery,

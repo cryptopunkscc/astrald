@@ -11,6 +11,7 @@ const (
 	MethodSeed       = "bip137sig.seed"
 )
 
+// Module derives BIP-137 keys from a BIP-39 seed.
 type Module interface {
 	GenerateSeed() (seed Seed, err error)
 	DeriveKey(seed Seed, path string) (privateKey crypto.PrivateKey, err error)

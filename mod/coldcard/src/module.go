@@ -33,6 +33,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
+// Scan enumerates connected ColdCards and records each serial to pubkey;
+// devices whose pubkey cannot be read are skipped.
 func (mod *Module) Scan() error {
 	devices, err := ckcc.List()
 	if err != nil {

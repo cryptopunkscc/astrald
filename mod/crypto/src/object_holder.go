@@ -7,6 +7,8 @@ import (
 
 var _ objects.Holder = &Module{}
 
+// HoldObject reports whether the object is an indexed key.
+// Fails safe: a lookup error returns true so the object is not dropped.
 func (mod *Module) HoldObject(objectID *astral.ObjectID) bool {
 	held, err := mod.db.isKeyIndexed(objectID)
 	if err != nil {

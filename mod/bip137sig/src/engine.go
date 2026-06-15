@@ -16,6 +16,8 @@ type Engine struct {
 	mod *Module
 }
 
+// NewTextSigner returns a BIP-137 signer for the key.
+// Only the BIP137 scheme and secp256k1 key type are supported.
 func (e Engine) NewTextSigner(key *crypto.PublicKey, scheme string) (crypto.TextSigner, error) {
 	switch {
 	case scheme != crypto.SchemeBIP137:
