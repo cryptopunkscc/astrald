@@ -111,6 +111,8 @@ func (mod *Module) Run(ctx *astral.Context) error {
 	return nil
 }
 
+// Endpoints returns the module's advertised exonet endpoints.
+// note: currently a stub; gateway endpoints are resolved via ResolveEndpoints instead.
 func (mod *Module) Endpoints() []exonet.Endpoint {
 	var list = make([]exonet.Endpoint, 0)
 

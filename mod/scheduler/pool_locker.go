@@ -35,6 +35,8 @@ func (p *PoolLocker) Release() {
 	})
 }
 
+// Done returns a channel that closes once all pool items are locked.
+// The first call spawns the locking goroutine; subsequent calls return the same channel.
 func (p *PoolLocker) Done() <-chan struct{} {
 	// when Done is called for the first time, spawn the locking goroutine
 	p.lockOnce.Do(func() {

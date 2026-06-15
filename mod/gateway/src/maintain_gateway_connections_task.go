@@ -16,6 +16,9 @@ import (
 var _ scheduler.Task = &MaintainGatewayConnectionsTask{}
 var _ scheduler.EventReceiver = &MaintainGatewayConnectionsTask{}
 
+// MaintainGatewayConnectionsTask keeps the node perpetually registered with a
+// single gateway, retrying with exponential back-off on failure and waking
+// immediately when a new public IP address is observed.
 type MaintainGatewayConnectionsTask struct {
 	mod        *Module
 	GatewayID  *astral.Identity
@@ -78,6 +81,9 @@ func (task *MaintainGatewayConnectionsTask) Run(ctx *astral.Context) error {
 	}
 }
 
+// ReceiveEvent wakes the registration loop when a new public IP address appears,
+// allowing faster reconnection after a network change without waiting for the
+// current back-off timer to expire.
 func (task *MaintainGatewayConnectionsTask) ReceiveEvent(e *events.Event) {
 	switch typed := e.Data.(type) {
 	case *ip.EventNetworkAddressChanged:

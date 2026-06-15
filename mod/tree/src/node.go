@@ -22,6 +22,8 @@ func (node *Node) Name() string {
 	return node.name
 }
 
+// Get returns a channel that yields the current value; if follow is true the channel stays open
+// and delivers each subsequent value until ctx is canceled. The root node cannot hold a value.
 func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, error) {
 	if node.name == "" {
 		return nil, errors.New("root node cannot hold a value")
@@ -59,6 +61,7 @@ func (node *Node) Get(ctx *astral.Context, follow bool) (<-chan astral.Object, e
 	return ch, nil
 }
 
+// Set persists object to the DB and then notifies all active Get(follow=true) subscribers.
 func (node *Node) Set(ctx *astral.Context, object astral.Object) error {
 	if node.name == "" {
 		return errors.New("root node cannot hold a value")

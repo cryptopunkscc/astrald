@@ -32,6 +32,9 @@ func Default() *Client {
 	return defaultClient
 }
 
+// Discover streams service updates from the target node. The channel first delivers the current
+// snapshot; when follow is true a nil sentinel marks the snapshot/live boundary, followed by
+// live updates until ctx is cancelled. When follow is false the channel closes after the snapshot.
 func (client *Client) Discover(ctx *astral.Context, follow bool) (<-chan *services.Update, error) {
 	ch, err := client.queryCh(ctx, services.MethodDiscover, query.Args{
 		"follow": follow,

@@ -84,6 +84,7 @@ func (mod *Module) Delete(ctx *astral.Context, path string) error {
 	return nil
 }
 
+// Mount registers node at an absolute path; fails if the path is not absolute or is already mounted.
 func (mod *Module) Mount(path string, node tree.Node) error {
 	// check and normalize the path
 	if !strings.HasPrefix(path, "/") {
@@ -100,6 +101,7 @@ func (mod *Module) Mount(path string, node tree.Node) error {
 	return nil
 }
 
+// Unmount removes the mount at an absolute path; fails if the path is not absolute or has no mount.
 func (mod *Module) Unmount(path string) error {
 	// check and normalize the path
 	if !strings.HasPrefix(path, "/") {
@@ -116,6 +118,7 @@ func (mod *Module) Unmount(path string) error {
 	return nil
 }
 
+// MountRemote resolves remotePath on targetID's tree (empty remotePath means the root) and mounts it locally at path.
 func (mod *Module) MountRemote(ctx *astral.Context, path string, targetID *astral.Identity, remotePath string) (err error) {
 	var remoteNode = treecli.New(targetID, nil).Root()
 
@@ -129,6 +132,7 @@ func (mod *Module) MountRemote(ctx *astral.Context, path string, targetID *astra
 	return mod.Mount(path, remoteNode)
 }
 
+// Root returns the "/" mount wrapped so that subnodes at mounted paths are transparently overlaid.
 func (mod *Module) Root() tree.Node {
 	root, _ := mod.mounts.Get("/")
 	if root == nil {

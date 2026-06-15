@@ -121,6 +121,7 @@ func (mod *Module) isRunning() bool {
 	return true
 }
 
+// Ready returns a channel that is closed once Run has stored the module context.
 func (mod *Module) Ready() <-chan struct{} {
 	return mod.ready
 }

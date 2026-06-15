@@ -13,6 +13,8 @@ type opNodeRouteArgs struct {
 	Target *astral.Identity
 }
 
+// OpNodeRoute establishes a routed connection to target: if target is this node, accepts the connection as an inbound link;
+// otherwise forwards the connection to the next hop and pipes both sides.
 func (mod *Module) OpNodeRoute(ctx *astral.Context, q *routing.IncomingQuery, args opNodeRouteArgs) error {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 

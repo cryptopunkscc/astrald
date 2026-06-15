@@ -12,6 +12,9 @@ type opNodeConnectArgs struct {
 	Out    string `query:"optional"`
 }
 
+// OpNodeConnect handles the NodeConnect RPC: it reserves a pre-established idle
+// connection to the target node and returns the nonce and endpoint the caller
+// must use to claim it; the reservation expires after connectTimeout.
 func (mod *Module) OpNodeConnect(
 	ctx *astral.Context,
 	q *routing.IncomingQuery,

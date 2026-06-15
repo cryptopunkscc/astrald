@@ -26,6 +26,8 @@ type GetArgs struct {
 	Out    string
 }
 
+// Get serves a get query; when Follow is set it streams updates until ctx is done
+// or the client closes the channel, detected by a background Receive on the accepted channel.
 func (ops *NodeOps) Get(ctx *astral.Context, q *routing.IncomingQuery, args GetArgs) (err error) {
 	ctx, cancel := ctx.WithCancel()
 	defer cancel()
@@ -67,6 +69,8 @@ type SetArgs struct {
 	Out   string
 }
 
+// Set handles a set query; routes to single-value mode when args.Value is non-empty,
+// otherwise enters batch mode and reads objects from the channel until EOS.
 func (ops *NodeOps) Set(ctx *astral.Context, q *routing.IncomingQuery, args SetArgs) (err error) {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
@@ -141,6 +145,8 @@ type DeleteArgs struct {
 	Out       string
 }
 
+// Delete handles a delete query; when Recursive is set, descends the subtree
+// depth-first and deletes from the leaves up before removing the target node.
 func (ops *NodeOps) Delete(ctx *astral.Context, q *routing.IncomingQuery, args DeleteArgs) (err error) {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
