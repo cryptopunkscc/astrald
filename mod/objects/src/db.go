@@ -38,10 +38,18 @@ func (db *DB) Find(id *astral.ObjectID) (row *dbObject, err error) {
 // Module.Store/Load/Probe/GetType and OpCreate — to keep dbObject in sync
 // with what flows through the module.
 func (db *DB) Create(id *astral.ObjectID, objectType string) error {
+	// why: an empty type means "unknown" (blob/raw create); store NULL, not "",
+	// so GetType re-reads the stamp instead of returning a cached blank.
+	var t *string
+	if objectType != "" {
+		t = &objectType
+	}
+	// why: read_at must match UpdateReadAt's UTC writes; mixing local time.Now()
+	// here would corrupt the (read_at, height) purge order on non-UTC nodes.
 	return db.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&dbObject{
 		ID:     id,
-		Type:   objectType,
-		ReadAt: time.Now(),
+		Type:   t,
+		ReadAt: astral.Now().Time(),
 	}).Error
 }
 

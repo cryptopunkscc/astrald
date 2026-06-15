@@ -90,13 +90,13 @@ func (mod *Module) Load(ctx *astral.Context, repo objects.Repository, objectID *
 	o, _, err := astral.Decode(bytes.NewReader(data), astral.Canonical())
 	switch {
 	case err == nil:
-		// decode succeeded, so type is known. blob branch below is
-		// intentionally not seeded — Type='' would shadow the "missing
-		// astral stamp" signal a later GetType call relies on.
+		// decode succeeded, so the type is known.
 		mod.trackObject(objectID, o.ObjectType())
 		return o, nil
 
 	case strings.Contains(err.Error(), "invalid magic bytes"): // the object is a blob
+		// note: a blob reached only via Load is not seeded; objects without a
+		// tracking row are not purge-eligible. accepted limitation for now.
 		return (*astral.Blob)(&data), nil
 
 	default: // other error
@@ -128,9 +128,11 @@ func (mod *Module) Store(ctx *astral.Context, repo objects.Repository, object as
 // Deprecated: Use Probe instead.
 func (mod *Module) GetType(ctx *astral.Context, objectID *astral.ObjectID) (objectType string, err error) {
 	// check the cache
+	// why: a row with NULL Type is tracked but untyped (blob/raw create); fall
+	// through to read the stamp rather than returning a blank as if it were known.
 	row, err := mod.db.Find(objectID)
-	if err == nil {
-		return row.Type, nil
+	if err == nil && row.Type != nil {
+		return *row.Type, nil
 	}
 
 	// read first bytes of the object
