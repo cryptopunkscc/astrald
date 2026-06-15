@@ -22,6 +22,8 @@ type objectSearchArgs struct {
 	Out   string `query:"optional"`
 }
 
+// WithObjectSearcher mounts the objects.search IPC op and registers the app as a Searcher with the node.
+// All provided searchers are fanned out concurrently per search request.
 func WithObjectSearcher(searchers ...objects.Searcher) ServeOption {
 	return func(cfg *serveConfig) error {
 		if len(searchers) == 0 {

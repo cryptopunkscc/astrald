@@ -82,6 +82,7 @@ func WithRegistrationHook(hook RegistrationHook) ServeOption {
 	return WithRegistrationHooks(hook)
 }
 
+// WithRegistrationHooks adds hooks that run after each successful (re)registration with the node.
 func WithRegistrationHooks(hooks ...RegistrationHook) ServeOption {
 	return func(cfg *serveConfig) error {
 		for _, hook := range hooks {

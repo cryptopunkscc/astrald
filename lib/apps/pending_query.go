@@ -9,6 +9,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// PendingQuery holds an unresolved inbound query; exactly one of Accept, Reject, RejectWithCode, Skip, or Close must be called.
 type PendingQuery struct {
 	conn  net.Conn
 	query *astral.Query

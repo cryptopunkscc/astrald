@@ -12,6 +12,8 @@ import (
 
 var _ astral.Router = &PriorityRouter{}
 
+// PriorityRouter tries registered routers in ascending priority order; the
+// first successful match or hard rejection (ErrRejected) wins.
 type PriorityRouter struct {
 	Name    string
 	entries sig.Set[*Entry]
@@ -32,6 +34,8 @@ func NewPriorityRouter(name string) *PriorityRouter {
 	return &PriorityRouter{Name: name}
 }
 
+// RouteQuery iterates entries in priority order; stops on success or
+// ErrRejected, collects other errors, and falls back to ErrRouteNotFound.
 func (router *PriorityRouter) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery, w io.WriteCloser) (rw io.WriteCloser, err error) {
 	var errs []error
 
@@ -50,6 +54,8 @@ func (router *PriorityRouter) RouteQuery(ctx *astral.Context, q *astral.InFlight
 	return query.RouteNotFound()
 }
 
+// Add registers a router at the given priority and re-sorts the entry set so
+// iteration order matches ascending priority.
 func (router *PriorityRouter) Add(r astral.Router, prio int) error {
 	router.entries.Add(&Entry{Router: r, Prio: prio})
 

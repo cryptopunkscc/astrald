@@ -23,6 +23,7 @@ func Dial(target string) (conn *Conn, err error) {
 	return DialContext(context.Background(), target)
 }
 
+// DialContext connects to target using the format "proto:addr", where proto is one of tcp, unix, memu, or memb.
 func DialContext(ctx context.Context, target string) (conn *Conn, err error) {
 	parts := strings.SplitN(target, ":", 2)
 	if len(parts) < 2 {
@@ -55,6 +56,7 @@ func DialContext(ctx context.Context, target string) (conn *Conn, err error) {
 	return
 }
 
+// Listen binds to the given "proto:addr" IPC address; for unix sockets it expands "~/" and removes a stale socket file before retrying.
 func Listen(ipcAddress string) (net.Listener, error) {
 	var protocol, address string
 
@@ -100,6 +102,7 @@ func Listen(ipcAddress string) (net.Listener, error) {
 	}
 }
 
+// ListenAny opens a listener on a system-assigned ephemeral address for the given protocol, useful when the caller does not care which address is used.
 func ListenAny(protocol string) (net.Listener, error) {
 	switch protocol {
 	case "tcp":

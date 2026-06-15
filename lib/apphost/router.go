@@ -10,6 +10,8 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/apphost"
 )
 
+// Router manages connections to an apphost endpoint, caching resolved identities
+// across calls and handling context-driven query cancellation.
 type Router struct {
 	endpoint string
 	token    string
@@ -67,6 +69,8 @@ func (router *Router) RouteQuery(ctx *astral.Context, q *astral.InFlightQuery) (
 	return host.RouteQuery(q, ctx.Zone(), ctx.Filters())
 }
 
+// GuestID returns the authenticated guest identity, connecting to the host to
+// resolve it on first call; returns nil if the connection or auth fails.
 func (router *Router) GuestID() *astral.Identity {
 	if router.guestID != nil {
 		return router.guestID
@@ -81,6 +85,8 @@ func (router *Router) GuestID() *astral.Identity {
 	return router.guestID
 }
 
+// HostID returns the host node's identity, connecting to resolve it on first
+// call; returns nil if the connection fails.
 func (router *Router) HostID() *astral.Identity {
 	if router.hostID != nil {
 		return router.hostID

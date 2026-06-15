@@ -27,6 +27,7 @@ func NewConn(localID *astral.Identity, remoteID *astral.Identity, w io.WriteClos
 	}
 }
 
+// Read closes the connection on any read error to ensure cleanup propagates.
 func (s *Conn) Read(p []byte) (n int, err error) {
 	n, err = s.Reader.Read(p)
 	if err != nil {

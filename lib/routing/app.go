@@ -10,6 +10,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
+// App is a self-describing ScopeRouter that automatically exposes a ".spec"
+// op listing all registered operations.
 type App struct {
 	*ScopeRouter
 }
@@ -19,6 +21,8 @@ type SpecArgs struct {
 	Out string
 }
 
+// NewApp wraps s in an OpRouter, mounts it in a ScopeRouter, and injects a
+// ".spec" op that streams the full operation manifest to callers.
 func NewApp(s any) *App {
 	ops := NewOpRouter()
 	ops.AddStruct(s)
@@ -30,6 +34,7 @@ func NewApp(s any) *App {
 	return &app
 }
 
+// Spec streams all OpSpec entries for the app and terminates with an EOS object.
 func (app *App) Spec(_ *astral.Context, query *IncomingQuery, args SpecArgs) error {
 	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
@@ -48,6 +53,8 @@ func (app *App) Add(scope string, s any) {
 	app.ScopeRouter.Add(scope, NewOpRouter(s))
 }
 
+// Run routes args[0] as an op name (with remaining args as query params) against
+// the app and bridges the resulting connection to stdin/stdout.
 func (app *App) Run(ctx *astral.Context, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("missing command")

@@ -7,6 +7,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/query"
 )
 
+// Client wraps a Router with an optional fixed target identity, used to direct queries
+// without the caller having to supply the target on every call.
 type Client struct {
 	Router
 	targetID *astral.Identity
@@ -30,6 +32,7 @@ func SetDefault(client *Client) {
 	defaultClient = client
 }
 
+// Query routes an outbound query to client.targetID using the client's own guest identity as the caller.
 func (client *Client) Query(ctx *astral.Context, method string, args any) (astral.Conn, error) {
 	return client.RouteQuery(ctx, astral.Launch(query.New(client.GuestID(), client.targetID, method, args)))
 }
@@ -51,6 +54,7 @@ func QueryChannel(ctx *astral.Context, method string, args any, cfg ...channel.C
 	return Default().QueryChannel(ctx, method, args, cfg...)
 }
 
+// WithTarget returns a shallow copy of the client with the target identity set; the original is not modified.
 func (client *Client) WithTarget(identity *astral.Identity) *Client {
 	c := *client
 	c.targetID = identity

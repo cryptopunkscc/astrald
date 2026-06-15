@@ -24,6 +24,8 @@ func RouteInFlight(ctx *astral.Context, r astral.Router, q *astral.InFlightQuery
 	return NewConn(q.Caller, q.Target, target, pipeReader, true), err
 }
 
+// Route routes a Query and wraps the resulting connection in a channel.Channel
+// for structured framed I/O, unlike RouteInFlight which returns a raw Conn.
 func Route(ctx *astral.Context, r astral.Router, q *astral.Query) (*channel.Channel, error) {
 	conn, err := RouteInFlight(ctx, r, astral.Launch(q))
 	if err != nil {

@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/astral"
 )
 
+// Conn wraps a net.Conn with the astral Query that opened it and the direction
+// of the connection; direction determines which identity is local vs remote.
 type Conn struct {
 	net.Conn
 	query    *astral.Query
@@ -37,6 +39,8 @@ func (conn Conn) LocalIdentity() *astral.Identity {
 	return conn.query.Target
 }
 
+// RemoteAddr overrides net.Conn.RemoteAddr to return the peer's astral identity
+// as the address rather than a TCP/socket address.
 func (conn Conn) RemoteAddr() net.Addr {
 	return Addr{address: conn.RemoteIdentity().String()}
 }
