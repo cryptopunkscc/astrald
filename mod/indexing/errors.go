@@ -16,6 +16,8 @@ var ErrAckMismatch = errors.New("ack does not match delivered change")
 var ErrInvalidIndexHeight = errors.New("index height must advance by exactly 1")
 var ErrIndexingTemporarilyFailed = astral.NewError("indexing temporarily failed")
 
+// IsIndexingTemporarilyFailed reports whether err is a temporary indexing failure.
+// why: uses string comparison because astral.Error does not support errors.Is unwrapping.
 func IsIndexingTemporarilyFailed(err error) bool {
 	return err != nil && err.Error() == ErrIndexingTemporarilyFailed.Error()
 }

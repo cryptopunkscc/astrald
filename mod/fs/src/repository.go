@@ -13,6 +13,8 @@ import (
 
 var _ objects.Repository = &Repository{}
 
+// Repository is a filesystem-backed object store rooted at a single directory.
+// addQueue broadcasts newly committed object IDs to active Scan followers.
 type Repository struct {
 	mod      *Module
 	label    string
@@ -31,6 +33,8 @@ func NewRepository(mod *Module, label string, path string) *Repository {
 	}
 }
 
+// Scan emits existing objects from the root directory, then — when follow is true — sends a nil
+// sentinel to mark the end of the snapshot before streaming newly added object IDs.
 func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.ObjectID, error) {
 	ch := make(chan *astral.ObjectID)
 
@@ -88,6 +92,8 @@ func (repo *Repository) Scan(ctx *astral.Context, follow bool) (<-chan *astral.O
 	return ch, nil
 }
 
+// Read opens the object file for reading, applying the given offset and limit.
+// Rejects requests from outside ZoneDevice to prevent unintended network exposure.
 func (repo *Repository) Read(ctx *astral.Context, objectID *astral.ObjectID, offset int64, limit int64) (objects.Reader, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded
@@ -141,6 +147,7 @@ func (repo *Repository) Label() string {
 	return repo.label
 }
 
+// Create opens a new object writer, refusing if opts requests more space than is currently free.
 func (repo *Repository) Create(ctx *astral.Context, opts *objects.CreateOpts) (objects.Writer, error) {
 	if free, err := repo.Free(nil); err == nil {
 		if opts != nil && free < int64(opts.Alloc) {

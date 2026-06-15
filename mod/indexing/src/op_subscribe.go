@@ -16,6 +16,10 @@ type opSubscribeArgs struct {
 	Out   string `query:"optional"`
 }
 
+// OpSubscribe streams pending index/unindex changes to the caller in version
+// order, waiting for an ack per change before advancing; retries on transient
+// errors with exponential back-off and validates ack repo+version against the
+// sent change before committing the cursor.
 func (mod *Module) OpSubscribe(ctx *astral.Context, q *routing.IncomingQuery, args opSubscribeArgs) error {
 	ch := q.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()

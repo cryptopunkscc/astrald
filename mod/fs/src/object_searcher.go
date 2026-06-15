@@ -7,6 +7,7 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/objects"
 )
 
+// SearchObject performs a case-insensitive path substring search; requires the "path" tag and ZoneDevice zone.
 func (mod *Module) SearchObject(ctx *astral.Context, query objects.SearchQuery) (<-chan *objects.SearchResult, error) {
 	if !ctx.Zone().Is(astral.ZoneDevice) {
 		return nil, astral.ErrZoneExcluded

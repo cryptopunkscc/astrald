@@ -10,6 +10,8 @@ import (
 
 type Loader struct{}
 
+// Load constructs and initialises the indexing module: loads config, registers
+// op-router handlers, and runs the DB auto-migration before returning.
 func (Loader) Load(node astral.Node, assets assets.Assets, log *log.Logger) (core.Module, error) {
 	var err error
 	var mod = &Module{

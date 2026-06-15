@@ -23,6 +23,8 @@ type Module struct {
 	autoIndexZone astral.Zone
 }
 
+// Run parses the AutoIndexZones config string into a Zone bitmask used to
+// filter which network zones trigger automatic archive indexing.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.autoIndexZone = astral.Zones(mod.config.AutoIndexZones)
 

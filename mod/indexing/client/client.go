@@ -6,6 +6,8 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 )
 
+// Client is an RPC client for the indexing module. A nil targetID routes
+// calls to the local node's indexing service.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity
