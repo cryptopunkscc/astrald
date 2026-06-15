@@ -21,8 +21,6 @@ type Deps struct {
 	Dir dir.Module
 }
 
-// Module holds the in-process tree service: a persistent DB-backed node hierarchy
-// overlaid by a live mount table and a per-node value-change cache.
 type Module struct {
 	Deps
 	config Config
@@ -43,7 +41,6 @@ type Module struct {
 
 var _ tree.Module = &Module{}
 
-// Run updates the module's operating context to ZoneNetwork and blocks until ctx is canceled.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.WithZone(astral.ZoneNetwork)
 

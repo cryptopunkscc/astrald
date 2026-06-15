@@ -42,9 +42,6 @@ func (task *MaintainGatewayConnectionsTask) String() string {
 	return "maintain_gateway_connections_task"
 }
 
-// Run registers with the gateway and manages a connection pool until the
-// context is cancelled; on any pool failure it retries with exponential
-// back-off, resetting the delay on each successful registration.
 func (task *MaintainGatewayConnectionsTask) Run(ctx *astral.Context) error {
 	task.mod.log.Log("starting to maintain connections to %v", task.GatewayID)
 	client := gatewayClient.New(task.GatewayID, astrald.Default())

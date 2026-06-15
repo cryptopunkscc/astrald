@@ -11,13 +11,11 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/services"
 )
 
-// Client queries the services module for service discovery on a target node.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity
 }
 
-// New returns a Client targeting targetID; a nil targetID targets the local node via astrald.Default().
 func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 	if astral == nil {
 		astral = astrald.Default()
@@ -27,7 +25,6 @@ func New(targetID *astral.Identity, astral *astrald.Client) *Client {
 
 var defaultClient *Client
 
-// Default returns the package-level singleton Client, initializing it lazily on first call.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(nil, astrald.Default())

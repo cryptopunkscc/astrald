@@ -26,7 +26,6 @@ type Module struct {
 	ready  chan struct{}
 }
 
-// Run stores the module context and unblocks callers waiting on Ready.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx
 	close(mod.ready)

@@ -6,8 +6,6 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astrald"
 )
 
-// Client is an RPC client for the gateway module service.
-// A nil targetID routes queries to the local node's gateway.
 type Client struct {
 	astral   *astrald.Client
 	targetID *astral.Identity
@@ -22,7 +20,6 @@ func New(targetID *astral.Identity, a *astrald.Client) *Client {
 	return &Client{astral: a, targetID: targetID}
 }
 
-// Default returns the process-wide default Client, creating it on first call with nil identity and astrald.Default() as the client.
 func Default() *Client {
 	if defaultClient == nil {
 		defaultClient = New(nil, nil)

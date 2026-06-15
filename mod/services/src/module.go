@@ -11,8 +11,6 @@ import (
 
 const ModuleName = "services"
 
-// Module is the services module; it caches remote service advertisements and fans
-// discovery out across all registered Discoverers.
 type Module struct {
 	Deps
 

@@ -47,10 +47,6 @@ type Deps struct {
 	IP        ip.Module
 }
 
-// Module implements the gateway protocol in two complementary roles: as a
-// gateway server it accepts registrations from remote nodes and brokers
-// inbound connections to them; as a client it registers this node with
-// configured upstream gateways and maintains pools of idle connections.
 type Module struct {
 	Deps
 
@@ -73,10 +69,6 @@ func (mod *Module) Router() astral.Router {
 	return &mod.router
 }
 
-// Run starts gateway server listeners (if enabled), schedules persistent
-// gateway connections, and on context cancellation tears down both roles:
-// closes pending connectors and registered nodes, then unregisters from every
-// upstream gateway with a 10-second grace period.
 func (mod *Module) Run(ctx *astral.Context) error {
 	mod.ctx = ctx.IncludeZone(astral.ZoneNetwork)
 

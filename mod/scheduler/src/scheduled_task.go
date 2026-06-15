@@ -9,7 +9,6 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/scheduler"
 )
 
-// ScheduledTask wraps a scheduler.Task with lifecycle state, timestamps, and a cancellable context.
 type ScheduledTask struct {
 	task     scheduler.Task
 	state    scheduler.State
@@ -35,8 +34,6 @@ func NewScheduledTask(task scheduler.Task) *ScheduledTask {
 	}
 }
 
-// Run prepares a derived context, executes the wrapped task, then records its result and timestamps.
-// Blocks until the task returns; transitions state to Done on exit regardless of outcome.
 func (task *ScheduledTask) Run(ctx *astral.Context) (err error) {
 	// prepare the execution
 	err = task.prepare(ctx)
