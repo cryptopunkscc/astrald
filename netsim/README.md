@@ -58,9 +58,10 @@ stage at the end. It stops at the first failing task. Order is significant:
 * `add-vm --hostname node1` and `add-vm --hostname node2` use the `add-vm`
   builtin; they create the two plain Ubuntu VMs on the LAN.
 * `install-astrald` is the [custom task](tasks/install-astrald/README.md); with no
-  `--vm` it installs and runs astrald on every running VM, so on both nodes. It
-  runs `run.sh` then `verify.sh` and fails the story unless every node's service
-  is active and answers `astral-query localnode:.spec`.
+  `--vm` it installs astrald on every running VM, so on both nodes. It runs
+  `run.sh` then `verify.sh` and fails the story unless astrald builds, starts, and
+  answers `astral-query localnode:.spec` on every node. The service is left
+  enabled but stopped, so it autostarts when the stage boots.
 * `install-qwen-code --vm node1 --create-user` uses the `install-qwen-code`
   builtin; it installs the Qwen Code CLI on `node1` and points it at the
   inference endpoint. The builtin installs for user `tester`, which does not
