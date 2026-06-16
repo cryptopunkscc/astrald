@@ -1,5 +1,5 @@
 #!/bin/sh
-# install-astrald: build astrald from source, run it as a systemd service on VMs.
+# install-astrald: build astrald from source, install it as a systemd service on VMs.
 #   install-astrald [--vm <host>]... [--ref <git-ref>]
 # No --vm  ->  every running VM in the simulation.
 #
@@ -59,24 +59,32 @@ install -d -m 700 /var/lib/astrald
 cat > /etc/systemd/system/astrald.service <<UNIT
 [Unit]
 Description=astral daemon
-After=network-online.target
-Wants=network-online.target
 [Service]
-Type=simple
-Environment=HOME=/root
 ExecStart=/usr/local/bin/astrald -root /var/lib/astrald
+Environment=HOME=/root
 Restart=on-failure
+KillSignal=SIGINT
 [Install]
 WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload
 systemctl enable --now astrald
 
-# confirm: service active AND the node answers its local API
-sleep 2
-systemctl is-active --quiet astrald
-timeout 5 astral-query localnode:.spec -out json >/dev/null 2>&1
-echo "astrald healthy on $(hostname)"
+# confirm it built AND runs: wait for the apphost listener, then probe the API
+ok=
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    if systemctl is-active --quiet astrald && timeout 5 astral-query localnode:.spec -out json >/dev/null 2>&1; then
+        ok=1; break
+    fi
+    sleep 1
+done
+[ -n "$ok" ] || { echo "astrald did not come up on $(hostname)" >&2; exit 1; }
+
+# stop it so netsim snapshots an idle guest; the unit stays enabled and
+# autostarts when the stage boots. a running daemon keeps dirtying RAM and can
+# stall the live snapshot (the qmp timeout).
+systemctl stop astrald
+echo "astrald installed and verified; enabled, stopped for snapshot on $(hostname)"
 EOS
 )
 

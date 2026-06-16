@@ -1,7 +1,11 @@
 # install-astrald
 
-A netsim task that builds `astrald` from source and runs it as a systemd service
-on target VMs. `run.sh` installs; `verify.sh` re-checks independently.
+A netsim task that builds `astrald` from source and installs it as a systemd
+service on target VMs. `run.sh` builds, installs, and enables the unit;
+`verify.sh` independently confirms the node answers. The service is left enabled
+but stopped, so the netsim stage snapshots cleanly and astrald autostarts when
+the stage boots. See [Running astrald as a service](../../../docs/running-as-a-service.md)
+for the unit file and operational details.
 
 ```
 install-astrald [--vm <host>]... [--ref <git-ref>]
@@ -14,9 +18,9 @@ install-astrald [--vm <host>]... [--ref <git-ref>]
   of the default branch.
 
 Each target receives, in one ssh call: `git` and `curl` ensured, Go from the
-official tarball, `astrald` and `astral-query` built to `/usr/local/bin`, a
-systemd unit installed and started with `systemctl enable --now`, and a
-self-check.
+official tarball, `astrald` and `astral-query` built to `/usr/local/bin`, and a
+systemd unit installed and enabled. astrald is started briefly to confirm it
+answers `astral-query localnode:.spec`, then stopped for snapshotting.
 
 Use the task in a story (see the [netsim README](../../README.md#lab)), or run it
 standalone against an existing stage with
@@ -52,6 +56,8 @@ netsim ssh "$vm" -- "repo='$REPO' ref='$REF' go_ver='$GO_VERSION'; $REMOTE_BODY"
   fails; `go build .` at the repo root builds a do-nothing stub.
 * The service runs `astrald -root /var/lib/astrald` with `Environment=HOME=/root`.
   Default config and data paths derive from `$HOME`, which systemd does not set.
+  The unit sets `KillSignal=SIGINT` so `systemctl stop` shuts astrald down
+  gracefully (astrald traps SIGINT, not SIGTERM).
 * First start auto-generates the node identity, a `secp256k1` key at
   `/var/lib/astrald/config/node_key`, with no prompt and no TTY.
 * The liveness probe is `astral-query localnode:.spec`. The op is built-in and
