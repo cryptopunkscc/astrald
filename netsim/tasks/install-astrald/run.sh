@@ -80,11 +80,11 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 [ -n "$ok" ] || { echo "astrald did not come up on $(hostname)" >&2; exit 1; }
 
-# stop it so netsim snapshots an idle guest; the unit stays enabled and
-# autostarts when the stage boots. a running daemon keeps dirtying RAM and can
-# stall the live snapshot (the qmp timeout).
-systemctl stop astrald
-echo "astrald installed and verified; enabled, stopped for snapshot on $(hostname)"
+# leave astrald running: netsim snapshots live RAM, so the node resumes
+# already-running when the stage is restored (a stopped service would not
+# restart, as resume is not a boot). astrald's footprint is tiny (~17 MB peak),
+# so it does not stall the live snapshot against a sane qmp timeout.
+echo "astrald installed, verified, and left running on $(hostname)"
 EOS
 )
 
