@@ -45,6 +45,13 @@ WantedBy=multi-user.target
 systemctl enable --now astrald
 ```
 
+This unit runs astrald as root — the simplest setup. To run it as your own user
+instead, install it as a user service: place the unit at
+`~/.config/systemd/user/astrald.service`, drop `Environment=HOME=` and the `-root`
+flag (config and data then default to `~/.config/astrald` and
+`~/.local/share/astrald`), and run `systemctl --user enable --now astrald`.
+`loginctl enable-linger $USER` keeps it running without an active login session.
+
 ## Health check
 
 ```shell
