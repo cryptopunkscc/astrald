@@ -14,10 +14,9 @@ tasks in one simulation and saves a named *stage*. `lab.story` builds the
 ```
 netsim/
   tasks/
-    install-astrald/               # custom task (see tasks/install-astrald/README.md)
-      run.sh                       # installs on target VMs (all running VMs by default)
-      verify.sh                    # independent re-check: service active + node answers
-      README.md                    # task reference: usage, execution model, build facts
+    install-astrald/               # build + run astrald as a service (tasks/install-astrald/README.md)
+    configure-astral-agent/        # install the astral-agent skill into the qwen operator
+      run.sh / verify.sh / README.md   # each task: installs on target VMs + independent re-check
   lab.story                        # full lab in one simulation -> stage astrald-lab
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
@@ -38,16 +37,17 @@ netsim tasks        # confirm: install-astrald is listed as a user task
 ## Lab
 
 `lab.story` builds the full lab in one simulation: two nodes running astrald and
-a Qwen Code operator on `node1`.
+a Qwen Code operator on `node1`, equipped with the `astral-agent` skill.
 
 ```
 # lab.story — the astrald lab, built in one netsim simulation.
 # Result: a single stage with two nodes running astrald and a Qwen Code
-# operator installed on node1.
+# operator on node1, equipped with the astral-agent skill.
 add-vm --hostname node1
 add-vm --hostname node2
 install-astrald
 install-qwen-code --vm node1 --create-user
+configure-astral-agent --vm node1
 ```
 
 A story is a plain-text file with one `task [args...]` per line, shell-style
@@ -68,20 +68,27 @@ stage at the end. It stops at the first failing task. Order is significant:
   inference endpoint. The builtin installs for user `tester`, which does not
   exist on a fresh cloud image, so `--create-user` is required. `node2` stays a
   plain astrald peer.
+* `configure-astral-agent --vm node1` is a [custom task](tasks/configure-astral-agent/README.md);
+  it installs the `astral-agent` skill into the Qwen Code operator so it can drive
+  astrald from the skill's knowledge. The host must have `SATFORGE_SKILLS_DEPLOY_KEY`
+  set (a deploy key for the private skills repo) — see its README.
 
-Both VMs must exist and run before `install-astrald`, and astrald must be present
-before the Qwen Code operator is layered on `node1`.
+Both VMs must exist and run before `install-astrald`, astrald must be present
+before the Qwen Code operator is layered on `node1`, and the operator must exist
+before its skill is configured.
 
-Register the custom task once (see [Registering tasks](#registering-tasks)),
+Register the custom tasks once (see [Registering tasks](#registering-tasks)),
 then build the lab:
 
 ```sh
 ./netsim/link.sh
+export SATFORGE_SKILLS_DEPLOY_KEY=~/.ssh/satforge_skills_deploy   # see tasks/configure-astral-agent
 netsim story --stage null --save astrald-lab netsim/lab.story
 ```
 
-The result is the stage `astrald-lab`: `node1` and `node2` running astrald, Qwen
-Code on `node1`. Re-enter it with `netsim shell --stage astrald-lab`.
+The result is the stage `astrald-lab`: `node1` and `node2` running astrald, with a
+Qwen Code operator on `node1` equipped with the `astral-agent` skill. Re-enter it
+with `netsim shell --stage astrald-lab`.
 
 ## Scope
 
