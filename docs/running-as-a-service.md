@@ -73,16 +73,3 @@ Default transports bind all interfaces.
 | 8822 | UDP | `ether` LAN discovery |
 | 8625 | TCP 127.0.0.1 | local apphost API |
 | 8624 | TCP 0.0.0.0 | apphost HTTP API |
-
-## Imaging and snapshots
-
-Stop astrald before capturing a VM image or live snapshot; leave the unit enabled.
-
-```shell
-systemctl enable astrald
-systemctl stop astrald
-```
-
-A running daemon dirties memory continuously and can stall a live RAM snapshot.
-The enabled unit autostarts astrald on boot. The identity at
-`<root>/config/node_key` persists across the capture.
