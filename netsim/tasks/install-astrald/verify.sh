@@ -1,8 +1,8 @@
 #!/bin/sh
 # verify install-astrald (same args as run.sh): on every target VM the astrald
-# unit must be enabled and, once started, answer its local API. INDEPENDENT
-# re-check -- it re-derives the VM list, starts the (snapshot-idle) service,
-# probes it, and stops it again; it does not trust run.sh's output.
+# unit must be enabled and answer its local API. INDEPENDENT re-check -- it
+# re-derives the VM list, ensures the service is running, probes it, and leaves
+# it running for the snapshot; it does not trust run.sh's output.
 set -eu
 VMS=""
 while [ $# -gt 0 ]; do
@@ -29,7 +29,6 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
     fi
     sleep 1
 done
-systemctl stop astrald
 [ -n "$ok" ] || { echo "astrald did not answer on $(hostname)" >&2; exit 1; }
 echo "$(hostname): astrald healthy"
 EOS

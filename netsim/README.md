@@ -61,7 +61,8 @@ stage at the end. It stops at the first failing task. Order is significant:
   `--vm` it installs astrald on every running VM, so on both nodes. It runs
   `run.sh` then `verify.sh` and fails the story unless astrald builds, starts, and
   answers `astral-query localnode:.spec` on every node. The service is left
-  enabled but stopped, so it autostarts when the stage boots.
+  enabled and running, so the stage snapshots a live node that resumes
+  already-running on restore.
 * `install-qwen-code --vm node1 --create-user` uses the `install-qwen-code`
   builtin; it installs the Qwen Code CLI on `node1` and points it at the
   inference endpoint. The builtin installs for user `tester`, which does not

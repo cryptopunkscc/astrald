@@ -3,8 +3,8 @@
 A netsim task that builds `astrald` from source and installs it as a systemd
 service on target VMs. `run.sh` builds, installs, and enables the unit;
 `verify.sh` independently confirms the node answers. The service is left enabled
-but stopped, so the netsim stage snapshots cleanly and astrald autostarts when
-the stage boots. See [Running astrald as a service](../../../docs/running-as-a-service.md)
+and running, so the netsim stage snapshots a live node that resumes already-running
+on restore. See [Running astrald as a service](../../../docs/running-as-a-service.md)
 for the unit file and operational details.
 
 ```
@@ -19,8 +19,8 @@ install-astrald [--vm <host>]... [--ref <git-ref>]
 
 Each target receives, in one ssh call: `git` and `curl` ensured, Go from the
 official tarball, `astrald` and `astral-query` built to `/usr/local/bin`, and a
-systemd unit installed and enabled. astrald is started briefly to confirm it
-answers `astral-query localnode:.spec`, then stopped for snapshotting.
+systemd unit installed and enabled. astrald is started and confirmed to answer
+`astral-query localnode:.spec`, then left running for snapshotting.
 
 Use the task in a story (see the [netsim README](../../README.md#lab)), or run it
 standalone against an existing stage with
