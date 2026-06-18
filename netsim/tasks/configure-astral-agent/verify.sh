@@ -25,7 +25,7 @@ head -n1 "$d/SKILL.md" | grep -qx -- '---' || { echo "SKILL.md frontmatter missi
 [ -f "$d/astral-docs/README.md" ] || { echo "astral-docs mount missing on $(hostname)"   >&2; exit 1; }
 owner=$(stat -c '%U' "$d")
 [ "$owner" = "$u" ] || { echo "astral-agent owned by '$owner', expected '$u' on $(hostname)" >&2; exit 1; }
-echo "$(hostname): astral-agent present for $u ($(find "$d" -type f | wc -l) files), frontmatter intact"
+echo "$(hostname): astral-agent present for $u ($(find -L "$d" -type f 2>/dev/null | wc -l) files via symlinks), frontmatter intact"
 EOS
 )
 
