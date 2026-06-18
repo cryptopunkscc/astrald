@@ -70,15 +70,28 @@ UNIT
 systemctl daemon-reload
 systemctl enable --now astrald
 
-# confirm it built AND runs: wait for the apphost listener, then probe the API
+# confirm it built AND runs: wait (up to ~90s) for the apphost listener, then
+# probe the API. First start is much slower than a snapshot resume -- astrald
+# generates its node key and inits SQLite, often right after a CPU-heavy go
+# build still loads the VM -- so the window is deliberately generous (the old
+# ~10s loop flaked here). On failure, dump the service state + journal so "did
+# not come up" is a real diagnosis instead of an opaque message.
 ok=
-for _ in 1 2 3 4 5 6 7 8 9 10; do
+n=0
+while [ "$n" -lt 90 ]; do
     if systemctl is-active --quiet astrald && timeout 5 astral-query localnode:.spec -out json >/dev/null 2>&1; then
         ok=1; break
     fi
-    sleep 1
+    n=$((n + 1)); sleep 1
 done
-[ -n "$ok" ] || { echo "astrald did not come up on $(hostname)" >&2; exit 1; }
+if [ -z "$ok" ]; then
+    echo "astrald did not come up on $(hostname) after ${n}s" >&2
+    echo "--- systemctl status astrald ---" >&2
+    systemctl status astrald --no-pager >&2 2>&1 || true
+    echo "--- journalctl -u astrald (tail 40) ---" >&2
+    journalctl -u astrald --no-pager 2>&1 | tail -40 >&2 || true
+    exit 1
+fi
 
 # leave astrald running: netsim snapshots live RAM, so the node resumes
 # already-running when the stage is restored (a stopped service would not
