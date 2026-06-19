@@ -22,6 +22,11 @@ func (mod *Module) ReceiveObject(drop objects.Drop) (err error) {
 		if err == nil {
 			drop.Accept(true)
 		}
+	case *user.SignedExpulsion:
+		err = mod.receiveExpulsion(o)
+		if err == nil {
+			drop.Accept(true)
+		}
 	case *events.Event:
 		switch e := o.Data.(type) {
 		case *nodes.LinkCreatedEvent:

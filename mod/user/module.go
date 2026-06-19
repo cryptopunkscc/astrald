@@ -21,6 +21,8 @@ const (
 	OpAssets          = "user.assets"
 	OpNewNodeContract = "user.new_node_contract"
 	OpSyncWith        = "user.sync_with"
+	OpExpel           = "user.expel"
+	OpListExpelled    = "user.list_expelled"
 )
 
 type Module interface {
@@ -36,4 +38,7 @@ type Module interface {
 	// PushToLocalSwarm broadcasts obj to every local swarm member except the
 	// node itself using ctx; delivery is best-effort and failures are silently ignored.
 	PushToLocalSwarm(ctx *astral.Context, obj astral.Object)
+	// Expel permanently bans nodeID from the swarm. Only the active contract's
+	// issuer may expel and the ban is irreversible.
+	Expel(ctx *astral.Context, nodeID *astral.Identity) (*SignedExpulsion, error)
 }

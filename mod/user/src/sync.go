@@ -1,7 +1,6 @@
 package user
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cryptopunkscc/astrald/astral"
@@ -16,7 +15,7 @@ import (
 func (mod *Module) syncAssets(ctx *astral.Context, nodeID *astral.Identity) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
-		return errors.New("no active contract")
+		return user.ErrNoActiveContract
 	}
 
 	nodePath := fmt.Sprintf("/mod/user/assets/%v/next_height", nodeID.String())
@@ -71,7 +70,7 @@ func (mod *Module) syncAssets(ctx *astral.Context, nodeID *astral.Identity) (err
 func (mod *Module) syncAlias(ctx *astral.Context, nodeID *astral.Identity) (err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
-		return errors.New("no active contract")
+		return user.ErrNoActiveContract
 	}
 
 	var q = query.New(ac.Issuer, nodeID, user.OpInfo, nil)
@@ -128,6 +127,29 @@ func (mod *Module) syncSiblings(ctx *astral.Context, with *astral.Identity) {
 		mod.Objects.Push(ctx, with, contract)
 	}
 
+}
+
+// syncExpulsions pushes every ban issued by the active user to the remote node,
+// so a peer that was offline during an expel still learns the ban on next link.
+func (mod *Module) syncExpulsions(ctx *astral.Context, with *astral.Identity) {
+	ac := mod.ActiveContract()
+	if ac == nil {
+		return
+	}
+
+	expulsions, err := mod.db.Expulsions(ac.Issuer)
+	if err != nil {
+		mod.log.Error("syncExpulsions: error getting expulsions: %v", err)
+		return
+	}
+
+	for _, signed := range expulsions {
+		if signed.Subject.IsEqual(with) {
+			continue
+		}
+
+		mod.Objects.Push(ctx, with, signed)
+	}
 }
 
 func (mod *Module) syncApps(ctx *astral.Context, with *astral.Identity) {
