@@ -51,5 +51,10 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery
 
 	go mod.PushToLocalSwarm(mod.ctx, signed)
 
+	// why: PushToLocalSwarm only sends the new contract, leaving the invitee
+	// without the inviter's own and sibling contracts. The LinkCreatedEvent
+	// trigger already fired before indexing, so sync the joined node here.
+	mod.Scheduler.Schedule(mod.NewSyncNodesTask(signed.Subject))
+
 	return ch.Send(signed)
 }
