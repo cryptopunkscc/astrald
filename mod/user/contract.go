@@ -7,15 +7,15 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/auth"
 )
 
-// IsNodeContract reports whether a contract grants SwarmAccess.
+// IsNodeContract reports whether a contract grants swarm membership.
 func IsNodeContract(c *auth.Contract) bool {
-	return len(c.HasPermit(SwarmAccessAction{}.ObjectType())) > 0
+	return len(c.HasPermit(SwarmMembershipAction{}.ObjectType())) > 0
 }
 
-// NewNodeContract creates a node contract granting SwarmAccess from issuer to subject.
+// NewNodeContract creates a node contract granting swarm membership from issuer to subject.
 func NewNodeContract(issuer, subject *astral.Identity, duration time.Duration) (*auth.Contract, error) {
 	permits := []*auth.Permit{
-		{Action: astral.String8(SwarmAccessAction{}.ObjectType())},
+		{Action: astral.String8(SwarmMembershipAction{}.ObjectType())},
 	}
 
 	return &auth.Contract{

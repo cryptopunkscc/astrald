@@ -15,7 +15,7 @@ import (
 // ban is stored, pushed to the local swarm, and the node is disconnected.
 //
 // Expelling suppresses swarm membership only; it does not revoke the node's
-// underlying SwarmAccess contract.
+// underlying swarm-membership contract.
 func (mod *Module) Expel(ctx *astral.Context, nodeID *astral.Identity) (*user.SignedExpulsion, error) {
 	ac := mod.ActiveContract()
 	if ac == nil {

@@ -62,10 +62,10 @@ func (mod *Module) setActiveContract(signed *auth.SignedContract) error {
 	return nil
 }
 
-// ActiveNodeContracts returns all active SwarmAccess contracts issued by userID,
+// ActiveNodeContracts returns all active swarm-membership contracts issued by userID,
 // excluding contracts whose subject has been expelled.
 func (mod *Module) ActiveNodeContracts(userID *astral.Identity) ([]*auth.SignedContract, error) {
-	contracts, err := mod.Auth.SignedContracts().WithIssuer(userID).WithAction(&user.SwarmAccessAction{}).Find(mod.ctx)
+	contracts, err := mod.Auth.SignedContracts().WithIssuer(userID).WithAction(&user.SwarmMembershipAction{}).Find(mod.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,13 +83,13 @@ func (mod *Module) ActiveNodeContracts(userID *astral.Identity) ([]*auth.SignedC
 	return filtered, nil
 }
 
-// ActiveNodes returns all nodes with an active SwarmAccess contract from the given
+// ActiveNodes returns all nodes with an active swarm-membership contract from the given
 // user, excluding expelled subjects.
 func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identity) {
 	contracts, err := mod.Auth.
 		SignedContracts().
 		WithIssuer(userID).
-		WithAction(&user.SwarmAccessAction{}).
+		WithAction(&user.SwarmMembershipAction{}).
 		Find(mod.ctx)
 
 	if err != nil {
@@ -109,7 +109,7 @@ func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identit
 	return
 }
 
-// LocalSwarm returns a list of node identities with an active SwarmAccess contract with the current user
+// LocalSwarm returns a list of node identities with an active swarm-membership contract with the current user
 func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 	ac := mod.ActiveContract()
 	if ac == nil {
@@ -119,9 +119,9 @@ func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 	return mod.ActiveNodes(ac.Issuer)
 }
 
-// InviteNode issues a SwarmAccess contract to nodeID, collects the remote node's subject signature, and verifies both before returning.
+// IssueMembership mints a swarm-membership contract for nodeID, collects the remote node's subject signature, and verifies both before returning.
 // Requires an active contract; the user identity becomes the issuer.
-func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (signed *auth.SignedContract, err error) {
+func (mod *Module) IssueMembership(ctx *astral.Context, nodeID *astral.Identity) (signed *auth.SignedContract, err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return nil, user.ErrNoActiveContract
@@ -139,7 +139,7 @@ func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (sig
 		return nil, fmt.Errorf("sign as issuer: %w", err)
 	}
 
-	subjectSig, err := userClient.New(nodeID, nil).Invite(ctx, contract, issuerSig)
+	subjectSig, err := userClient.New(nodeID, nil).AcceptMembership(ctx, contract, issuerSig)
 	if err != nil {
 		return nil, err
 	}

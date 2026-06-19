@@ -11,16 +11,16 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-type opInviteArgs struct {
+type opAcceptMembershipArgs struct {
 	In  string `query:"optional"`
 	Out string `query:"optional"`
 }
 
-// OpInvite handles the node side of the contract signing ceremony.
+// OpAcceptMembership handles the node side of the contract signing ceremony.
 // Rejects if an active contract already exists (code 2).
 // Validates contract subject, identity match, and minimum remaining validity before applying the invite policy.
 // On success, stores the signed contract and sets it as the active contract.
-func (mod *Module) OpInvite(ctx *astral.Context, q *routing.IncomingQuery, args opInviteArgs) (err error) {
+func (mod *Module) OpAcceptMembership(ctx *astral.Context, q *routing.IncomingQuery, args opAcceptMembershipArgs) (err error) {
 	ac := mod.ActiveContract()
 	if ac != nil {
 		// We already have an active contract
