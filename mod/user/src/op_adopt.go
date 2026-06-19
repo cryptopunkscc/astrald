@@ -6,16 +6,16 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
-type opClaimArgs struct {
+type opAdoptArgs struct {
 	Target string
 	In     string `query:"optional"`
 	Out    string `query:"optional"`
 }
 
-// OpClaim invites a target node into the active contract and indexes the signed result.
+// OpAdopt adopts a target node into the active contract and indexes the signed result.
 // Requires an active contract; caller must be the contract issuer (code 3 otherwise).
 // Pushes the signed contract to the local swarm asynchronously after indexing.
-func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args opClaimArgs) (err error) {
+func (mod *Module) OpAdopt(ctx *astral.Context, q *routing.IncomingQuery, args opAdoptArgs) (err error) {
 	// get the active contract
 	ac := mod.ActiveContract()
 	if ac == nil {
@@ -34,8 +34,8 @@ func (mod *Module) OpClaim(ctx *astral.Context, q *routing.IncomingQuery, args o
 		return ch.Send(astral.Err(err))
 	}
 
-	// invite the node to sign a contract
-	signed, err := mod.InviteNode(ctx, nodeID)
+	// issue a membership contract for the node
+	signed, err := mod.IssueMembership(ctx, nodeID)
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}

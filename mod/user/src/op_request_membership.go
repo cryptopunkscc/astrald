@@ -7,15 +7,15 @@ import (
 	"github.com/cryptopunkscc/astrald/mod/user"
 )
 
-type opRequestInviteArgs struct {
+type opRequestMembershipArgs struct {
 	In  string `query:"optional"`
 	Out string `query:"optional"`
 }
 
-// OpRequestInvite allows a caller node to request membership in this node's swarm.
-// Requires an active contract; applies the swarm join-request policy to the caller before inviting.
+// OpRequestMembership allows a caller node to request membership in this node's swarm.
+// Requires an active contract; applies the swarm join-request policy to the caller before issuing membership.
 // Pushes the resulting signed contract to the local swarm asynchronously.
-func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery, args opRequestInviteArgs) (err error) {
+func (mod *Module) OpRequestMembership(ctx *astral.Context, q *routing.IncomingQuery, args opRequestMembershipArgs) (err error) {
 	ctx = ctx.IncludeZone(astral.ZoneNetwork)
 
 	ac := mod.ActiveContract()
@@ -34,7 +34,7 @@ func (mod *Module) OpRequestInvite(ctx *astral.Context, q *routing.IncomingQuery
 		return ch.Send(user.ErrRequestDeclined)
 	}
 
-	signed, err := mod.InviteNode(ctx, target)
+	signed, err := mod.IssueMembership(ctx, target)
 	if err != nil {
 		return ch.Send(astral.NewError(err.Error()))
 	}
