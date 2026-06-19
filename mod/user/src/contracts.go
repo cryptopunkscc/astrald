@@ -62,12 +62,29 @@ func (mod *Module) setActiveContract(signed *auth.SignedContract) error {
 	return nil
 }
 
-// ActiveNodeContracts returns all active SwarmAccess contracts issued by userID
+// ActiveNodeContracts returns all active SwarmAccess contracts issued by userID,
+// excluding contracts whose subject has been expelled.
 func (mod *Module) ActiveNodeContracts(userID *astral.Identity) ([]*auth.SignedContract, error) {
-	return mod.Auth.SignedContracts().WithIssuer(userID).WithAction(&user.SwarmAccessAction{}).Find(mod.ctx)
+	contracts, err := mod.Auth.SignedContracts().WithIssuer(userID).WithAction(&user.SwarmAccessAction{}).Find(mod.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	expelled := mod.expelledSet(userID)
+
+	filtered := make([]*auth.SignedContract, 0, len(contracts))
+	for _, c := range contracts {
+		if _, banned := expelled[c.Subject.String()]; banned {
+			continue
+		}
+		filtered = append(filtered, c)
+	}
+
+	return filtered, nil
 }
 
-// ActiveNodes returns all nodes with an active SwarmAccess contract from the given user
+// ActiveNodes returns all nodes with an active SwarmAccess contract from the given
+// user, excluding expelled subjects.
 func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identity) {
 	contracts, err := mod.Auth.
 		SignedContracts().
@@ -80,7 +97,12 @@ func (mod *Module) ActiveNodes(userID *astral.Identity) (nodes []*astral.Identit
 		return
 	}
 
+	expelled := mod.expelledSet(userID)
+
 	for _, c := range contracts {
+		if _, banned := expelled[c.Subject.String()]; banned {
+			continue
+		}
 		nodes = append(nodes, c.Subject)
 	}
 
@@ -102,7 +124,7 @@ func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 func (mod *Module) InviteNode(ctx *astral.Context, nodeID *astral.Identity) (signed *auth.SignedContract, err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
-		return nil, errors.New("no active contract")
+		return nil, user.ErrNoActiveContract
 	}
 
 	contract, err := user.NewNodeContract(ac.Issuer, nodeID, defaultContractValidity)

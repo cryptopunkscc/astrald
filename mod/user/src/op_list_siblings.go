@@ -20,7 +20,7 @@ func (mod *Module) OpListSiblings(ctx *astral.Context, q *routing.IncomingQuery,
 	ch := channel.New(q.AcceptRaw(), channel.WithOutputFormat(args.Out))
 	defer ch.Close()
 
-	for _, id := range mod.getLinkedSibs() {
+	for _, id := range mod.getSiblings() {
 		err = ch.Send(id)
 		if err != nil {
 			return ch.Send(astral.NewError(err.Error()))

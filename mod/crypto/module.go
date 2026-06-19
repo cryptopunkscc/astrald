@@ -56,6 +56,16 @@ type Module interface {
 
 	VerifyTextObjectSignature(*PublicKey, *Signature, SignableTextObject) error
 
+	// Sign signs obj as key, selecting a scheme the key supports: it prefers an
+	// object (hash/ASN1) signature and falls back to a text (BIP-137) signature.
+	// A convenience over ObjectSigner/TextObjectSigner so callers signing their
+	// own wire objects need not repeat the scheme-selection dance.
+	Sign(ctx *astral.Context, key *PublicKey, obj SignableTextObject) (*Signature, error)
+
+	// Verify checks sig against obj using key, dispatching on the signature's
+	// scheme. It is the counterpart to Sign.
+	Verify(key *PublicKey, sig *Signature, obj SignableTextObject) error
+
 	AddToIndex(object astral.Object) error
 }
 

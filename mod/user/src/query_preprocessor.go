@@ -23,7 +23,7 @@ func (mod *Module) PreprocessQuery(qm *core.QueryModifier) error {
 
 	if qm.Query().Target.IsEqual(ac.Issuer) {
 		// if the target is the active user, attach all siblings
-		for _, sib := range mod.getLinkedSibs() {
+		for _, sib := range mod.getSiblings() {
 			qm.AddRelay(sib)
 		}
 	} else {

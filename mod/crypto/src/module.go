@@ -218,6 +218,39 @@ func (mod *Module) formatSignableText(object crypto.SignableTextObject) string {
 	return fmt.Sprintf("[%s] %s", commitment, object.SignableText())
 }
 
+// Sign signs obj as key, preferring an object (hash) signature and falling back
+// to a text signature when no object-signing engine is available for the key.
+func (mod *Module) Sign(ctx *astral.Context, key *crypto.PublicKey, obj crypto.SignableTextObject) (*crypto.Signature, error) {
+	if signer, err := mod.ObjectSigner(key); err == nil {
+		sig, err := signer.SignObject(ctx, obj)
+		if err == nil {
+			return sig, nil
+		}
+	}
+
+	if signer, err := mod.TextObjectSigner(key); err == nil {
+		return signer.SignTextObject(ctx, obj)
+	}
+
+	return nil, fmt.Errorf("no signing scheme available for key %v", key)
+}
+
+// Verify checks sig against obj using key, dispatching on the signature scheme.
+func (mod *Module) Verify(key *crypto.PublicKey, sig *crypto.Signature, obj crypto.SignableTextObject) error {
+	if sig == nil {
+		return errors.New("signature is nil")
+	}
+
+	switch sig.Scheme {
+	case crypto.SchemeASN1:
+		return mod.VerifyObjectSignature(key, sig, obj)
+	case crypto.SchemeBIP137:
+		return mod.VerifyTextObjectSignature(key, sig, obj)
+	default:
+		return fmt.Errorf("unsupported signature scheme: %s", sig.Scheme)
+	}
+}
+
 // indexRepo scans and follows the given repo and attempts to index all private keys it encounters
 func (mod *Module) indexRepo(ctx *astral.Context, repo objects.Repository) error {
 	scan, err := repo.Scan(ctx, true)

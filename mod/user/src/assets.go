@@ -6,7 +6,7 @@ import "github.com/cryptopunkscc/astrald/astral"
 func (mod *Module) AddAsset(objectID *astral.ObjectID) (err error) {
 	_, err = mod.db.AddAsset(objectID, false)
 	if err == nil {
-		mod.notifyLinkedSibs("assets")
+		mod.notifySiblings("assets")
 	}
 	return
 }
@@ -15,7 +15,7 @@ func (mod *Module) AddAsset(objectID *astral.ObjectID) (err error) {
 func (mod *Module) RemoveAsset(objectID *astral.ObjectID) (err error) {
 	err = mod.db.RemoveAsset(objectID)
 	if err == nil {
-		mod.notifyLinkedSibs("assets")
+		mod.notifySiblings("assets")
 	}
 	return err
 }

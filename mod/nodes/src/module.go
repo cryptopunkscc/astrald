@@ -87,6 +87,17 @@ func (mod *Module) CloseLink(id astral.Nonce) error {
 	return nodes.ErrLinkNotFound
 }
 
+// CloseLinks closes all open links with the given identity.
+func (mod *Module) CloseLinks(identity *astral.Identity) error {
+	for _, s := range mod.linkPool.links.Clone() {
+		if s.RemoteIdentity().IsEqual(identity) {
+			_ = s.CloseWithError(errors.New("node expelled"))
+		}
+	}
+
+	return nil
+}
+
 func (mod *Module) Router() astral.Router {
 	return &mod.router
 }

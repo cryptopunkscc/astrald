@@ -11,7 +11,7 @@ func (mod *Module) FindObject(ctx *astral.Context, id *astral.ObjectID) (<-chan 
 	go func() {
 		defer close(out)
 
-		for _, sib := range mod.getLinkedSibs() {
+		for _, sib := range mod.getSiblings() {
 			select {
 			case out <- sib:
 			case <-ctx.Done():

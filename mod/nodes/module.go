@@ -53,6 +53,9 @@ type Module interface {
 
 	IsLinked(*astral.Identity) bool
 
+	// CloseLinks closes all open links with the given identity.
+	CloseLinks(identity *astral.Identity) error
+
 	NewCreateLinkTask(target *astral.Identity, endpoint exonet.Endpoint) CreateLinkTask
 	NewEnsureLinkTask(target *astral.Identity, strategies []string, networks []string, forceNew bool) EnsureLinkTask
 	NewCleanupEndpointsTask() CleanupEndpointsTask

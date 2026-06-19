@@ -40,6 +40,7 @@ func (a *SyncNodesAction) Run(ctx *astral.Context) error {
 
 	a.mod.pushActiveContract(ctx, remoteIdentity)
 	a.mod.syncSiblings(ctx, remoteIdentity)
+	a.mod.syncExpulsions(ctx, remoteIdentity)
 	a.mod.syncApps(ctx, remoteIdentity)
 
 	err = a.mod.syncAssets(ctx, remoteIdentity)

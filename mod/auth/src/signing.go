@@ -47,19 +47,7 @@ func (mod *Module) SignContract(ctx *astral.Context, signed *auth.SignedContract
 }
 
 func (mod *Module) signAs(ctx *astral.Context, key *crypto.PublicKey, c *auth.Contract) (*crypto.Signature, error) {
-	// todo: We could check what schemas are available for the given key.
-	if signer, err := mod.Crypto.ObjectSigner(key); err == nil {
-		sig, err := signer.SignObject(ctx, c)
-		if err == nil {
-			return sig, nil
-		}
-	}
-
-	if signer, err := mod.Crypto.TextObjectSigner(key); err == nil {
-		return signer.SignTextObject(ctx, c)
-	}
-
-	return nil, fmt.Errorf("no signing scheme available for key %v", key)
+	return mod.Crypto.Sign(ctx, key, c)
 }
 
 // VerifyIssuer checks that IssuerSig is present and cryptographically valid for the contract.
@@ -92,12 +80,5 @@ func (mod *Module) VerifyContract(sc *auth.SignedContract) error {
 }
 
 func (mod *Module) verifySig(key *crypto.PublicKey, sig *crypto.Signature, contract *auth.Contract) error {
-	switch sig.Scheme {
-	case crypto.SchemeASN1:
-		return mod.Crypto.VerifyObjectSignature(key, sig, contract)
-	case crypto.SchemeBIP137:
-		return mod.Crypto.VerifyTextObjectSignature(key, sig, contract)
-	default:
-		return fmt.Errorf("unsupported signature scheme: %s", sig.Scheme)
-	}
+	return mod.Crypto.Verify(key, sig, contract)
 }

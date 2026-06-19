@@ -4,7 +4,10 @@ import (
 	"errors"
 
 	"github.com/cryptopunkscc/astrald/astral"
+	"github.com/cryptopunkscc/astrald/mod/crypto"
+	"github.com/cryptopunkscc/astrald/mod/user"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type DB struct {
@@ -133,5 +136,61 @@ func (db *DB) Assets() (assets []*astral.ObjectID, err error) {
 		Find(&assets).
 		Error
 
+	return
+}
+
+// StoreExpulsion records a ban for (issuer, subject). Bans are append-only and
+// irreversible: an existing row for the pair is left untouched.
+func (db *DB) StoreExpulsion(signed *user.SignedExpulsion) error {
+	sig, err := astral.EncodeBytes(signed.IssuerSig)
+	if err != nil {
+		return err
+	}
+
+	return db.Clauses(clause.OnConflict{DoNothing: true}).Create(&dbExpulsion{
+		IssuerID:   signed.Issuer,
+		SubjectID:  signed.Subject,
+		ExpelledAt: signed.ExpelledAt.Time(),
+		IssuerSig:  sig,
+	}).Error
+}
+
+// ExpelledSubjects returns the subjects banned by issuer.
+func (db *DB) ExpelledSubjects(issuer *astral.Identity) (subjects []*astral.Identity, err error) {
+	var rows []dbExpulsion
+	err = db.Select("subject_id").Where("issuer_id = ?", issuer).Find(&rows).Error
+	if err != nil {
+		return
+	}
+
+	for _, row := range rows {
+		subjects = append(subjects, row.SubjectID)
+	}
+	return
+}
+
+// Expulsions rebuilds the signed bans issued by issuer from their stored columns.
+func (db *DB) Expulsions(issuer *astral.Identity) (list []*user.SignedExpulsion, err error) {
+	var rows []dbExpulsion
+	err = db.Where("issuer_id = ?", issuer).Find(&rows).Error
+	if err != nil {
+		return
+	}
+
+	for _, row := range rows {
+		sig, decodeErr := astral.DecodeAs[*crypto.Signature](row.IssuerSig)
+		if decodeErr != nil {
+			continue
+		}
+
+		list = append(list, &user.SignedExpulsion{
+			Expulsion: &user.Expulsion{
+				Issuer:     row.IssuerID,
+				Subject:    row.SubjectID,
+				ExpelledAt: astral.Time(row.ExpelledAt),
+			},
+			IssuerSig: sig,
+		})
+	}
 	return
 }

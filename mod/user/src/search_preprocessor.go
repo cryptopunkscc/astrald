@@ -13,7 +13,7 @@ func (mod *Module) PreprocessSearch(search *objects.Search) {
 		return
 	}
 
-	for _, nodeID := range mod.getLinkedSibs() {
+	for _, nodeID := range mod.getSiblings() {
 		search.Sources = append(search.Sources, nodeID)
 	}
 }
