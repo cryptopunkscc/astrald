@@ -88,6 +88,14 @@ func (mod *Module) applyExpulsion(id *astral.Identity) {
 	mod.removeSibling(id)
 }
 
+// isExpelled reports whether issuer has banned subject. Expulsion is irreversible,
+// so IssueMembership refuses a banned subject rather than minting a fresh contract
+// the membership filter would only hide post-hoc.
+func (mod *Module) isExpelled(issuer, subject *astral.Identity) bool {
+	_, banned := mod.expelledSet(issuer)[subject.String()]
+	return banned
+}
+
 // expelledSet returns the subjects banned by issuer, keyed by identity string for
 // O(1) membership filtering.
 func (mod *Module) expelledSet(issuer *astral.Identity) map[string]struct{} {

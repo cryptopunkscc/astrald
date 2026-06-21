@@ -121,10 +121,18 @@ func (mod *Module) LocalSwarm() (list []*astral.Identity) {
 
 // IssueMembership mints a swarm-membership contract for nodeID, collects the remote node's subject signature, and verifies both before returning.
 // Requires an active contract; the user identity becomes the issuer.
+// Refuses nodeID with user.ErrExpelled if the issuer has banned it.
 func (mod *Module) IssueMembership(ctx *astral.Context, nodeID *astral.Identity) (signed *auth.SignedContract, err error) {
 	ac := mod.ActiveContract()
 	if ac == nil {
 		return nil, user.ErrNoActiveContract
+	}
+
+	// why: sole chokepoint for OpAdopt and OpRequestMembership — refusing here
+	// blocks re-admission of a banned node before any signing or network handshake,
+	// rather than letting the membership filter hide a freshly minted contract.
+	if mod.isExpelled(ac.Issuer, nodeID) {
+		return nil, user.ErrExpelled
 	}
 
 	contract, err := user.NewNodeContract(ac.Issuer, nodeID, defaultContractValidity)
