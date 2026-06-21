@@ -1,5 +1,5 @@
 #!/bin/sh
-# link-swarm: claim the second node into the User's swarm, driven by the Qwen
+# link-swarm: adopt the second node into the User's swarm, driven by the Qwen
 # Code agent running INSIDE node1 (which is already a User node from
 # bootstrap-user — default starting stage: astrald-user).
 #   link-swarm [--vm <host>]      (default: node1 — the VM carrying Qwen)

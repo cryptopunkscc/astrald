@@ -83,7 +83,7 @@ def main():
     vm1, vm2 = args.node1, args.node2
 
     # node1 acts as the User (token from bootstrap-user); node2 answers under its
-    # node identity (it holds the contract after the claim).
+    # node identity (it holds the contract after the adoption).
     U = "".join(ssh(vm1, "cat /home/tester/.netsim/user.id").split())
     n1_info = ssh(vm1, TOKEN + " astral-query user.info -out json")
     n1_swarm = ssh(vm1, TOKEN + " astral-query user.swarm_status -out json")
@@ -101,7 +101,7 @@ def main():
     if i1 != U:
         errs.append(f"node1 contract issuer {i1} != User {U}")
     if i2 != U:
-        errs.append(f"node2 contract issuer {i2} != User {U} (node2 not claimed under this User)")
+        errs.append(f"node2 contract issuer {i2} != User {U} (node2 not adopted under this User)")
     if not s1:
         errs.append("node1 has no active contract subject")
     if not s2:

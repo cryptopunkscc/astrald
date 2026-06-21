@@ -106,7 +106,7 @@ Ephemeral / `objects.new_mem` behaviour deserves its own focused task layered on
 ## Skill gap this scenario exercises
 
 The skill has playbooks only for `swarm-management` (`node-setup`,
-`node-claiming`) — there is **no objects storage/transfer playbook**. The store
+`node-adoption`) — there is **no objects storage/transfer playbook**. The store
 half is reachable from the protocol docs alone (a real test of "are the docs
 sufficient without a playbook?"); the transfer half having no playbook is itself
 a finding. If the thin store prompt proves shaky live, the remedy is a small

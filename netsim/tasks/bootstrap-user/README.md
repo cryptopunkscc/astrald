@@ -2,14 +2,14 @@
 
 A netsim task that turns the operator node into a **User-controlled node**,
 driven by the Qwen Code agent running inside the VM. It is the first half of the
-swarm phase: it establishes identity only; it does not link or claim anything
+swarm phase: it establishes identity only; it does not link or adopt anything
 (that is [`link-swarm`](../link-swarm/README.md)).
 
 ```
 bootstrap-user [--vm <host>]      # default: node1 (the VM carrying Qwen)
 ```
 
-After it runs, the node holds an active `mod.user.swarm_access_action` contract
+After it runs, the node holds an active `mod.user.swarm_membership_action` contract
 (issuer = a fresh software User, subject = this node), and a User-bound apphost
 token is persisted so later tasks can act as the User. It produces a new stage
 on top of the lab base — run it standalone against `astrald-lab` with:

@@ -1,6 +1,6 @@
 # link-swarm
 
-A netsim task that claims the second node into the User's swarm, driven by the
+A netsim task that adopts the second node into the User's swarm, driven by the
 Qwen Code agent on node1. It is the second half of the swarm phase: node1 is
 already a User node (from [`bootstrap-user`](../bootstrap-user/README.md)); this
 task brings node2 under the same User so the two share one swarm.
@@ -25,8 +25,8 @@ Identical mechanic to `bootstrap-user`: **tiny script, thin prompt, intelligence
 in the skill.** `run.sh` base64-ships [`prompt.md`](prompt.md) to node1 in a
 single `netsim ssh` call and runs `qwen -y` as `tester`. The prompt is two
 sentences — the operator is told it controls a User node, that another astrald
-node is on the local network, and to claim it following its **astral-agent**
-skill's `node-claiming` playbook. The claim flow (`user.claim -target <node2>`,
+node is on the local network, and to adopt it following its **astral-agent**
+skill's `node-adoption` playbook. The adopt flow (`user.adopt -target <node2>`,
 reachability via the `nearby` module on the shared LAN) lives entirely in the
 skill; the prompt restates none of it.
 
@@ -42,13 +42,13 @@ together prove the swarm from both ends:
 1. **Both nodes hold an active contract issued by the same User** — `user.info`
    on node1 *and* node2 each shows `Issuer == <bootstrap User>` with `Subject ==`
    that node. node2 independently confirming the same User is the key both-ends
-   proof that the claim took.
+   proof that the adoption took.
 2. **node1, as the User, lists node2 as a `Linked` sibling** (`user.swarm_status`).
 3. **A mutual authenticated link exists** — node2's `nodes.links` shows a link
    whose `RemoteIdentity` is node1.
 
 node1 acts as the User via its persisted token; node2 answers under its node
-identity (it holds the contract after the claim, so no token is needed there).
+identity (it holds the contract after the adoption, so no token is needed there).
 
 `astral-query … -out json` emits a JSON **stream** (one object per line + an
 `{"Type":"eos"}` terminator), so output is parsed line-by-line, not as one
@@ -68,6 +68,6 @@ reproducible both-ends proof.
 ## Validated end-to-end
 
 Run `astrald-user → astrald-swarm` (2026-06-17): the thin prompt drove the
-operator to `user.claim` node2 into the User's swarm; both nodes ended under one
+operator to `user.adopt` node2 into the User's swarm; both nodes ended under one
 User (`02ad7ef7…`) with a mutual link, and the rewritten `verify.sh` passes.
 Stage `astrald-swarm` saved.
