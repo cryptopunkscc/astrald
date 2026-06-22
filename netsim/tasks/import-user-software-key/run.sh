@@ -1,35 +1,29 @@
 #!/bin/sh
-# import-user-software-key: configure the operator node as a User node from an EXISTING software
-# User key — the User's BIP-39 mnemonic (env ASTRAL_USER_MNEMONIC) is derived
-# instead of minting fresh entropy. Driven by the Qwen Code agent in the VM.
-#   import-user-software-key [--vm <host>]      (default: node1 — the VM carrying Qwen)
-#   env: ASTRAL_USER_MNEMONIC (required)   ASTRAL_USER_ID (optional; verify.sh asserts it)
+# import-user-software-key: configure the operator node as a User node from an
+# EXISTING software User key — the User's BIP-39 mnemonic is embedded in prompt.md
+# and derived instead of minting fresh entropy. Driven by the Qwen Code agent.
+#   import-user-software-key [--vm <host>]   (default: node1 — the VM carrying Qwen)
+#   env: ASTRAL_USER_ID (optional; verify.sh asserts the derived id matches it)
 #
-# Drop-in alternative to bootstrap-user-software-key. Runs ON THE HOST (cwd = simulation root):
-# substitutes the mnemonic into prompt.md, base64-ships the prompt to the agent over
-# one `netsim ssh` argv, and runs `qwen -y`. Intelligence lives in the prompt and
-# the agent's astral-agent skill, not here.
+# Drop-in alternative to bootstrap-user-software-key. Runs ON THE HOST (cwd =
+# simulation root): base64-ships prompt.md to the agent over one `netsim ssh` argv
+# and runs `qwen -y`. Intelligence lives in the prompt and the agent's astral-agent
+# skill, not here.
 set -eu
 
 VM="node1"
 while [ $# -gt 0 ]; do
   case "$1" in
     --vm) [ $# -ge 2 ] || { echo "need host after --vm" >&2; exit 64; }; VM=$2; shift 2 ;;
-    *)    echo "usage: import-user-software-key [--vm <host>]   (env ASTRAL_USER_MNEMONIC required)" >&2; exit 64 ;;
+    *)    echo "usage: import-user-software-key [--vm <host>]" >&2; exit 64 ;;
   esac
 done
-
-[ -n "${ASTRAL_USER_MNEMONIC:-}" ] \
-  || { echo "set ASTRAL_USER_MNEMONIC to the User's BIP-39 mnemonic seed phrase" >&2; exit 64; }
 
 # CDPATH= is an intentional one-shot env prefix for cd, not an assignment
 # shellcheck disable=SC1007
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 [ -f "$here/prompt.md" ] || { echo "missing $here/prompt.md" >&2; exit 1; }
-# Substitute the mnemonic into the prompt template (BIP-39 words are [a-z ] only,
-# so no sed-delimiter or regex-metachar hazard).
-prompt=$(sed "s|__MNEMONIC__|$ASTRAL_USER_MNEMONIC|" "$here/prompt.md")
-prompt_b64=$(printf '%s' "$prompt" | base64 -w0)   # GNU coreutils; -w0 = single line
+prompt_b64=$(base64 -w0 "$here/prompt.md")   # GNU coreutils; -w0 = single line
 
 REMOTE_BODY=$(cat <<'EOS'
 set -eu
