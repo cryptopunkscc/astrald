@@ -2,7 +2,7 @@ On this machine there is an `astrald` node running. It has its own node identity
 but no User. You already control a software User whose BIP-39 mnemonic seed phrase
 is:
 
-  abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
+  horse soldier imitate stool square buyer verb party enjoy result jazz rabbit trigger file benefit cloth term change
 
 Make this node a User-controlled node under THAT existing User: derive the User's
 `secp256k1` key from the mnemonic above (start from the mnemonic — do NOT generate
