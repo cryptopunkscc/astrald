@@ -1,10 +1,10 @@
 #!/bin/sh
 # link-swarm: adopt the second node into the User's swarm, driven by the Qwen
 # Code agent running INSIDE node1 (which is already a User node from
-# bootstrap-user — default starting stage: astrald-user).
+# bootstrap-user-software-key — default starting stage: astrald-user).
 #   link-swarm [--vm <host>]      (default: node1 — the VM carrying Qwen)
 #
-# Runs ON THE HOST (cwd = simulation root). Same mechanic as bootstrap-user:
+# Runs ON THE HOST (cwd = simulation root). Same mechanic as bootstrap-user-software-key:
 # tiny script, thin prompt, intelligence in the agent's astral-agent skill. The
 # whole remote program travels as ONE argv to `netsim ssh`; the prompt rides
 # along base64-encoded so a multi-line file never fights shell quoting.
@@ -32,7 +32,7 @@ printf '%s' "$prompt_b64" | base64 -d > "$d/link-swarm.prompt"
 chown -R tester:tester "$d"
 
 # Run the agent as `tester` (qwen is installed for that user), non-interactively.
-# Invocation matches what was validated for bootstrap-user: one-shot positional
+# Invocation matches what was validated for bootstrap-user-software-key: one-shot positional
 # prompt + `-y` (auto-approve).
 su - tester -c 'qwen -y "$(cat /home/tester/.netsim/link-swarm.prompt)"' \
    > "$d/link-swarm.log" 2>&1 || {
@@ -42,7 +42,7 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/link-swarm.prompt)"' \
    }
 
 # Soft smoke-check only (verify.sh is the authoritative, independent check).
-# node1 already holds a User token from bootstrap-user, so we can peek at the
+# node1 already holds a User token from bootstrap-user-software-key, so we can peek at the
 # swarm here; don't fail the run on a shape mismatch — leave the verdict to
 # verify.sh.  CONFIRM the user.swarm_status JSON field for a linked sibling.
 tok="$d/user.token"

@@ -1,4 +1,4 @@
-# bootstrap-user
+# bootstrap-user-software-key
 
 Drives the Qwen operator on node1 to make it a **User-controlled node** — mint a
 software User and install node1's active contract — following the astral-agent

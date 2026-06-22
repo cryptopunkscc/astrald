@@ -1,11 +1,11 @@
 #!/bin/sh
-# import-user: configure the operator node as a User node from an EXISTING software
+# import-user-software-key: configure the operator node as a User node from an EXISTING software
 # User key — the User's BIP-39 mnemonic (env ASTRAL_USER_MNEMONIC) is derived
 # instead of minting fresh entropy. Driven by the Qwen Code agent in the VM.
-#   import-user [--vm <host>]      (default: node1 — the VM carrying Qwen)
+#   import-user-software-key [--vm <host>]      (default: node1 — the VM carrying Qwen)
 #   env: ASTRAL_USER_MNEMONIC (required)   ASTRAL_USER_ID (optional; verify.sh asserts it)
 #
-# Drop-in alternative to bootstrap-user. Runs ON THE HOST (cwd = simulation root):
+# Drop-in alternative to bootstrap-user-software-key. Runs ON THE HOST (cwd = simulation root):
 # substitutes the mnemonic into prompt.md, base64-ships the prompt to the agent over
 # one `netsim ssh` argv, and runs `qwen -y`. Intelligence lives in the prompt and
 # the agent's astral-agent skill, not here.
@@ -15,7 +15,7 @@ VM="node1"
 while [ $# -gt 0 ]; do
   case "$1" in
     --vm) [ $# -ge 2 ] || { echo "need host after --vm" >&2; exit 64; }; VM=$2; shift 2 ;;
-    *)    echo "usage: import-user [--vm <host>]   (env ASTRAL_USER_MNEMONIC required)" >&2; exit 64 ;;
+    *)    echo "usage: import-user-software-key [--vm <host>]   (env ASTRAL_USER_MNEMONIC required)" >&2; exit 64 ;;
   esac
 done
 
@@ -35,15 +35,15 @@ REMOTE_BODY=$(cat <<'EOS'
 set -eu
 d=/home/tester/.netsim
 mkdir -p "$d"
-printf '%s' "$prompt_b64" | base64 -d > "$d/import-user.prompt"
+printf '%s' "$prompt_b64" | base64 -d > "$d/import-user-software-key.prompt"
 chown -R tester:tester "$d"
 
 # Run the agent as `tester` (qwen is installed for that user), non-interactively:
 # one-shot positional prompt + `-y` (auto-approve).
-su - tester -c 'qwen -y "$(cat /home/tester/.netsim/import-user.prompt)"' \
-   > "$d/import-user.log" 2>&1 || {
+su - tester -c 'qwen -y "$(cat /home/tester/.netsim/import-user-software-key.prompt)"' \
+   > "$d/import-user-software-key.log" 2>&1 || {
      echo "qwen run failed on $(hostname); tail of log:" >&2
-     tail -n 40 "$d/import-user.log" >&2
+     tail -n 40 "$d/import-user-software-key.log" >&2
      exit 1
    }
 
@@ -51,12 +51,12 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/import-user.prompt)"' \
 # records its outputs in $HOME/info.json (/home/tester/info.json).
 uid=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_id",""))' 2>/dev/null || true)
 [ -n "$uid" ] || { echo "agent recorded no user_id in /home/tester/info.json on $(hostname)" >&2; exit 1; }
-echo "import-user: agent finished on $(hostname); User id $uid"
+echo "import-user-software-key: agent finished on $(hostname); User id $uid"
 EOS
 )
 
-echo "import-user: driving Qwen operator on $VM ..."
+echo "import-user-software-key: driving Qwen operator on $VM ..."
 # assignment prefix carries the prompt to the guest; body re-parses it
 # shellcheck disable=SC2029
 netsim ssh "$VM" -- "prompt_b64='$prompt_b64'; $REMOTE_BODY"
-echo "import-user: done on $VM"
+echo "import-user-software-key: done on $VM"

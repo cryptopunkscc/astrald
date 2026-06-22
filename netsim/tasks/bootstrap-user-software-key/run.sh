@@ -1,7 +1,7 @@
 #!/bin/sh
-# bootstrap-user: turn the operator node into a User-controlled node, driven by
+# bootstrap-user-software-key: turn the operator node into a User-controlled node, driven by
 # the Qwen Code agent running INSIDE the VM.
-#   bootstrap-user [--vm <host>]      (default: node1 — the VM carrying Qwen)
+#   bootstrap-user-software-key [--vm <host>]      (default: node1 — the VM carrying Qwen)
 #
 # Runs ON THE HOST (cwd = simulation root). This script is deliberately tiny: it
 # ships prompt.md to the agent on the guest and lets the agent do the astral
@@ -16,7 +16,7 @@ VM="node1"
 while [ $# -gt 0 ]; do
   case "$1" in
     --vm) [ $# -ge 2 ] || { echo "need host after --vm" >&2; exit 64; }; VM=$2; shift 2 ;;
-    *)    echo "usage: bootstrap-user [--vm <host>]" >&2; exit 64 ;;
+    *)    echo "usage: bootstrap-user-software-key [--vm <host>]" >&2; exit 64 ;;
   esac
 done
 
@@ -30,7 +30,7 @@ REMOTE_BODY=$(cat <<'EOS'
 set -eu
 d=/home/tester/.netsim
 mkdir -p "$d"
-printf '%s' "$prompt_b64" | base64 -d > "$d/bootstrap-user.prompt"
+printf '%s' "$prompt_b64" | base64 -d > "$d/bootstrap-user-software-key.prompt"
 chown -R tester:tester "$d"
 
 # Run the agent as `tester` (qwen is installed for that user), non-interactively.
@@ -38,10 +38,10 @@ chown -R tester:tester "$d"
 # prompt + `-y` (auto-approve). The prompt is passed positionally via command
 # substitution; the substituted text is used literally (not re-scanned), so the
 # backticks and $-signs inside it are safe.
-su - tester -c 'qwen -y "$(cat /home/tester/.netsim/bootstrap-user.prompt)"' \
-   > "$d/bootstrap-user.log" 2>&1 || {
+su - tester -c 'qwen -y "$(cat /home/tester/.netsim/bootstrap-user-software-key.prompt)"' \
+   > "$d/bootstrap-user-software-key.log" 2>&1 || {
      echo "qwen run failed on $(hostname); tail of log:" >&2
-     tail -n 40 "$d/bootstrap-user.log" >&2
+     tail -n 40 "$d/bootstrap-user-software-key.log" >&2
      exit 1
    }
 
@@ -49,12 +49,12 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/bootstrap-user.prompt)"' \
 # records its outputs in $HOME/info.json (/home/tester/info.json).
 uid=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_id",""))' 2>/dev/null || true)
 [ -n "$uid" ] || { echo "agent recorded no user_id in /home/tester/info.json on $(hostname)" >&2; exit 1; }
-echo "bootstrap-user: agent finished on $(hostname); User id $uid"
+echo "bootstrap-user-software-key: agent finished on $(hostname); User id $uid"
 EOS
 )
 
-echo "bootstrap-user: driving Qwen operator on $VM ..."
+echo "bootstrap-user-software-key: driving Qwen operator on $VM ..."
 # assignment prefix carries the prompt to the guest; body re-parses it
 # shellcheck disable=SC2029
 netsim ssh "$VM" -- "prompt_b64='$prompt_b64'; $REMOTE_BODY"
-echo "bootstrap-user: done on $VM"
+echo "bootstrap-user-software-key: done on $VM"

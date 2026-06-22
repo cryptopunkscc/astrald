@@ -71,7 +71,7 @@ def main():
     args, _ = ap.parse_known_args()
     vm1, vm2 = args.node1, args.node2
 
-    # node1 acts as the User (token from bootstrap-user); node2 answers under its
+    # node1 acts as the User (token from bootstrap-user-software-key); node2 answers under its
     # node identity (it holds the contract after the adoption).
     info1 = info(vm1)
     U = "".join(str(info1.get("user_id", "")).split())

@@ -13,19 +13,19 @@ tasks in one simulation and saves a named *stage*. `lab.story` builds the
 
 ```
 netsim/
-  tasks/                           # each task: run.sh (+ verify.sh / verify.py) + README.md
-    install-astrald/               # build + run astrald as a service on each node
-    configure-astral-agent/        # install the astral-agent skill into the qwen operator
-    bootstrap-user/                # make node1 a User node          -> stage astrald-user
-    import-user/                   # make node1 a User node from an existing mnemonic (alt.) -> astrald-user
-    link-swarm/                    # adopt node2 into node1's swarm   -> stage astrald-swarm
-    share-object/                  # store an object on the sibling   -> stage astrald-shared
-  stories/                         # one story per tested flow (start/save stage in each header)
-    lab.story                      # null          -> astrald-lab
-    bootstrap-user.story           # astrald-lab   -> astrald-user
-    import-user.story              # astrald-lab   -> astrald-user  (alt. to bootstrap-user)
-    link-swarm.story               # astrald-user  -> astrald-swarm
-    share-object.story             # astrald-swarm -> astrald-shared
+  tasks/                               # each task: run.sh (+ verify.sh / verify.py) + README.md
+    install-astrald/                   # build + run astrald as a service on each node
+    configure-astral-agent/            # install the astral-agent skill into the qwen operator
+    bootstrap-user-software-key/       # make node1 a User node, new key            -> astrald-user
+    import-user-software-key/          # make node1 a User node, existing mnemonic  -> astrald-user
+    link-swarm/                        # adopt node2 into node1's swarm             -> astrald-swarm
+    share-object/                      # store an object on the sibling             -> astrald-shared
+  stories/                             # one story per tested flow (start/save stage in each header)
+    lab.story                          # null          -> astrald-lab
+    bootstrap-user-software-key.story  # astrald-lab   -> astrald-user
+    import-user-software-key.story     # astrald-lab   -> astrald-user  (alt.)
+    link-swarm.story                   # astrald-user  -> astrald-swarm
+    share-object.story                 # astrald-swarm -> astrald-shared
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
 ```
@@ -105,11 +105,11 @@ stage (its `start`/`save` stages are in the story header). Intermediate stages
 stay reusable, so you can replay one flow without rebuilding the chain:
 
 ```
-astrald-lab ─[bootstrap-user]→ astrald-user ─[link-swarm]→ astrald-swarm ─[share-object]→ astrald-shared
+astrald-lab ─[bootstrap-user-software-key]→ astrald-user ─[link-swarm]→ astrald-swarm ─[share-object]→ astrald-shared
 ```
 
 ```sh
-netsim story --stage astrald-lab   --save astrald-user   netsim/stories/bootstrap-user.story
+netsim story --stage astrald-lab   --save astrald-user   netsim/stories/bootstrap-user-software-key.story
 netsim story --stage astrald-user  --save astrald-swarm  netsim/stories/link-swarm.story
 netsim story --stage astrald-swarm --save astrald-shared netsim/stories/share-object.story
 ```
