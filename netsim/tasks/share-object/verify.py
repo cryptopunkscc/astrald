@@ -10,9 +10,6 @@ import json
 import subprocess
 import sys
 
-TOKEN = "export ASTRALD_APPHOST_TOKEN=$(cat /home/tester/.netsim/user.token);"
-
-
 def ssh(vm, remote):
     """Run `netsim ssh <vm> -- <remote>` on the host; return stdout (best-effort).
 
@@ -22,6 +19,14 @@ def ssh(vm, remote):
     p = subprocess.run(["netsim", "ssh", vm, "--", remote],
                        capture_output=True, text=True)
     return p.stdout
+
+
+def info(vm):
+    """The agent's $HOME/info.json (/home/tester/info.json) on the VM, as a dict."""
+    try:
+        return json.loads(ssh(vm, "cat /home/tester/info.json") or "{}") or {}
+    except json.JSONDecodeError:
+        return {}
 
 
 # ---- JSON object-stream parsing (one object/line + an eos terminator) ----------
@@ -94,10 +99,11 @@ def main():
 
     # What the agent persisted on node1. ID strips all whitespace; the text fields
     # tolerate a trailing newline.
-    ID = "".join(ssh(vm1, "cat /home/tester/.netsim/object.id").split())
-    PAY = ssh(vm1, "cat /home/tester/.netsim/object.payload").rstrip("\n")
-    READBACK = ssh(vm1, "cat /home/tester/.netsim/object.readback").rstrip("\n")
-    TARGET = "".join(ssh(vm1, "cat /home/tester/.netsim/object.target").split())
+    info1 = info(vm1)
+    ID = "".join(str(info1.get("object_id", "")).split())
+    PAY = str(info1.get("object_payload", "")).rstrip("\n")
+    READBACK = str(info1.get("object_readback", "")).rstrip("\n")
+    TARGET = "".join(str(info1.get("object_target", "")).split())
 
     # node2's real identity, resolved host-side: Subject of node2's active contract
     # (node2 answers user.info under its node identity), with node1's link-back as a
@@ -122,16 +128,16 @@ def main():
 
     errs, notes = [], []
     if not ID:
-        errs.append("no Object ID recorded on node1 (~/.netsim/object.id)")
+        errs.append("no object_id in node1's info.json")
     if not PAY:
-        errs.append("no payload recorded on node1 (~/.netsim/object.payload)")
+        errs.append("no object_payload in node1's info.json")
     if READBACK and READBACK != PAY:
         notes.append(f"agent's own read-back != stored payload ({READBACK!r} != {PAY!r})")
     if TARGET and N2 and TARGET != N2:
         notes.append(f"agent stored on {TARGET[:12]}.. but node2's identity is {N2[:12]}.. "
                      "(agent may have targeted the wrong node)")
     elif not TARGET:
-        notes.append("agent recorded no target node (~/.netsim/object.target)")
+        notes.append("agent recorded no object_target in info.json")
     if on_node1 is True:
         notes.append("object is ALSO present in node1's local repo (a local copy alongside the "
                      "remote store -- not required, just noted)")

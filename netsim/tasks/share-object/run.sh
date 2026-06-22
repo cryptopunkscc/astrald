@@ -47,21 +47,23 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/share-object.prompt)"' \
    }
 
 # Cheap smoke-check; verify.py does the authoritative, independent check (node2
-# physically holds the object in its local repo). The agent must have recorded an
-# Object ID, the payload it stored, the bytes it read back, and the node it stored
-# it on.
-[ -s "$d/object.id" ]       || { echo "agent recorded no Object ID on $(hostname) (~/.netsim/object.id)" >&2; exit 1; }
-[ -s "$d/object.payload" ]  || { echo "agent recorded no payload on $(hostname) (~/.netsim/object.payload)" >&2; exit 1; }
-[ -s "$d/object.readback" ] || { echo "agent recorded no read-back on $(hostname) (~/.netsim/object.readback)" >&2; exit 1; }
-[ -s "$d/object.target" ]   || { echo "agent recorded no target node on $(hostname) (~/.netsim/object.target)" >&2; exit 1; }
-case "$(cat "$d/object.id")" in
+# physically holds the object in its local repo). The agent records its outputs in
+# $HOME/info.json (/home/tester/info.json).
+oid=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_id",""))' 2>/dev/null || true)
+opay=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_payload",""))' 2>/dev/null || true)
+orb=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_readback",""))' 2>/dev/null || true)
+otgt=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_target",""))' 2>/dev/null || true)
+[ -n "$oid" ]  || { echo "agent recorded no object_id in /home/tester/info.json on $(hostname)" >&2; exit 1; }
+[ -n "$opay" ] || { echo "agent recorded no object_payload on $(hostname)" >&2; exit 1; }
+[ -n "$orb" ]  || { echo "agent recorded no object_readback on $(hostname)" >&2; exit 1; }
+[ -n "$otgt" ] || { echo "agent recorded no object_target on $(hostname)" >&2; exit 1; }
+case "$oid" in
   data1*) : ;;
-  *) echo "WARNING $(hostname): object.id does not look like a data1… Object ID (verify.py decides)" >&2 ;;
+  *) echo "WARNING $(hostname): object_id does not look like a data1… Object ID (verify.py decides)" >&2 ;;
 esac
 # Advisory: the agent's own round-trip should already match (verify.py re-checks).
-[ "$(cat "$d/object.payload")" = "$(cat "$d/object.readback")" ] \
-  || echo "WARNING $(hostname): agent read-back != stored payload (verify.py decides)" >&2
-echo "share-object: agent finished on $(hostname); stored object $(cat "$d/object.id") on $(cat "$d/object.target")"
+[ "$opay" = "$orb" ] || echo "WARNING $(hostname): agent read-back != stored payload (verify.py decides)" >&2
+echo "share-object: agent finished on $(hostname); stored object $oid on $otgt"
 EOS
 )
 

@@ -16,11 +16,13 @@ done
 
 REMOTE_CHECK=$(cat <<'EOS'
 set -eu
-d=/home/tester/.netsim
-[ -s "$d/user.id" ]    || { echo "no recorded User id on $(hostname)"    >&2; exit 1; }
-[ -s "$d/user.token" ] || { echo "no recorded User token on $(hostname)" >&2; exit 1; }
-uid=$(cat "$d/user.id")
-ASTRALD_APPHOST_TOKEN=$(cat "$d/user.token"); export ASTRALD_APPHOST_TOKEN
+info=/home/tester/info.json
+[ -s "$info" ] || { echo "no $info on $(hostname)" >&2; exit 1; }
+uid=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_id",""))')
+ASTRALD_APPHOST_TOKEN=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_token",""))')
+export ASTRALD_APPHOST_TOKEN
+[ -n "$uid" ]                   || { echo "no user_id in $info on $(hostname)"    >&2; exit 1; }
+[ -n "$ASTRALD_APPHOST_TOKEN" ] || { echo "no user_token in $info on $(hostname)" >&2; exit 1; }
 
 # acting as the User: whoami must report the User identity
 who=$(astral-query apphost.whoami -out json) \

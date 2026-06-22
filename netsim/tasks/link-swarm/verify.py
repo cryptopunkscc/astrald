@@ -8,14 +8,19 @@ import json
 import subprocess
 import sys
 
-TOKEN = "export ASTRALD_APPHOST_TOKEN=$(cat /home/tester/.netsim/user.token);"
-
-
 def ssh(vm, remote):
     """Run `netsim ssh <vm> -- <remote>` on the host; return stdout."""
     p = subprocess.run(["netsim", "ssh", vm, "--", remote],
                        capture_output=True, text=True)
     return p.stdout
+
+
+def info(vm):
+    """The agent's $HOME/info.json (/home/tester/info.json) on the VM, as a dict."""
+    try:
+        return json.loads(ssh(vm, "cat /home/tester/info.json") or "{}") or {}
+    except json.JSONDecodeError:
+        return {}
 
 
 def objs(stream):
@@ -68,7 +73,9 @@ def main():
 
     # node1 acts as the User (token from bootstrap-user); node2 answers under its
     # node identity (it holds the contract after the adoption).
-    U = "".join(ssh(vm1, "cat /home/tester/.netsim/user.id").split())
+    info1 = info(vm1)
+    U = "".join(str(info1.get("user_id", "")).split())
+    TOKEN = f"export ASTRALD_APPHOST_TOKEN={info1.get('user_token', '')};"
     n1_info = ssh(vm1, TOKEN + " astral-query user.info -out json")
     n1_swarm = ssh(vm1, TOKEN + " astral-query user.swarm_status -out json")
     n2_info = ssh(vm2, "astral-query user.info -out json")
@@ -85,7 +92,7 @@ def main():
 
     errs = []
     if not U:
-        errs.append("no User id recorded on node1 (~/.netsim/user.id)")
+        errs.append("no user_id in node1's info.json")
     if i1 != U:
         errs.append(f"node1 contract issuer {i1} != User {U}")
     if i2 != U:

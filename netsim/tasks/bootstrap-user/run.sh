@@ -45,9 +45,11 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/bootstrap-user.prompt)"' \
      exit 1
    }
 
-# Cheap smoke-check; verify.sh does the authoritative, independent check.
-[ -s "$d/user.id" ] || { echo "agent recorded no User id on $(hostname)" >&2; exit 1; }
-echo "bootstrap-user: agent finished on $(hostname); User id $(cat "$d/user.id")"
+# Cheap smoke-check; verify.sh does the authoritative, independent check. The agent
+# records its outputs in $HOME/info.json (/home/tester/info.json).
+uid=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_id",""))' 2>/dev/null || true)
+[ -n "$uid" ] || { echo "agent recorded no user_id in /home/tester/info.json on $(hostname)" >&2; exit 1; }
+echo "bootstrap-user: agent finished on $(hostname); User id $uid"
 EOS
 )
 
