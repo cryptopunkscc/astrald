@@ -1,13 +1,13 @@
 # read-remote-object
 
-Confirms a peer (node2) can read **node1's** object **over astral** — the object
-that `object-store` stored in node1's local repo. Host-driven: node2 has no Qwen
-operator, so `verify.py` issues the read (resolve node1's identity + the stored
-`object_id`, then node2 runs `<node1>:objects.load` and asserts the exact bytes,
-with transparent/`objects.find` as fallback diagnostics). No agent comprehension
-axis — this is a pure implementation-axis probe. Produces stage `two-nodes-data-read`
-(from `two-nodes-data`).
+Has **node1's agent read an astral object that lives on the peer** (node2), over
+astral. The object id is in node1's `~/info.json` (`object_id`, written by
+`object-store --target node2`); the agent reads it from the peer **as the User**
+(addressing the peer by its alias from `adopt-node`) and records what it read.
+`verify.py` independently re-reads the peer's object as the User and asserts the
+bytes match.
 
-Note: the peer-reads-node1 direction **failed before astrald #348** (the roster
-sync); this task re-probes it on current master. It may now pass (node2 knows
-node1, and `op_load` is ungated) or surface the gap — either is a valid finding.
+Used by `read-remote-peer.story` (which first stores the object on node2, then runs
+this read). Note: an *anonymous* read of a peer's object does **not** route (the
+network zone is stripped); the read must come from an authenticated identity, which
+is why it's driven by the User on node1.

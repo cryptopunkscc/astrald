@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""verify read-remote-object: node2 reads node1's object OVER ASTRAL.
+"""verify read-remote-object: node1 read the peer's object over astral.
 
-node1 stored an object in its local repo (object-store). This confirms a peer
-(node2) can obtain those exact bytes across the swarm. Host-driven, since node2 has
-no operator. PRE-#348 this direction (peer reads node1) failed (route_not_found /
-0 providers); this task re-probes it on current master. op_load is ungated, so a
-successful route returns the bytes.
+object-store --target node2 put the object on the peer (node2) and recorded
+object_id + object_payload in node1's info.json; read-remote-object's agent (on
+node1, as the User) read it back from the peer and recorded object_remote.
 
-Ladder on node2 (strongest -> weakest), PASS iff node2 gets the exact stored bytes
-via hop 1 or 2:
-  1. explicit target  <node1-id>:objects.load -id <ID>   (query-target routing)
-  2. transparent      objects.load -id <ID>              (zone-based)
-  3. provider find    objects.find -id <ID>              (discovery; identities, not bytes)
+Independent host-side check: re-read the peer's object AS THE USER (node1 holds the
+token) via <peer>:objects.load and assert the bytes equal the stored payload — this
+is the authenticated, routable direction. Also cross-checks the agent's recorded
+read. Reaches the VMs via netsim ssh.
 """
 import argparse
 import json
@@ -48,6 +45,7 @@ def objs(stream):
 
 
 def loaded_payload(stream):
+    """From an objects.load stream, the decoded payload string, or None."""
     for o in objs(stream):
         if o.get("Type") in ("eos", "error_message"):
             continue
@@ -61,116 +59,58 @@ def errors(stream):
     return [o.get("Object") for o in objs(stream) if o.get("Type") == "error_message"]
 
 
-def contains_local(stream):
-    for o in objs(stream):
-        if o.get("Type") in ("eos", "error_message"):
-            continue
-        if isinstance(o.get("Object"), bool):
-            return o["Object"]
-    return None
-
-
-def find_identities(stream):
-    ids = []
-    for o in objs(stream):
-        if o.get("Type") in ("eos", "error_message"):
-            continue
-        ob = o.get("Object")
-        if isinstance(ob, str):
-            ids.append(ob)
-    return ids
-
-
-def contract_subject(stream):
-    """node1's node identity = Subject of its active contract (from user.info)."""
-    for o in objs(stream):
-        ob = o.get("Object")
-        if isinstance(ob, dict) and isinstance(ob.get("Contract"), dict):
-            c = ob["Contract"].get("Contract", {})
-            if c.get("Subject"):
-                return c["Subject"]
-    return None
-
-
-def remote_identity(stream):
-    """Fallback: RemoteIdentity from node2's nodes.links (the link to node1)."""
-    for o in objs(stream):
-        ob = o.get("Object")
-        if isinstance(ob, dict) and ob.get("RemoteIdentity"):
-            return ob["RemoteIdentity"]
-    return None
-
-
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--node1", default="node1")
-    ap.add_argument("--node2", default="node2")
+    ap.add_argument("--vm", default="node1")      # operator; reads as the User
+    ap.add_argument("--peer", default="node2")    # the node holding the object (alias)
     args, _ = ap.parse_known_args()
-    vm1, vm2 = args.node1, args.node2
 
-    # The object node1 stored (object-store) and node1's node identity. node1 acts as
-    # the User (token from info.json) so user.info returns the contract whose Subject
-    # is node1's node identity; node2's link-back is the fallback.
-    info1 = info(vm1)
+    info1 = info(args.vm)
     ID = "".join(str(info1.get("object_id", "")).split())
     PAY = str(info1.get("object_payload", "")).rstrip("\n")
+    REMOTE = str(info1.get("object_remote", ""))
     token = info1.get("user_token", "")
-    n1_info = ssh(vm1, f"export ASTRALD_APPHOST_TOKEN={token}; astral-query user.info -out json")
-    n2_links = ssh(vm2, "astral-query nodes.links -out json")
-    N1 = contract_subject(n1_info) or remote_identity(n2_links) or ""
 
-    # node2 answers under its node identity (anonymous host-side caller, no token).
-    n2_contains = ssh(vm2, f"astral-query objects.contains -repo local -id '{ID}' -out json")
-    n2_explicit = ssh(vm2, f"astral-query '{N1}':objects.load -id '{ID}' -out json") if N1 else ""
-    n2_transparent = ssh(vm2, f"astral-query objects.load -id '{ID}' -out json")
-    n2_find = ssh(vm2, f"astral-query objects.find -id '{ID}' -out json")
-
-    already_local = contains_local(n2_contains)
-    explicit = loaded_payload(n2_explicit)
-    transparent = loaded_payload(n2_transparent)
-    providers = find_identities(n2_find)
-
-    explicit_ok = explicit is not None and explicit.rstrip("\n") == PAY
-    transparent_ok = transparent is not None and transparent.rstrip("\n") == PAY
+    # Independent: node1, as the User, reads the peer's object over astral. This is
+    # authenticated (token), so the query keeps the network zone and routes to the peer.
+    tok = f"export ASTRALD_APPHOST_TOKEN={token};" if token else ""
+    out = ssh(args.vm, f"{tok} astral-query {args.peer}:objects.load -id '{ID}' -out json")
+    got = loaded_payload(out)
+    read_ok = got is not None and got.rstrip("\n") == PAY
 
     errs, notes = [], []
     if not ID:
-        errs.append("no object_id in node1's info.json (run object-store first)")
+        errs.append("no object_id in node1's info.json (object-store --target node2 must run first)")
     if not PAY:
         errs.append("no object_payload in node1's info.json")
-    if not N1:
-        notes.append("could not resolve node1's node identity host-side (explicit-target read skipped)")
-    if already_local is True:
-        notes.append("objects.contains reports node2 may ALREADY hold this object locally; "
-                     "the byte-match might not be a genuine remote pull")
+    if not token:
+        errs.append("no user_token in node1's info.json (can't read the peer as the User)")
+    if not REMOTE:
+        notes.append("agent recorded no object_remote (the agent's own read)")
+    elif PAY and PAY not in REMOTE:
+        notes.append(f"agent's recorded read does not contain the payload ({REMOTE!r})")
 
-    if not errs and (explicit_ok or transparent_ok):
-        path = ("explicit-target (<node1>:objects.load)" if explicit_ok
-                else "transparent (objects.load)")
-        print(f"read-remote-object OK: node2 read node1's object {ID[:12]}.. across the swarm "
-              f"via {path}; bytes match ({len(PAY)} B). providers via objects.find: {len(providers)}.")
+    if not errs and read_ok:
+        print(f"read-remote-object OK: node1 (as User) read object {ID[:12]}.. from "
+              f"{args.peer} over astral; bytes match ({len(PAY)} B).")
         for n in notes:
             sys.stderr.write(f"  note: {n}\n")
         return 0
 
-    sys.stderr.write("read-remote-object verify FAILED: node2 did NOT obtain node1's object across the swarm.\n")
+    sys.stderr.write(f"read-remote-object verify FAILED: node1 could not read the object from "
+                     f"{args.peer} over astral.\n")
     for e in errs:
         sys.stderr.write(f"  - {e}\n")
-    if (N1 in providers) if N1 else bool(providers):
-        sys.stderr.write("  FINDING: objects.find DID return a provider (discovery crosses) but the byte "
-                         "READ did not route -- record which hop in the task log.\n")
-    for label, stream in (("explicit-target", n2_explicit),
-                          ("transparent", n2_transparent),
-                          ("objects.find", n2_find)):
-        for e in errors(stream):
-            sys.stderr.write(f"  {label} error_message: {e}\n")
+    if got is None:
+        sys.stderr.write(f"  {args.peer}:objects.load (as User) returned no payload "
+                         "(route_not_found means the read didn't route — check auth/zone).\n")
+    elif not read_ok:
+        sys.stderr.write(f"  bytes mismatch: got {got!r} != stored {PAY!r}.\n")
+    for e in errors(out):
+        sys.stderr.write(f"  load error_message: {e}\n")
     for n in notes:
         sys.stderr.write(f"  note: {n}\n")
-    n1disp = (N1[:12] + "..") if N1 else "?"
-    sys.stderr.write(f"  (id={ID} node1={n1disp} "
-                     f"explicit={'hit' if explicit is not None else 'miss'} "
-                     f"transparent={'hit' if transparent is not None else 'miss'} "
-                     f"find_providers={len(providers)})\n")
+    sys.stderr.write(f"  (id={ID} peer={args.peer} read={'hit' if got is not None else 'miss'})\n")
     return 1
 
 

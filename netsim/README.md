@@ -20,7 +20,7 @@ netsim/
     import-user-software-key/          # make node1 a User node, existing mnemonic  -> one-node
     adopt-node/                        # adopt node2 into swarm + register node aliases -> two-nodes
     object-store/                      # node1 stores an object (--target localnode|node2) -> two-nodes-data[-peer]
-    read-remote-object/                # node2 reads node1's object over astral     -> two-nodes-data-read
+    read-remote-object/                # node1's agent reads node2's object over astral (used by read-remote-peer)
     expel-node/                        # node1 (User) permanently bans node2 from the swarm -> two-nodes-expel
   stories/                             # one story per tested flow (start/save stage in each header)
     lab.story                          # null           -> astrald-lab
@@ -29,7 +29,7 @@ netsim/
     adopt-node.story                   # one-node       -> two-nodes
     object-store.story                 # two-nodes      -> two-nodes-data       (store on node1)
     object-store-peer.story            # two-nodes      -> two-nodes-data-peer  (store on node2)
-    read-remote-object.story           # two-nodes-data -> two-nodes-data-read
+    read-remote-peer.story             # two-nodes      -> two-nodes-peer-read  (store on node2, then read it)
     expel-node.story                   # two-nodes      -> two-nodes-expel
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
@@ -110,14 +110,14 @@ stage (its `start`/`save` stages are in the story header). Intermediate stages
 stay reusable, so you can replay one flow without rebuilding the chain:
 
 ```
-astrald-lab ─[bootstrap-user-software-key]→ one-node ─[adopt-node]→ two-nodes ─[object-store]→ two-nodes-data ─[read-remote-object]→ two-nodes-data-read
+astrald-lab ─[bootstrap-user-software-key]→ one-node ─[adopt-node]→ two-nodes ─[object-store]→ two-nodes-data
 ```
 
 ```sh
 netsim story --stage astrald-lab    --save one-node             netsim/stories/bootstrap-user-software-key.story
 netsim story --stage one-node       --save two-nodes            netsim/stories/adopt-node.story
 netsim story --stage two-nodes      --save two-nodes-data       netsim/stories/object-store.story
-netsim story --stage two-nodes-data --save two-nodes-data-read  netsim/stories/read-remote-object.story
+netsim story --stage two-nodes      --save two-nodes-peer-read  netsim/stories/read-remote-peer.story
 netsim story --stage two-nodes      --save two-nodes-expel      netsim/stories/expel-node.story
 ```
 
