@@ -1,4 +1,4 @@
-# link-swarm
+# adopt-node
 
 Drives the Qwen operator on node1 to **adopt node2** into the User's swarm
 (`user.adopt`), following the astral-agent skill's node-adoption playbook.

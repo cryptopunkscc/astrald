@@ -5,7 +5,7 @@
 #   share-object [--vm <host>]      (default: node1 — the VM carrying Qwen)
 #
 # Runs ON THE HOST (cwd = simulation root). Same mechanic as bootstrap-user-software-key /
-# link-swarm: tiny script, thin prompt, intelligence in the agent's astral-agent
+# adopt-node: tiny script, thin prompt, intelligence in the agent's astral-agent
 # skill. The agent stores a payload ON THE OTHER node — addressing the sibling
 # explicitly as the query target (<node2>:objects.store) — then loads it back from
 # that node and confirms the bytes round-trip. verify.py then INDEPENDENTLY
@@ -37,7 +37,7 @@ printf '%s' "$prompt_b64" | base64 -d > "$d/share-object.prompt"
 chown -R tester:tester "$d"
 
 # Run the agent as `tester` (qwen is installed for that user), non-interactively.
-# Invocation matches what was validated for bootstrap-user-software-key / link-swarm: one-shot
+# Invocation matches what was validated for bootstrap-user-software-key / adopt-node: one-shot
 # positional prompt + `-y` (auto-approve).
 su - tester -c 'qwen -y "$(cat /home/tester/.netsim/share-object.prompt)"' \
    > "$d/share-object.log" 2>&1 || {

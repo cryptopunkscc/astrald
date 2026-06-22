@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""verify link-swarm: node1 and node2 linked into one User swarm, symmetric roster.
+"""verify adopt-node: node1 and node2 linked into one User swarm, symmetric roster.
 
 Independent both-ends check (does not trust run.sh); reaches the VMs via netsim ssh.
 """
@@ -110,7 +110,7 @@ def main():
         errs.append(f"node2 has no active link back to node1 ({s1})")
 
     if errs:
-        sys.stderr.write("link-swarm verify FAILED:\n")
+        sys.stderr.write("adopt-node verify FAILED:\n")
         for e in errs:
             sys.stderr.write(f"  - {e}\n")
         return 1

@@ -1,8 +1,8 @@
 #!/bin/sh
-# link-swarm: adopt the second node into the User's swarm, driven by the Qwen
+# adopt-node: adopt the second node into the User's swarm, driven by the Qwen
 # Code agent running INSIDE node1 (which is already a User node from
 # bootstrap-user-software-key — default starting stage: astrald-user).
-#   link-swarm [--vm <host>]      (default: node1 — the VM carrying Qwen)
+#   adopt-node [--vm <host>]      (default: node1 — the VM carrying Qwen)
 #
 # Runs ON THE HOST (cwd = simulation root). Same mechanic as bootstrap-user-software-key:
 # tiny script, thin prompt, intelligence in the agent's astral-agent skill. The
@@ -14,7 +14,7 @@ VM="node1"
 while [ $# -gt 0 ]; do
   case "$1" in
     --vm) [ $# -ge 2 ] || { echo "need host after --vm" >&2; exit 64; }; VM=$2; shift 2 ;;
-    *)    echo "usage: link-swarm [--vm <host>]" >&2; exit 64 ;;
+    *)    echo "usage: adopt-node [--vm <host>]" >&2; exit 64 ;;
   esac
 done
 
@@ -28,16 +28,16 @@ REMOTE_BODY=$(cat <<'EOS'
 set -eu
 d=/home/tester/.netsim
 mkdir -p "$d"
-printf '%s' "$prompt_b64" | base64 -d > "$d/link-swarm.prompt"
+printf '%s' "$prompt_b64" | base64 -d > "$d/adopt-node.prompt"
 chown -R tester:tester "$d"
 
 # Run the agent as `tester` (qwen is installed for that user), non-interactively.
 # Invocation matches what was validated for bootstrap-user-software-key: one-shot positional
 # prompt + `-y` (auto-approve).
-su - tester -c 'qwen -y "$(cat /home/tester/.netsim/link-swarm.prompt)"' \
-   > "$d/link-swarm.log" 2>&1 || {
+su - tester -c 'qwen -y "$(cat /home/tester/.netsim/adopt-node.prompt)"' \
+   > "$d/adopt-node.log" 2>&1 || {
      echo "qwen run failed on $(hostname); tail of log:" >&2
-     tail -n 40 "$d/link-swarm.log" >&2
+     tail -n 40 "$d/adopt-node.log" >&2
      exit 1
    }
 
@@ -49,17 +49,17 @@ tok="$d/user.token"
 if [ -s "$tok" ]; then
   if ASTRALD_APPHOST_TOKEN=$(cat "$tok") astral-query user.swarm_status -out json 2>/dev/null \
        | grep -q '"Linked":true'; then
-    echo "link-swarm: $(hostname) reports a linked sibling"
+    echo "adopt-node: $(hostname) reports a linked sibling"
   else
-    echo "link-swarm: WARNING $(hostname) shows no linked sibling yet (verify.sh decides)" >&2
+    echo "adopt-node: WARNING $(hostname) shows no linked sibling yet (verify.sh decides)" >&2
   fi
 fi
-echo "link-swarm: agent finished on $(hostname)"
+echo "adopt-node: agent finished on $(hostname)"
 EOS
 )
 
-echo "link-swarm: driving Qwen operator on $VM ..."
+echo "adopt-node: driving Qwen operator on $VM ..."
 # assignment prefix carries the prompt to the guest; body re-parses it
 # shellcheck disable=SC2029
 netsim ssh "$VM" -- "prompt_b64='$prompt_b64'; $REMOTE_BODY"
-echo "link-swarm: done on $VM"
+echo "adopt-node: done on $VM"
