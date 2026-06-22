@@ -19,13 +19,15 @@ netsim/
     bootstrap-user-software-key/       # make node1 a User node, new key            -> astrald-single-node
     import-user-software-key/          # make node1 a User node, existing mnemonic  -> astrald-single-node
     adopt-node/                        # adopt node2 into node1's swarm             -> astrald-swarm
-    share-object/                      # store an object on the sibling             -> astrald-shared
+    object-store/                      # node1 stores an object locally + reads it  -> astrald-stored
+    read-remote-object/                # node2 reads node1's object over astral     -> astrald-read
   stories/                             # one story per tested flow (start/save stage in each header)
     lab.story                          # null                 -> astrald-lab
     bootstrap-user-software-key.story  # astrald-lab          -> astrald-single-node
     import-user-software-key.story     # astrald-lab          -> astrald-single-node  (alt.)
     adopt-node.story                   # astrald-single-node  -> astrald-swarm
-    share-object.story                 # astrald-swarm        -> astrald-shared
+    object-store.story                 # astrald-swarm        -> astrald-stored
+    read-remote-object.story           # astrald-stored       -> astrald-read
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
 ```
@@ -105,13 +107,14 @@ stage (its `start`/`save` stages are in the story header). Intermediate stages
 stay reusable, so you can replay one flow without rebuilding the chain:
 
 ```
-astrald-lab ─[bootstrap-user-software-key]→ astrald-single-node ─[adopt-node]→ astrald-swarm ─[share-object]→ astrald-shared
+astrald-lab ─[bootstrap-user-software-key]→ astrald-single-node ─[adopt-node]→ astrald-swarm ─[object-store]→ astrald-stored ─[read-remote-object]→ astrald-read
 ```
 
 ```sh
 netsim story --stage astrald-lab          --save astrald-single-node netsim/stories/bootstrap-user-software-key.story
 netsim story --stage astrald-single-node  --save astrald-swarm        netsim/stories/adopt-node.story
-netsim story --stage astrald-swarm --save astrald-shared netsim/stories/share-object.story
+netsim story --stage astrald-swarm  --save astrald-stored netsim/stories/object-store.story
+netsim story --stage astrald-stored --save astrald-read   netsim/stories/read-remote-object.story
 ```
 
 Each story drives the Qwen operator through its `astral-agent` skill, then runs an
@@ -120,6 +123,6 @@ test for that flow.
 
 ## Scope
 
-The lab stands up two astrald nodes, links them into one User Swarm, and stores
-an object on the sibling across it. Nodes discover each other on the shared L2
-LAN via UDP 8822 (`ether`/`nearby`).
+The lab stands up two astrald nodes, links them into one User Swarm, stores an
+object on a node, and reads it from a peer across the swarm. Nodes discover each
+other on the shared L2 LAN via UDP 8822 (`ether`/`nearby`).
