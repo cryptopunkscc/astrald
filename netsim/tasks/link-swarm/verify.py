@@ -1,27 +1,7 @@
 #!/usr/bin/env python3
-"""verify link-swarm: node1 and node2 must be linked into one User swarm.
+"""verify link-swarm: node1 and node2 linked into one User swarm, symmetric roster.
 
-INDEPENDENT both-ends check -- it does not trust run.sh. It pulls raw JSON from
-both nodes and asserts FOUR facts on the host; together they prove the swarm from
-both ends, with a SYMMETRIC roster:
-  1. both nodes hold an active contract issued by the SAME User
-     (user.info: Issuer == the bootstrap User on each; Subject == that node);
-  2. node1, acting as the User, lists node2 as a Linked sibling (user.swarm_status);
-  3. node2 lists node1 as a Linked sibling too (user.swarm_status) -- the symmetric
-     roster delivered by astrald #348. node2's swarm view derives from its own
-     active contract, not the caller, so this needs no User token; it guards the
-     membership-race regression (pre-#348 node2's roster was {node2} only).
-  4. a mutual authenticated link exists (node2 nodes.links -> node1).
-
-Runs on the host (invoked by the verify.sh shim); reaches the VMs with `netsim ssh`.
-
-NOTE on "routed query": an earlier plan probed `<peer>:.spec` as the proof. That is
-NOT valid -- node introspection ops (.spec/.id/.ping) are served locally and do not
-route to a sibling by node-id, so they fail even on a fully formed swarm. The
-contract + link + sibling triple above is the real proof.
-
-astral-query ... -out json emits a JSON *stream* (one object per line, then an
-{"Type":"eos"} terminator), so everything is parsed line-by-line, not as one doc.
+Independent both-ends check (does not trust run.sh); reaches the VMs via netsim ssh.
 """
 import argparse
 import json

@@ -1,30 +1,9 @@
 #!/usr/bin/env python3
-"""verify share-object: storing an object ON a swarm sibling.
+"""verify share-object: prove node2 physically holds the object node1 stored on it.
 
-The agent (on node1, acting as its User) stored an astral object ON the sibling
-node2 by addressing it explicitly (`<node2>:objects.store`) and read it back from
-node2. This check is INDEPENDENT -- it does not trust run.sh or the agent's own
-read-back. It proves node2 PHYSICALLY HOLDS the object in its local repo:
-
-  - `objects.store` writes to WriteDefault() == the "local" repo, so the object
-    lands in node2's "local" repo. We read it straight back from there on node2:
-      objects.load    -id <ID> -repo local   -> bytes must equal the stored payload
-      objects.contains -repo local -id <ID>  -> corroborating bool
-    Both ops are UNGATED and repo-pinned, so a successful repo-local load on node2
-    is decisive: the bytes came from node2's own storage, not re-fetched over the
-    network. node2 answers under its node identity (anonymous host-side caller, no
-    token) -- repo-local load/contains need no authorization.
-
-PASS iff node2's "local" repo returns the exact stored bytes for the agent-reported
-Object ID. We also cross-check that the node the agent targeted matches node2's real
-identity, and note (advisory) whether node1 also holds a copy.
-
-This is the write direction, unblocked by the swarm roster sync (astrald #348):
-node2 now holds `User->node1`, so node2's AuthorizeRelayFor recognizes node1 and
-the relayed `<node2>:objects.store` reaches op_store (which has no auth gate).
-
-astral-query ... -out json emits a JSON *stream* (one object per line, then an
-{"Type":"eos"} terminator), so everything is parsed line-by-line, not as one doc.
+Independent host-side check (does not trust run.sh or the agent's read-back): a
+repo-pinned, ungated objects.load -repo local on node2 must return the exact stored
+bytes. Reaches the VMs via netsim ssh. See README.md for the full rationale.
 """
 import argparse
 import json
