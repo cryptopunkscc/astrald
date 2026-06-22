@@ -1,7 +1,7 @@
 #!/bin/sh
 # adopt-node: adopt the second node into the User's swarm, driven by the Qwen
 # Code agent running INSIDE node1 (which is already a User node from
-# bootstrap-user-software-key — default starting stage: astrald-user).
+# bootstrap-user-software-key — default starting stage: astrald-single-node).
 #   adopt-node [--vm <host>]      (default: node1 — the VM carrying Qwen)
 #
 # Runs ON THE HOST (cwd = simulation root). Same mechanic as bootstrap-user-software-key:
