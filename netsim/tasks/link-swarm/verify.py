@@ -2,12 +2,16 @@
 """verify link-swarm: node1 and node2 must be linked into one User swarm.
 
 INDEPENDENT both-ends check -- it does not trust run.sh. It pulls raw JSON from
-both nodes and asserts THREE facts on the host; together they prove the swarm from
-both ends:
+both nodes and asserts FOUR facts on the host; together they prove the swarm from
+both ends, with a SYMMETRIC roster:
   1. both nodes hold an active contract issued by the SAME User
      (user.info: Issuer == the bootstrap User on each; Subject == that node);
   2. node1, acting as the User, lists node2 as a Linked sibling (user.swarm_status);
-  3. a mutual authenticated link exists (node2 nodes.links -> node1).
+  3. node2 lists node1 as a Linked sibling too (user.swarm_status) -- the symmetric
+     roster delivered by astrald #348. node2's swarm view derives from its own
+     active contract, not the caller, so this needs no User token; it guards the
+     membership-race regression (pre-#348 node2's roster was {node2} only).
+  4. a mutual authenticated link exists (node2 nodes.links -> node1).
 
 Runs on the host (invoked by the verify.sh shim); reaches the VMs with `netsim ssh`.
 
@@ -89,10 +93,14 @@ def main():
     n1_swarm = ssh(vm1, TOKEN + " astral-query user.swarm_status -out json")
     n2_info = ssh(vm2, "astral-query user.info -out json")
     n2_links = ssh(vm2, "astral-query nodes.links -out json")
+    # node2's own swarm view: swarm_status derives from node2's active contract,
+    # not the caller, so no token is needed; post-#348 it must list node1 too.
+    n2_swarm = ssh(vm2, "astral-query user.swarm_status -out json")
 
     i1, s1 = contract(n1_info)
     i2, s2 = contract(n2_info)
     sib = linked_sibling(n1_swarm)
+    n2_sib = linked_sibling(n2_swarm)
     linkback = has_link_to(n2_links, s1)
 
     errs = []
@@ -108,6 +116,9 @@ def main():
         errs.append("node2 has no active contract subject")
     if s2 and sib != s2:
         errs.append(f"node1's linked sibling {sib} != node2 {s2}")
+    if s1 and n2_sib != s1:
+        errs.append(f"node2's linked sibling {n2_sib} != node1 {s1} "
+                    "(node2 does not list node1 -- swarm roster not symmetric; #348 regression?)")
     if not linkback:
         errs.append(f"node2 has no active link back to node1 ({s1})")
 
@@ -118,7 +129,7 @@ def main():
         return 1
 
     print(f"swarm OK: User {U[:8]}.. ; node1 {s1[:8]}.. <-link-> node2 {s2[:8]}.. ; "
-          f"both under one User; node1 lists node2 as Linked sibling")
+          f"both under one User; each lists the other as a Linked sibling (symmetric roster)")
     return 0
 
 

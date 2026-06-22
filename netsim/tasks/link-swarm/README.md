@@ -36,15 +36,21 @@ discovery works across netsim's per-VM NAT, so the agent needs no manual
 
 ## What `verify.sh` checks (independent, both ends)
 
-It pulls raw JSON from both nodes and asserts **three facts on the host** that
-together prove the swarm from both ends:
+It pulls raw JSON from both nodes and asserts **four facts on the host** that
+together prove the swarm from both ends, with a **symmetric roster**:
 
 1. **Both nodes hold an active contract issued by the same User** — `user.info`
    on node1 *and* node2 each shows `Issuer == <bootstrap User>` with `Subject ==`
    that node. node2 independently confirming the same User is the key both-ends
    proof that the adoption took.
 2. **node1, as the User, lists node2 as a `Linked` sibling** (`user.swarm_status`).
-3. **A mutual authenticated link exists** — node2's `nodes.links` shows a link
+3. **node2 lists node1 as a `Linked` sibling too** (`user.swarm_status`) — the
+   symmetric roster delivered by astrald **#348**. `swarm_status` derives from
+   node2's own active contract (not the caller), so this needs no User token. This
+   guards the membership-race regression: pre-#348, node2 held only `User→node2`
+   and its roster was `{node2}`, so it never recognized node1 — exactly the gap
+   that blocked storing objects on a sibling (see `share-object`).
+4. **A mutual authenticated link exists** — node2's `nodes.links` shows a link
    whose `RemoteIdentity` is node1.
 
 node1 acts as the User via its persisted token; node2 answers under its node
