@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""verify object-store: node1 stored an object in its local repo and can read it back.
+"""verify object-store: the stored object is present in the holder's local repo.
 
-Independent host-side check (does not trust run.sh or the agent's read-back): a
-repo-pinned, ungated objects.load -repo local on node1 must return the exact stored
-bytes. Reaches the VM via netsim ssh.
+The agent (on node1) stored an object either locally (--target self -> node1 holds)
+or on the peer (--target peer -> node2 holds). Independent host-side check (does not
+trust run.sh or the agent's read-back): a repo-pinned, ungated objects.load -repo
+local on the HOLDER must return the exact stored bytes. Reaches the VMs via netsim
+ssh. The object id + payload are read from node1's info.json (the agent records
+there regardless of where it stored).
 """
 import argparse
 import json
@@ -56,18 +59,20 @@ def errors(stream):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--vm", default="node1")
+    ap.add_argument("--vm", default="node1")      # the operator; records info.json here
+    ap.add_argument("--node2", default="node2")   # the peer
+    ap.add_argument("--target", default="self")   # self -> node1 holds; peer -> node2 holds
     args, _ = ap.parse_known_args()
-    vm = args.vm
+    holder = args.node2 if args.target == "peer" else args.vm
 
-    info1 = info(vm)
+    info1 = info(args.vm)
     ID = "".join(str(info1.get("object_id", "")).split())
     PAY = str(info1.get("object_payload", "")).rstrip("\n")
     READBACK = str(info1.get("object_readback", "")).rstrip("\n")
 
-    # Decisive: re-load the object from node1's local repo (repo-pinned + ungated).
-    n1_load = ssh(vm, f"astral-query objects.load -id '{ID}' -repo local -out json")
-    got = loaded_payload(n1_load)
+    # Decisive: re-load the object from the holder's local repo (repo-pinned + ungated).
+    h_load = ssh(holder, f"astral-query objects.load -id '{ID}' -repo local -out json")
+    got = loaded_payload(h_load)
     local_ok = got is not None and got.rstrip("\n") == PAY
 
     errs, notes = [], []
@@ -79,24 +84,25 @@ def main():
         notes.append(f"agent's own read-back != stored payload ({READBACK!r} != {PAY!r})")
 
     if not errs and local_ok:
-        print(f"object-store OK: node1 stored object {ID[:12]}.. and its local repo "
-              f"returns the exact bytes ({len(PAY)} B).")
+        print(f"object-store OK ({args.target}): {holder}'s local repo holds object "
+              f"{ID[:12]}.. with the exact bytes ({len(PAY)} B).")
         for n in notes:
             sys.stderr.write(f"  note: {n}\n")
         return 0
 
-    sys.stderr.write("object-store verify FAILED: node1 could not re-load its own stored object.\n")
+    sys.stderr.write(f"object-store verify FAILED ({args.target}): {holder}'s local repo does NOT "
+                     "hold the stored object.\n")
     for e in errs:
         sys.stderr.write(f"  - {e}\n")
     if got is None:
-        sys.stderr.write("  objects.load -repo local returned no payload (see error frames below).\n")
+        sys.stderr.write(f"  objects.load -repo local on {holder} returned no payload (see errors below).\n")
     elif not local_ok:
         sys.stderr.write(f"  bytes mismatch: got {got!r} != stored {PAY!r}.\n")
-    for e in errors(n1_load):
+    for e in errors(h_load):
         sys.stderr.write(f"  load error_message: {e}\n")
     for n in notes:
         sys.stderr.write(f"  note: {n}\n")
-    sys.stderr.write(f"  (id={ID} load={'hit' if got is not None else 'miss'})\n")
+    sys.stderr.write(f"  (id={ID} holder={holder} load={'hit' if got is not None else 'miss'})\n")
     return 1
 
 

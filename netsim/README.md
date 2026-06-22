@@ -19,14 +19,15 @@ netsim/
     bootstrap-user-software-key/       # make node1 a User node, new key            -> one-node
     import-user-software-key/          # make node1 a User node, existing mnemonic  -> one-node
     adopt-node/                        # adopt node2 into node1's swarm             -> two-nodes
-    object-store/                      # node1 stores an object locally + reads it  -> two-nodes-data
+    object-store/                      # node1 stores an object (--target self|peer) -> two-nodes-data[-peer]
     read-remote-object/                # node2 reads node1's object over astral     -> two-nodes-data-read
   stories/                             # one story per tested flow (start/save stage in each header)
     lab.story                          # null           -> astrald-lab
     bootstrap-user-software-key.story  # astrald-lab    -> one-node
     import-user-software-key.story     # astrald-lab    -> one-node  (alt.)
     adopt-node.story                   # one-node       -> two-nodes
-    object-store.story                 # two-nodes      -> two-nodes-data
+    object-store.story                 # two-nodes      -> two-nodes-data       (store on node1)
+    object-store-peer.story            # two-nodes      -> two-nodes-data-peer  (store on node2)
     read-remote-object.story           # two-nodes-data -> two-nodes-data-read
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
