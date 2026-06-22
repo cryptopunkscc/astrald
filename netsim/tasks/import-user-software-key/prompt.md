@@ -1,15 +1,10 @@
-On this machine there is an `astrald` node running. It has its own node identity
-but no User. You already control a software User whose BIP-39 mnemonic seed phrase
-is:
+There's an astral node running on this machine with no user set up yet. I already
+have a software user — its seed phrase is:
 
   horse soldier imitate stool square buyer verb party enjoy result jazz rabbit trigger file benefit cloth term change
 
-Make this node a User-controlled node under THAT existing User: derive the User's
-`secp256k1` key from the mnemonic above (start from the mnemonic — do NOT generate
-new entropy), then build, sign, and install the node contract, following your
-**astral-agent** skill's node-setup playbook (software User) but substituting the
-given mnemonic for the entropy-generation step.
+Set the node up as a user node under that existing user — use the seed phrase
+above, don't create a new user.
 
-Then write the User's id and a User-bound apphost token to `$HOME/info.json` as a
-JSON object with keys `user_id` and `user_token`. The skill won't mention this —
-it's how the run is checked.
+When you're done, save the user's id and an access token for it to `~/info.json`
+(as `user_id` and `user_token`).

@@ -1,7 +1,5 @@
-On this machine there is an `astrald` node running. It has its own node identity
-but no User. Make it a User-controlled node under a fresh software User, following
-your **astral-agent** skill's node-setup playbook.
+There's an astral node running on this machine with no user set up yet. Make it a
+user node under a new software user.
 
-Then write the User's id and a User-bound apphost token to `$HOME/info.json` as a
-JSON object with keys `user_id` and `user_token`. The skill won't mention this —
-it's how the run is checked.
+When you're done, save the user's id and an access token for it to `~/info.json`
+(as `user_id` and `user_token`).

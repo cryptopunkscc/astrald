@@ -1,3 +1,3 @@
-On this machine an `astrald` node is running, and you control it as its User.
-Another astrald node is on the local network, not yet in your swarm. Bring it
-into your swarm, following your **astral-agent** skill's node-adoption playbook.
+You're running an astral node here that you control as its user. There's another
+astral node on the local network that isn't in your swarm yet — bring it into your
+swarm.
