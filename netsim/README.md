@@ -16,18 +16,18 @@ netsim/
   tasks/                               # each task: run.sh (+ verify.sh / verify.py) + README.md
     install-astrald/                   # build + run astrald as a service on each node
     configure-astral-agent/            # install the astral-agent skill into the qwen operator
-    bootstrap-user-software-key/       # make node1 a User node, new key            -> astrald-single-node
-    import-user-software-key/          # make node1 a User node, existing mnemonic  -> astrald-single-node
-    adopt-node/                        # adopt node2 into node1's swarm             -> astrald-swarm
-    object-store/                      # node1 stores an object locally + reads it  -> astrald-stored
-    read-remote-object/                # node2 reads node1's object over astral     -> astrald-read
+    bootstrap-user-software-key/       # make node1 a User node, new key            -> one-node
+    import-user-software-key/          # make node1 a User node, existing mnemonic  -> one-node
+    adopt-node/                        # adopt node2 into node1's swarm             -> two-nodes
+    object-store/                      # node1 stores an object locally + reads it  -> two-nodes-data
+    read-remote-object/                # node2 reads node1's object over astral     -> two-nodes-data-read
   stories/                             # one story per tested flow (start/save stage in each header)
-    lab.story                          # null                 -> astrald-lab
-    bootstrap-user-software-key.story  # astrald-lab          -> astrald-single-node
-    import-user-software-key.story     # astrald-lab          -> astrald-single-node  (alt.)
-    adopt-node.story                   # astrald-single-node  -> astrald-swarm
-    object-store.story                 # astrald-swarm        -> astrald-stored
-    read-remote-object.story           # astrald-stored       -> astrald-read
+    lab.story                          # null           -> astrald-lab
+    bootstrap-user-software-key.story  # astrald-lab    -> one-node
+    import-user-software-key.story     # astrald-lab    -> one-node  (alt.)
+    adopt-node.story                   # one-node       -> two-nodes
+    object-store.story                 # two-nodes      -> two-nodes-data
+    read-remote-object.story           # two-nodes-data -> two-nodes-data-read
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
 ```
@@ -107,14 +107,14 @@ stage (its `start`/`save` stages are in the story header). Intermediate stages
 stay reusable, so you can replay one flow without rebuilding the chain:
 
 ```
-astrald-lab ─[bootstrap-user-software-key]→ astrald-single-node ─[adopt-node]→ astrald-swarm ─[object-store]→ astrald-stored ─[read-remote-object]→ astrald-read
+astrald-lab ─[bootstrap-user-software-key]→ one-node ─[adopt-node]→ two-nodes ─[object-store]→ two-nodes-data ─[read-remote-object]→ two-nodes-data-read
 ```
 
 ```sh
-netsim story --stage astrald-lab          --save astrald-single-node netsim/stories/bootstrap-user-software-key.story
-netsim story --stage astrald-single-node  --save astrald-swarm        netsim/stories/adopt-node.story
-netsim story --stage astrald-swarm  --save astrald-stored netsim/stories/object-store.story
-netsim story --stage astrald-stored --save astrald-read   netsim/stories/read-remote-object.story
+netsim story --stage astrald-lab    --save one-node             netsim/stories/bootstrap-user-software-key.story
+netsim story --stage one-node       --save two-nodes            netsim/stories/adopt-node.story
+netsim story --stage two-nodes      --save two-nodes-data       netsim/stories/object-store.story
+netsim story --stage two-nodes-data --save two-nodes-data-read  netsim/stories/read-remote-object.story
 ```
 
 Each story drives the Qwen operator through its `astral-agent` skill, then runs an
