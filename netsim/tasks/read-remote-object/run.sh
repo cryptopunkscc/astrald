@@ -1,6 +1,6 @@
 #!/bin/sh
 # read-remote-object: have node1's agent read an astral object that lives on the
-# peer (node2), over astral. The object's id is in node1's ~/info.json (object_id,
+# peer (node2), over astral. The object's id is in node1's ~/object.json (object_id,
 # written by object-store --target node2). Driven by the Qwen Code agent on node1 —
 # the read is issued AS THE USER (authenticated), which routes to the peer (an
 # anonymous read would not). The agent addresses the peer by its alias (registered
@@ -42,9 +42,9 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/read-remote-object.prompt)"'
    }
 
 # Cheap smoke-check; verify.py does the authoritative, independent check. The agent
-# records what it read in $HOME/info.json under object_remote.
-rem=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_remote",""))' 2>/dev/null || true)
-[ -n "$rem" ] || { echo "agent recorded no object_remote in /home/tester/info.json on $(hostname)" >&2; exit 1; }
+# records what it read in $HOME/read.json under object_remote.
+rem=$(python3 -c 'import json;print(json.load(open("/home/tester/read.json")).get("object_remote",""))' 2>/dev/null || true)
+[ -n "$rem" ] || { echo "agent recorded no object_remote in /home/tester/read.json on $(hostname)" >&2; exit 1; }
 echo "read-remote-object: agent finished on $(hostname); read back from peer"
 EOS
 )

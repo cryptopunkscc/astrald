@@ -16,10 +16,10 @@ done
 
 REMOTE_CHECK=$(cat <<'EOS'
 set -eu
-info=/home/tester/info.json
+info=/home/tester/user.json
 [ -s "$info" ] || { echo "no $info on $(hostname)" >&2; exit 1; }
-uid=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_id",""))')
-ASTRALD_APPHOST_TOKEN=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_token",""))')
+uid=$(python3 -c 'import json;print(json.load(open("/home/tester/user.json")).get("user_id",""))')
+ASTRALD_APPHOST_TOKEN=$(python3 -c 'import json;print(json.load(open("/home/tester/user.json")).get("user_token",""))')
 export ASTRALD_APPHOST_TOKEN
 [ -n "$uid" ]                   || { echo "no user_id in $info on $(hostname)"    >&2; exit 1; }
 [ -n "$ASTRALD_APPHOST_TOKEN" ] || { echo "no user_token in $info on $(hostname)" >&2; exit 1; }

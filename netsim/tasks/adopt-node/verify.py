@@ -16,9 +16,9 @@ def ssh(vm, remote):
 
 
 def info(vm):
-    """The agent's $HOME/info.json (/home/tester/info.json) on the VM, as a dict."""
+    """The agent's $HOME/user.json (/home/tester/user.json) on the VM, as a dict."""
     try:
-        return json.loads(ssh(vm, "cat /home/tester/info.json") or "{}") or {}
+        return json.loads(ssh(vm, "cat /home/tester/user.json") or "{}") or {}
     except json.JSONDecodeError:
         return {}
 
@@ -92,7 +92,7 @@ def main():
 
     errs = []
     if not U:
-        errs.append("no user_id in node1's info.json")
+        errs.append("no user_id in node1's user.json")
     if i1 != U:
         errs.append(f"node1 contract issuer {i1} != User {U}")
     if i2 != U:

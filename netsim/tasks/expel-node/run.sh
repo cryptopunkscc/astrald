@@ -42,9 +42,9 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/expel-node.prompt)"' \
    }
 
 # Soft smoke-check only (verify.py is the authoritative, independent check). node1
-# holds the User token in $HOME/info.json, so we can peek at the swarm here; don't
+# holds the User token in $HOME/user.json, so we can peek at the swarm here; don't
 # fail the run on a shape mismatch — leave the verdict to verify.py.
-ASTRALD_APPHOST_TOKEN=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_token",""))' 2>/dev/null || true)
+ASTRALD_APPHOST_TOKEN=$(python3 -c 'import json;print(json.load(open("/home/tester/user.json")).get("user_token",""))' 2>/dev/null || true)
 if [ -n "$ASTRALD_APPHOST_TOKEN" ]; then
   export ASTRALD_APPHOST_TOKEN
   if astral-query user.list_expelled -out json 2>/dev/null | grep -q '"Subject"'; then

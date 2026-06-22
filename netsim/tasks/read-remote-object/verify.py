@@ -2,8 +2,8 @@
 """verify read-remote-object: node1 read the peer's object over astral.
 
 object-store --target node2 put the object on the peer (node2) and recorded
-object_id + object_payload in node1's info.json; read-remote-object's agent (on
-node1, as the User) read it back from the peer and recorded object_remote.
+object_id + object_payload in node1's object.json; read-remote-object's agent (on
+node1, as the User) read it back from the peer and recorded object_remote in read.json.
 
 Independent host-side check: re-read the peer's object AS THE USER (node1 holds the
 token) via <peer>:objects.load and assert the bytes equal the stored payload — this
@@ -23,10 +23,10 @@ def ssh(vm, remote):
     return p.stdout
 
 
-def info(vm):
-    """The agent's $HOME/info.json (/home/tester/info.json) on the VM, as a dict."""
+def jload(vm, name):
+    """A JSON file under the agent's $HOME (/home/tester/<name>) on the VM, as a dict."""
     try:
-        return json.loads(ssh(vm, "cat /home/tester/info.json") or "{}") or {}
+        return json.loads(ssh(vm, f"cat /home/tester/{name}") or "{}") or {}
     except json.JSONDecodeError:
         return {}
 
@@ -65,11 +65,13 @@ def main():
     ap.add_argument("--peer", default="node2")    # the node holding the object (alias)
     args, _ = ap.parse_known_args()
 
-    info1 = info(args.vm)
-    ID = "".join(str(info1.get("object_id", "")).split())
-    PAY = str(info1.get("object_payload", "")).rstrip("\n")
-    REMOTE = str(info1.get("object_remote", ""))
-    token = info1.get("user_token", "")
+    obj = jload(args.vm, "object.json")     # object-store: object_id, object_payload
+    user = jload(args.vm, "user.json")      # bootstrap/import: user_token
+    rd = jload(args.vm, "read.json")        # this task's agent: object_remote
+    ID = "".join(str(obj.get("object_id", "")).split())
+    PAY = str(obj.get("object_payload", "")).rstrip("\n")
+    REMOTE = str(rd.get("object_remote", ""))
+    token = user.get("user_token", "")
 
     # Independent: node1, as the User, reads the peer's object over astral. This is
     # authenticated (token), so the query keeps the network zone and routes to the peer.
@@ -80,11 +82,11 @@ def main():
 
     errs, notes = [], []
     if not ID:
-        errs.append("no object_id in node1's info.json (object-store --target node2 must run first)")
+        errs.append("no object_id in node1's object.json (object-store --target node2 must run first)")
     if not PAY:
-        errs.append("no object_payload in node1's info.json")
+        errs.append("no object_payload in node1's object.json")
     if not token:
-        errs.append("no user_token in node1's info.json (can't read the peer as the User)")
+        errs.append("no user_token in node1's user.json (can't read the peer as the User)")
     if not REMOTE:
         notes.append("agent recorded no object_remote (the agent's own read)")
     elif PAY and PAY not in REMOTE:

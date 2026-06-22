@@ -44,11 +44,11 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/object-store.prompt)"' \
    }
 
 # Cheap smoke-check; verify.py does the authoritative, independent check. The agent
-# records its outputs in $HOME/info.json (/home/tester/info.json).
-oid=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_id",""))' 2>/dev/null || true)
-opay=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_payload",""))' 2>/dev/null || true)
-orb=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("object_readback",""))' 2>/dev/null || true)
-[ -n "$oid" ]  || { echo "agent recorded no object_id in /home/tester/info.json on $(hostname)" >&2; exit 1; }
+# records its outputs in $HOME/object.json (/home/tester/object.json).
+oid=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_id",""))' 2>/dev/null || true)
+opay=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_payload",""))' 2>/dev/null || true)
+orb=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_readback",""))' 2>/dev/null || true)
+[ -n "$oid" ]  || { echo "agent recorded no object_id in /home/tester/object.json on $(hostname)" >&2; exit 1; }
 [ -n "$opay" ] || { echo "agent recorded no object_payload on $(hostname)" >&2; exit 1; }
 [ -n "$orb" ]  || { echo "agent recorded no object_readback on $(hostname)" >&2; exit 1; }
 case "$oid" in

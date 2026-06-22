@@ -5,7 +5,7 @@ The agent (on node1) stored an object on a target node (--target). Independent
 host-side check (does not trust run.sh or the agent's read-back): a repo-pinned,
 ungated objects.load -repo local on the HOLDER must return the exact stored bytes.
 The holder is resolved from --target: localnode/node1 -> node1 (the operator vm),
-node2 -> node2. The object id + payload come from node1's info.json (the agent
+node2 -> node2. The object id + payload come from node1's object.json (the agent
 records there regardless of where it stored). Reaches the VMs via netsim ssh.
 """
 import argparse
@@ -22,9 +22,9 @@ def ssh(vm, remote):
 
 
 def info(vm):
-    """The agent's $HOME/info.json (/home/tester/info.json) on the VM, as a dict."""
+    """The agent's $HOME/object.json (/home/tester/object.json) on the VM, as a dict."""
     try:
-        return json.loads(ssh(vm, "cat /home/tester/info.json") or "{}") or {}
+        return json.loads(ssh(vm, "cat /home/tester/object.json") or "{}") or {}
     except json.JSONDecodeError:
         return {}
 
@@ -59,7 +59,7 @@ def errors(stream):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--vm", default="node1")        # the operator; records info.json here
+    ap.add_argument("--vm", default="node1")        # the operator; records object.json here
     ap.add_argument("--node2", default="node2")     # the peer
     ap.add_argument("--target", default="localnode")  # localnode/node1 -> node1; node2 -> node2
     args, _ = ap.parse_known_args()
@@ -77,9 +77,9 @@ def main():
 
     errs, notes = [], []
     if not ID:
-        errs.append("no object_id in node1's info.json")
+        errs.append("no object_id in node1's object.json")
     if not PAY:
-        errs.append("no object_payload in node1's info.json")
+        errs.append("no object_payload in node1's object.json")
     if READBACK and READBACK != PAY:
         notes.append(f"agent's own read-back != stored payload ({READBACK!r} != {PAY!r})")
 

@@ -6,5 +6,5 @@ have a software user — its seed phrase is:
 Set the node up as a user node under that existing user — use the seed phrase
 above, don't create a new user.
 
-When you're done, save the user's id and an access token for it to `~/info.json`
+When you're done, save the user's id and an access token for it to `~/user.json`
 (as `user_id` and `user_token`).
