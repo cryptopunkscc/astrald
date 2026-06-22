@@ -18,8 +18,8 @@ netsim/
     configure-astral-agent/            # install the astral-agent skill into the qwen operator
     bootstrap-user-software-key/       # make node1 a User node, new key            -> one-node
     import-user-software-key/          # make node1 a User node, existing mnemonic  -> one-node
-    adopt-node/                        # adopt node2 into node1's swarm             -> two-nodes
-    object-store/                      # node1 stores an object (--target self|peer) -> two-nodes-data[-peer]
+    adopt-node/                        # adopt node2 into swarm + register node aliases -> two-nodes
+    object-store/                      # node1 stores an object (--target localnode|node2) -> two-nodes-data[-peer]
     read-remote-object/                # node2 reads node1's object over astral     -> two-nodes-data-read
   stories/                             # one story per tested flow (start/save stage in each header)
     lab.story                          # null           -> astrald-lab

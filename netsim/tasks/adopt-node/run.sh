@@ -41,14 +41,13 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/adopt-node.prompt)"' \
      exit 1
    }
 
-# Soft smoke-check only (verify.sh is the authoritative, independent check).
-# node1 already holds a User token from bootstrap-user-software-key, so we can peek at the
-# swarm here; don't fail the run on a shape mismatch — leave the verdict to
-# verify.sh.  CONFIRM the user.swarm_status JSON field for a linked sibling.
-tok="$d/user.token"
-if [ -s "$tok" ]; then
-  if ASTRALD_APPHOST_TOKEN=$(cat "$tok") astral-query user.swarm_status -out json 2>/dev/null \
-       | grep -q '"Linked":true'; then
+# Soft smoke-check only (verify.sh is the authoritative, independent check). node1
+# holds the User token in $HOME/info.json, so we can peek at the swarm here; don't
+# fail the run on a shape mismatch — leave the verdict to verify.sh.
+ASTRALD_APPHOST_TOKEN=$(python3 -c 'import json;print(json.load(open("/home/tester/info.json")).get("user_token",""))' 2>/dev/null || true)
+if [ -n "$ASTRALD_APPHOST_TOKEN" ]; then
+  export ASTRALD_APPHOST_TOKEN
+  if astral-query user.swarm_status -out json 2>/dev/null | grep -q '"Linked":true'; then
     echo "adopt-node: $(hostname) reports a linked sibling"
   else
     echo "adopt-node: WARNING $(hostname) shows no linked sibling yet (verify.sh decides)" >&2
@@ -62,4 +61,32 @@ echo "adopt-node: driving Qwen operator on $VM ..."
 # assignment prefix carries the prompt to the guest; body re-parses it
 # shellcheck disable=SC2029
 netsim ssh "$VM" -- "prompt_b64='$prompt_b64'; $REMOTE_BODY"
+
+# Register friendly node aliases (node1/node2) on BOTH nodes so later tasks can
+# address nodes by name (object-store --target node2, read of <node1>:..., etc.).
+# Host-side; identities resolved from the mutual link (anonymous nodes.links).
+# CONFIRM (live): dir.set_alias works for the anonymous host-side caller.
+PEER="node2"
+_remote_id() {  # $1 = vm; prints the first RemoteIdentity from its nodes.links
+  netsim ssh "$1" -- "astral-query nodes.links -out json" 2>/dev/null | python3 -c '
+import json,sys
+for ln in sys.stdin:
+    ln=ln.strip()
+    if not ln: continue
+    try: o=json.loads(ln)
+    except Exception: continue
+    ob=o.get("Object")
+    if isinstance(ob,dict) and ob.get("RemoteIdentity"):
+        print(ob["RemoteIdentity"]); break'
+}
+node2_id=$(_remote_id "$VM" || true)     # node1's link -> node2
+node1_id=$(_remote_id "$PEER" || true)   # node2's link -> node1
+if [ -n "$node1_id" ] && [ -n "$node2_id" ]; then
+  for vm in "$VM" "$PEER"; do
+    netsim ssh "$vm" -- "astral-query dir.set_alias -id '$node1_id' -alias node1 >/dev/null 2>&1; astral-query dir.set_alias -id '$node2_id' -alias node2 >/dev/null 2>&1" || true
+  done
+  echo "adopt-node: registered aliases node1=$node1_id node2=$node2_id on $VM + $PEER"
+else
+  echo "adopt-node: WARNING could not resolve node identities for aliases (n1='$node1_id' n2='$node2_id')" >&2
+fi
 echo "adopt-node: done on $VM"

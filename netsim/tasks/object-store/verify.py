@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """verify object-store: the stored object is present in the holder's local repo.
 
-The agent (on node1) stored an object either locally (--target self -> node1 holds)
-or on the peer (--target peer -> node2 holds). Independent host-side check (does not
-trust run.sh or the agent's read-back): a repo-pinned, ungated objects.load -repo
-local on the HOLDER must return the exact stored bytes. Reaches the VMs via netsim
-ssh. The object id + payload are read from node1's info.json (the agent records
-there regardless of where it stored).
+The agent (on node1) stored an object on a target node (--target). Independent
+host-side check (does not trust run.sh or the agent's read-back): a repo-pinned,
+ungated objects.load -repo local on the HOLDER must return the exact stored bytes.
+The holder is resolved from --target: localnode/node1 -> node1 (the operator vm),
+node2 -> node2. The object id + payload come from node1's info.json (the agent
+records there regardless of where it stored). Reaches the VMs via netsim ssh.
 """
 import argparse
 import json
@@ -59,11 +59,11 @@ def errors(stream):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--vm", default="node1")      # the operator; records info.json here
-    ap.add_argument("--node2", default="node2")   # the peer
-    ap.add_argument("--target", default="self")   # self -> node1 holds; peer -> node2 holds
+    ap.add_argument("--vm", default="node1")        # the operator; records info.json here
+    ap.add_argument("--node2", default="node2")     # the peer
+    ap.add_argument("--target", default="localnode")  # localnode/node1 -> node1; node2 -> node2
     args, _ = ap.parse_known_args()
-    holder = args.node2 if args.target == "peer" else args.vm
+    holder = args.node2 if args.target == args.node2 else args.vm
 
     info1 = info(args.vm)
     ID = "".join(str(info1.get("object_id", "")).split())
@@ -84,14 +84,14 @@ def main():
         notes.append(f"agent's own read-back != stored payload ({READBACK!r} != {PAY!r})")
 
     if not errs and local_ok:
-        print(f"object-store OK ({args.target}): {holder}'s local repo holds object "
+        print(f"object-store OK (target={args.target}): {holder}'s local repo holds object "
               f"{ID[:12]}.. with the exact bytes ({len(PAY)} B).")
         for n in notes:
             sys.stderr.write(f"  note: {n}\n")
         return 0
 
-    sys.stderr.write(f"object-store verify FAILED ({args.target}): {holder}'s local repo does NOT "
-                     "hold the stored object.\n")
+    sys.stderr.write(f"object-store verify FAILED (target={args.target}): {holder}'s local repo "
+                     "does NOT hold the stored object.\n")
     for e in errs:
         sys.stderr.write(f"  - {e}\n")
     if got is None:

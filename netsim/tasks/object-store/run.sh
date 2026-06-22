@@ -1,34 +1,33 @@
 #!/bin/sh
-# object-store: have node1 (the operator) store an astral object and read it back —
-# either in its OWN local repo (--target self, default) or ON the peer node2
-# (--target peer, via <node2>:objects.store). Driven by the Qwen Code agent on node1.
-#   object-store [--vm <host>] [--target self|peer]   (default: node1, self)
+# object-store: have node1 (the operator) store an astral object and read it back,
+# on a chosen target node. --target is an astral query target:
+#   localnode (default)  store on the local node (node1's own repo)
+#   node2 (or any alias)  store on that node (e.g. <node2>:objects.store)
+# The node aliases (node1/node2) are registered by adopt-node when the swarm forms.
+#   object-store [--vm <host>] [--target <localnode|node1|node2|...>]
 #
-# Runs ON THE HOST. Tiny script, thin prompt, intelligence in the astral-agent skill.
-# self: basic local object ops. peer: store onto the sibling (write-to-peer). verify.py
-# then INDEPENDENTLY re-reads the object from the holder's local repo. The remote
-# program travels as ONE argv to `netsim ssh`; the prompt rides along base64-encoded.
+# Runs ON THE HOST. Tiny script, thin prompt, intelligence in the astral-agent skill;
+# the agent forms the right query for the target. verify.py then INDEPENDENTLY
+# re-reads the object from the holder's local repo. The remote program travels as
+# ONE argv to `netsim ssh`; the prompt rides along base64-encoded.
 set -eu
 
-VM="node1"; TARGET="self"
+VM="node1"; TARGET="localnode"
 while [ $# -gt 0 ]; do
   case "$1" in
     --vm)     [ $# -ge 2 ] || { echo "need host after --vm" >&2; exit 64; }; VM=$2; shift 2 ;;
-    --target) [ $# -ge 2 ] || { echo "need self|peer after --target" >&2; exit 64; }; TARGET=$2; shift 2 ;;
-    *)        echo "usage: object-store [--vm <host>] [--target self|peer]" >&2; exit 64 ;;
+    --target) [ $# -ge 2 ] || { echo "need an address after --target" >&2; exit 64; }; TARGET=$2; shift 2 ;;
+    *)        echo "usage: object-store [--vm <host>] [--target <addr>]" >&2; exit 64 ;;
   esac
 done
-case "$TARGET" in
-  self) pf=prompt.md ;;
-  peer) pf=prompt-peer.md ;;
-  *)    echo "bad --target '$TARGET' (expected self|peer)" >&2; exit 64 ;;
-esac
 
 # CDPATH= is an intentional one-shot env prefix for cd, not an assignment
 # shellcheck disable=SC1007
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-[ -f "$here/$pf" ] || { echo "missing $here/$pf" >&2; exit 1; }
-prompt_b64=$(base64 -w0 "$here/$pf")   # GNU coreutils; -w0 = single line
+[ -f "$here/prompt.md" ] || { echo "missing $here/prompt.md" >&2; exit 1; }
+# Substitute the target alias into the prompt (aliases are [a-z0-9.] — sed-safe).
+prompt=$(sed "s|__TARGET__|$TARGET|g" "$here/prompt.md")
+prompt_b64=$(printf '%s' "$prompt" | base64 -w0)   # GNU coreutils; -w0 = single line
 
 REMOTE_BODY=$(cat <<'EOS'
 set -eu
@@ -61,7 +60,7 @@ echo "object-store: agent finished on $(hostname); stored+read object $oid"
 EOS
 )
 
-echo "object-store ($TARGET): driving Qwen operator on $VM ..."
+echo "object-store (target=$TARGET): driving Qwen operator on $VM ..."
 # shellcheck disable=SC2029
 netsim ssh "$VM" -- "prompt_b64='$prompt_b64'; $REMOTE_BODY"
-echo "object-store ($TARGET): done on $VM"
+echo "object-store (target=$TARGET): done on $VM"
