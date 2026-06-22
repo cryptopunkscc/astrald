@@ -13,11 +13,17 @@ tasks in one simulation and saves a named *stage*. `lab.story` builds the
 
 ```
 netsim/
-  tasks/
-    install-astrald/               # build + run astrald as a service (tasks/install-astrald/README.md)
+  tasks/                           # each task: run.sh (+ verify.sh / verify.py) + README.md
+    install-astrald/               # build + run astrald as a service on each node
     configure-astral-agent/        # install the astral-agent skill into the qwen operator
-      run.sh / verify.sh / README.md   # each task: installs on target VMs + independent re-check
-  lab.story                        # full lab in one simulation -> stage astrald-lab
+    bootstrap-user/                # make node1 a User node          -> stage astrald-user
+    link-swarm/                    # adopt node2 into node1's swarm   -> stage astrald-swarm
+    share-object/                  # store an object on the sibling   -> stage astrald-shared
+  stories/                         # one story per tested flow (start/save stage in each header)
+    lab.story                      # null          -> astrald-lab
+    bootstrap-user.story           # astrald-lab   -> astrald-user
+    link-swarm.story               # astrald-user  -> astrald-swarm
+    share-object.story             # astrald-swarm -> astrald-shared
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
 ```
@@ -83,17 +89,35 @@ then build the lab:
 ```sh
 ./netsim/link.sh
 export SATFORGE_SKILLS_DEPLOY_KEY=~/.ssh/satforge_skills_deploy   # see tasks/configure-astral-agent
-netsim story --stage null --save astrald-lab netsim/lab.story
+netsim story --stage null --save astrald-lab netsim/stories/lab.story
 ```
 
 The result is the stage `astrald-lab`: `node1` and `node2` running astrald, with a
 Qwen Code operator on `node1` equipped with the `astral-agent` skill. Re-enter it
 with `netsim shell --stage astrald-lab`.
 
+## Swarm pipeline
+
+Each post-lab flow is its own story under `stories/`, layered on the previous
+stage (its `start`/`save` stages are in the story header). Intermediate stages
+stay reusable, so you can replay one flow without rebuilding the chain:
+
+```
+astrald-lab ─[bootstrap-user]→ astrald-user ─[link-swarm]→ astrald-swarm ─[share-object]→ astrald-shared
+```
+
+```sh
+netsim story --stage astrald-lab   --save astrald-user   netsim/stories/bootstrap-user.story
+netsim story --stage astrald-user  --save astrald-swarm  netsim/stories/link-swarm.story
+netsim story --stage astrald-swarm --save astrald-shared netsim/stories/share-object.story
+```
+
+Each story drives the Qwen operator through its `astral-agent` skill, then runs an
+independent `verify.sh`/`verify.py` check — so a story is a pass/fail integration
+test for that flow.
+
 ## Scope
 
-v1 installs and runs astrald on each node as two independent nodes. Linking the
-nodes and verifying a live session is a later phase.
-
-Fresh nodes broadcast on UDP 8822 through the `ether` and `nearby` modules and
-discover each other on a shared L2 LAN. v1 asserts nothing about discovery.
+The lab stands up two astrald nodes, links them into one User Swarm, and stores
+an object on the sibling across it. Nodes discover each other on the shared L2
+LAN via UDP 8822 (`ether`/`nearby`).

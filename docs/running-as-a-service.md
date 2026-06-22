@@ -76,13 +76,16 @@ Default transports bind all interfaces.
 
 ## Imaging and snapshots
 
-Stop astrald before capturing a VM image or live snapshot; leave the unit enabled.
+Which step you take depends on the capture type:
+
+- **Disk image (cold):** stop astrald first for a clean on-disk state; keep the
+  unit enabled so it autostarts on boot.
+- **Live RAM snapshot (e.g. netsim):** leave astrald running so it resumes
+  already-running on restore.
 
 ```shell
 systemctl enable astrald
-systemctl stop astrald
+systemctl stop astrald   # disk image only — skip for a live RAM snapshot
 ```
 
-A running daemon dirties memory continuously and can stall a live RAM snapshot.
-The enabled unit autostarts astrald on boot. The identity at
-`<root>/config/node_key` persists across the capture.
+The identity at `<root>/config/node_key` persists across either capture.

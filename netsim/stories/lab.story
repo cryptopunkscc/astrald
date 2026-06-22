@@ -1,4 +1,5 @@
 # lab.story — the astrald lab, built in one netsim simulation.
+# start: null   save: astrald-lab
 # Result: a single stage with two nodes running astrald and a Qwen Code
 # operator on node1, equipped with the astral-agent skill.
 add-vm --hostname node1
