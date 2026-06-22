@@ -21,6 +21,7 @@ netsim/
     adopt-node/                        # adopt node2 into swarm + register node aliases -> two-nodes
     object-store/                      # node1 stores an object (--target localnode|node2) -> two-nodes-data[-peer]
     read-remote-object/                # node2 reads node1's object over astral     -> two-nodes-data-read
+    expel-node/                        # node1 (User) permanently bans node2 from the swarm -> two-nodes-expel
   stories/                             # one story per tested flow (start/save stage in each header)
     lab.story                          # null           -> astrald-lab
     bootstrap-user-software-key.story  # astrald-lab    -> one-node
@@ -29,6 +30,7 @@ netsim/
     object-store.story                 # two-nodes      -> two-nodes-data       (store on node1)
     object-store-peer.story            # two-nodes      -> two-nodes-data-peer  (store on node2)
     read-remote-object.story           # two-nodes-data -> two-nodes-data-read
+    expel-node.story                   # two-nodes      -> two-nodes-expel
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
 ```
@@ -116,7 +118,13 @@ netsim story --stage astrald-lab    --save one-node             netsim/stories/b
 netsim story --stage one-node       --save two-nodes            netsim/stories/adopt-node.story
 netsim story --stage two-nodes      --save two-nodes-data       netsim/stories/object-store.story
 netsim story --stage two-nodes-data --save two-nodes-data-read  netsim/stories/read-remote-object.story
+netsim story --stage two-nodes      --save two-nodes-expel      netsim/stories/expel-node.story
 ```
+
+`expel-node` is a separate branch off `two-nodes`: the User on node1 permanently
+bans node2, so the swarm roster shrinks (node2 drops out of `user.swarm_status`,
+lands in `user.list_expelled`, and the link is torn down). It produces its own
+`two-nodes-expel` stage rather than feeding the data-object chain.
 
 Each story drives the Qwen operator through its `astral-agent` skill, then runs an
 independent `verify.sh`/`verify.py` check — so a story is a pass/fail integration
