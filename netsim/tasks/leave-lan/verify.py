@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""verify leave-lan: <vm> can no longer reach <peer> over the LAN.
+
+Independent host-side check: from <vm>, a TCP connect to the peer's LAN address on the
+astral port (1791) must NOT succeed (the nftables drop blackholes it -> timeout). The
+peer's LAN IP is resolved from the peer. Reaches the VMs via netsim ssh.
+"""
+import argparse
+import subprocess
+import sys
+
+PORT = 1791
+
+
+def ssh(vm, remote):
+    p = subprocess.run(["netsim", "ssh", vm, "--", remote], capture_output=True, text=True)
+    return p.stdout
+
+
+def peer_lan_ip(peer):
+    for tok in (ssh(peer, "hostname -I") or "").split():
+        if tok.startswith("10.77."):
+            return tok
+    return ""
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--vm", default="node2")      # the node that left the LAN
+    ap.add_argument("--peer", default="node1")    # the node it can no longer reach
+    args, _ = ap.parse_known_args()
+
+    ip = peer_lan_ip(args.peer)
+    if not ip:
+        sys.stderr.write(f"leave-lan verify FAILED: could not resolve {args.peer}'s 10.77 LAN IP.\n")
+        return 1
+
+    # Only a TIMEOUT proves the nftables DROP blackholed the path. A connect that
+    # succeeds means the LAN is not severed; a refusal/reset (or any other error) means
+    # the path is reachable but the port is closed for another reason -> inconclusive,
+    # NOT a pass (would otherwise false-pass if the drop rule were missing).
+    probe = (
+        "python3 -c 'import socket\n"
+        "s=socket.socket(); s.settimeout(3)\n"
+        f"try:\n s.connect((\"{ip}\",{PORT})); print(\"open\")\n"
+        "except socket.timeout:\n print(\"timeout\")\n"
+        "except Exception as e:\n print(\"err:\"+type(e).__name__)'"
+    )
+    result = (ssh(args.vm, probe) or "").strip()
+
+    if result == "timeout":
+        print(f"leave-lan OK: {args.vm} can no longer reach {args.peer} ({ip}:{PORT}) over the LAN "
+              "(connect times out — blackholed)")
+        return 0
+
+    if result == "open":
+        sys.stderr.write(f"leave-lan verify FAILED: {args.vm} still reaches {args.peer} "
+                         f"({ip}:{PORT}) over the LAN (connect succeeded).\n")
+    else:
+        sys.stderr.write(f"leave-lan verify FAILED: probe to {args.peer} ({ip}:{PORT}) was "
+                         f"inconclusive ({result!r}) — expected a timeout from the drop, not a "
+                         "refusal/reset.\n")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
