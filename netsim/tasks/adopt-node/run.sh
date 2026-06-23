@@ -44,6 +44,11 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/adopt-node.prompt)"' \
 # Soft smoke-check only (verify.sh is the authoritative, independent check). node1
 # holds the User token in $HOME/user.json, so we can peek at the swarm here; don't
 # fail the run on a shape mismatch — leave the verdict to verify.sh.
+if [ -n "$(python3 -c 'import json;print(len(json.load(open("/home/tester/siblings.json")).get("sibling_ids") or []))' 2>/dev/null | grep -v '^0$')" ]; then
+  echo "adopt-node: $(hostname) recorded swarm siblings in siblings.json"
+else
+  echo "adopt-node: WARNING $(hostname) recorded no sibling_ids in siblings.json (verify.sh decides)" >&2
+fi
 ASTRALD_APPHOST_TOKEN=$(python3 -c 'import json;print(json.load(open("/home/tester/user.json")).get("user_token",""))' 2>/dev/null || true)
 if [ -n "$ASTRALD_APPHOST_TOKEN" ]; then
   export ASTRALD_APPHOST_TOKEN

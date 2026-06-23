@@ -47,19 +47,15 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/object-store.prompt)"' \
      exit 1
    }
 
-# Cheap smoke-check; verify.py does the authoritative, independent check. The agent
-# records its outputs in $HOME/object.json (/home/tester/object.json).
+# Cheap smoke-check; verify.py does the authoritative read-back + byte match. The
+# agent only stores and records the id in $HOME/object.json (/home/tester/object.json).
 oid=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_id",""))' 2>/dev/null || true)
-orb=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_readback",""))' 2>/dev/null || true)
-pay=$(cat /home/tester/payload.txt 2>/dev/null || true)
 [ -n "$oid" ]  || { echo "agent recorded no object_id in /home/tester/object.json on $(hostname)" >&2; exit 1; }
-[ -n "$orb" ]  || { echo "agent recorded no object_readback on $(hostname)" >&2; exit 1; }
 case "$oid" in
   data1*) : ;;
   *) echo "WARNING $(hostname): object_id does not look like a data1… Object ID (verify.py decides)" >&2 ;;
 esac
-[ "$pay" = "$orb" ] || echo "WARNING $(hostname): agent read-back != payload.txt (verify.py decides)" >&2
-echo "object-store: agent finished on $(hostname); stored+read object $oid"
+echo "object-store: agent finished on $(hostname); stored object $oid"
 EOS
 )
 

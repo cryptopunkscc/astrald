@@ -15,12 +15,17 @@ def ssh(vm, remote):
     return p.stdout
 
 
-def info(vm):
-    """The agent's $HOME/user.json (/home/tester/user.json) on the VM, as a dict."""
+def jfile(vm, name):
+    """A JSON file under the agent's $HOME (/home/tester/<name>) on the VM, as a dict."""
     try:
-        return json.loads(ssh(vm, "cat /home/tester/user.json") or "{}") or {}
+        return json.loads(ssh(vm, f"cat /home/tester/{name}") or "{}") or {}
     except json.JSONDecodeError:
         return {}
+
+
+def info(vm):
+    """The agent's $HOME/user.json (/home/tester/user.json) on the VM, as a dict."""
+    return jfile(vm, "user.json")
 
 
 def objs(stream):
@@ -74,6 +79,8 @@ def main():
     # node1 acts as the User (token from bootstrap-user-software-key); node2 answers under its
     # node identity (it holds the contract after the adoption).
     info1 = info(vm1)
+    siblings = jfile(vm1, "siblings.json")  # adopt-node agent: ids of the swarm siblings
+    sib_ids = ["".join(str(x).split()) for x in (siblings.get("sibling_ids") or []) if x]
     U = "".join(str(info1.get("user_id", "")).split())
     TOKEN = f"export ASTRALD_APPHOST_TOKEN={info1.get('user_token', '')};"
     n1_info = ssh(vm1, TOKEN + " astral-query user.info -out json")
@@ -108,6 +115,10 @@ def main():
                     "(node2 does not list node1 -- swarm roster not symmetric; #348 regression?)")
     if not linkback:
         errs.append(f"node2 has no active link back to node1 ({s1})")
+    if not sib_ids:
+        errs.append("node1 recorded no sibling_ids in ~/siblings.json")
+    elif s2 and s2 not in sib_ids:
+        errs.append(f"node1's recorded sibling_ids {sib_ids} do not include adopted node {s2}")
 
     if errs:
         sys.stderr.write("adopt-node verify FAILED:\n")

@@ -31,6 +31,7 @@ while [ $# -gt 0 ]; do
 done
 
 REPO=${SATFORGE_SKILLS_REPO:-ssh://git@git.satforge.dev/satforge/skills.git}
+REF=${SATFORGE_SKILLS_REF:-}      # optional branch/tag/sha to check out (default: clone's default branch)
 KEY=${SATFORGE_SKILLS_DEPLOY_KEY:-}
 [ -n "$KEY" ] || { echo "set SATFORGE_SKILLS_DEPLOY_KEY to the deploy key path for $REPO" >&2; exit 1; }
 [ -r "$KEY" ] || { echo "deploy key not readable: $KEY" >&2; exit 1; }
@@ -56,10 +57,21 @@ set -eu
 export PATH=/usr/local/go/bin:$PATH
 export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/skills_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 repo=$1
+ref=$2
 src=$HOME/satforge-skills
 [ -d "$src/.git" ] || git clone --recurse-submodules "$repo" "$src"
 cd "$src"
-git pull --ff-only --quiet 2>/dev/null || true
+if [ -n "$ref" ]; then
+  # Fail loudly if the ref can't be fetched -- otherwise we'd silently link the
+  # default-branch skill (missing whatever the ref was supposed to add).
+  git fetch --quiet origin "$ref"
+  git rev-parse --verify --quiet "origin/$ref" >/dev/null \
+    || { echo "skills ref '$ref' not found on origin" >&2; exit 1; }
+  git checkout --quiet -B "$ref" "origin/$ref"
+  git reset --hard --quiet "origin/$ref"
+else
+  git pull --ff-only --quiet 2>/dev/null || true
+fi
 git submodule update --init --recursive --quiet
 go build -C bin/satforge-skills -o satforge-skills .
 bin="$src/bin/satforge-skills/satforge-skills"
@@ -68,11 +80,11 @@ bin="$src/bin/satforge-skills/satforge-skills"
 SCRIPT
 chown "$u:$u" "$home/.netsim/setup-skill.sh"
 
-su - "$u" -c "sh '$home/.netsim/setup-skill.sh' '$repo'"
+su - "$u" -c "sh '$home/.netsim/setup-skill.sh' '$repo' '$ref'"
 echo "configure-astral-agent: $(hostname) cloned skills + linked astral-agent (deploy key left in place)"
 EOS
 )
 
 echo "configure-astral-agent: injecting deploy key + linking on $VM (user $USER_NAME) ..."
-netsim ssh "$VM" -- "u='$USER_NAME' key_b64='$key_b64' repo='$REPO'; $REMOTE_BODY"
+netsim ssh "$VM" -- "u='$USER_NAME' key_b64='$key_b64' repo='$REPO' ref='$REF'; $REMOTE_BODY"
 echo "configure-astral-agent: done on $VM"

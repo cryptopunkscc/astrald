@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """verify object-store: the stored object is present in the holder's local repo.
 
-The agent (on node1) stored an object on a target node (--target). Independent
-host-side check (does not trust run.sh or the agent's read-back): a repo-pinned,
+The agent (on node1) only stored an object on a target node (--target) and recorded
+its id. Reading it back and confirming the bytes is verify's job: a repo-pinned,
 ungated objects.load -repo local on the HOLDER must return the exact stored bytes.
 The holder is resolved from --target: localnode/node1 -> node1 (the operator vm),
 node2 -> node2. The object id comes from node1's object.json; the ground-truth
-payload is the fixed payload.txt that run.sh shipped to the operator's home (not the
-agent's account of what it stored). Reaches the VMs via netsim ssh.
+payload is the fixed payload.txt that run.sh shipped to the operator's home. Reaches
+the VMs via netsim ssh.
 """
 import argparse
 import json
@@ -68,13 +68,14 @@ def main():
 
     info1 = info(args.vm)
     ID = "".join(str(info1.get("object_id", "")).split())
-    READBACK = str(info1.get("object_readback", "")).rstrip("\n")
     # Canonical input: the exact bytes the agent was handed to store (run.sh shipped
     # payload.txt to the operator's home). Ground truth — we don't trust the agent's
     # own account of what it stored.
     PAY = (ssh(args.vm, "cat /home/tester/payload.txt") or "").rstrip("\n")
 
-    # Decisive: re-load the object from the holder's local repo (repo-pinned + ungated).
+    # Decisive: re-load the object from the holder's local repo (repo-pinned + ungated)
+    # and confirm the bytes match payload.txt — the read-back is verify's job, not the
+    # agent's (the agent only stores and records the id).
     h_load = ssh(holder, f"astral-query objects.load -id '{ID}' -repo local -out json")
     got = loaded_payload(h_load)
     local_ok = got is not None and got.rstrip("\n") == PAY
@@ -84,8 +85,6 @@ def main():
         errs.append("no object_id in node1's object.json")
     if not PAY:
         errs.append("payload.txt missing on the operator (run.sh must ship it)")
-    if READBACK and READBACK != PAY:
-        notes.append(f"agent's own read-back != payload.txt ({READBACK!r} != {PAY!r})")
 
     if not errs and local_ok:
         print(f"object-store OK (target={args.target}): {holder}'s local repo holds object "
