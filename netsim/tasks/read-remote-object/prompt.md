@@ -1,5 +1,4 @@
-You're running an astral node here that you control as its user. There's an astral
-object stored on `__PEER__` — its id is in `~/object.json` (the `object_id` value).
-Read that object from `__PEER__` and check what it contains.
+An astral object is stored on astral node `__PEER__`; its id is in `~/object.json`
+(the `object_id` value). Read it from `__PEER__`.
 
-When you're done, save what you read to `~/read.json` (as `object_remote`).
+Save what you read to `~/read.json` (as `object_remote`).

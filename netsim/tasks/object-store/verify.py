@@ -5,8 +5,9 @@ The agent (on node1) stored an object on a target node (--target). Independent
 host-side check (does not trust run.sh or the agent's read-back): a repo-pinned,
 ungated objects.load -repo local on the HOLDER must return the exact stored bytes.
 The holder is resolved from --target: localnode/node1 -> node1 (the operator vm),
-node2 -> node2. The object id + payload come from node1's object.json (the agent
-records there regardless of where it stored). Reaches the VMs via netsim ssh.
+node2 -> node2. The object id comes from node1's object.json; the ground-truth
+payload is the fixed payload.txt that run.sh shipped to the operator's home (not the
+agent's account of what it stored). Reaches the VMs via netsim ssh.
 """
 import argparse
 import json
@@ -67,8 +68,11 @@ def main():
 
     info1 = info(args.vm)
     ID = "".join(str(info1.get("object_id", "")).split())
-    PAY = str(info1.get("object_payload", "")).rstrip("\n")
     READBACK = str(info1.get("object_readback", "")).rstrip("\n")
+    # Canonical input: the exact bytes the agent was handed to store (run.sh shipped
+    # payload.txt to the operator's home). Ground truth — we don't trust the agent's
+    # own account of what it stored.
+    PAY = (ssh(args.vm, "cat /home/tester/payload.txt") or "").rstrip("\n")
 
     # Decisive: re-load the object from the holder's local repo (repo-pinned + ungated).
     h_load = ssh(holder, f"astral-query objects.load -id '{ID}' -repo local -out json")
@@ -79,9 +83,9 @@ def main():
     if not ID:
         errs.append("no object_id in node1's object.json")
     if not PAY:
-        errs.append("no object_payload in node1's object.json")
+        errs.append("payload.txt missing on the operator (run.sh must ship it)")
     if READBACK and READBACK != PAY:
-        notes.append(f"agent's own read-back != stored payload ({READBACK!r} != {PAY!r})")
+        notes.append(f"agent's own read-back != payload.txt ({READBACK!r} != {PAY!r})")
 
     if not errs and local_ok:
         print(f"object-store OK (target={args.target}): {holder}'s local repo holds object "

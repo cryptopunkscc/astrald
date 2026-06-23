@@ -2,8 +2,9 @@
 """verify read-remote-object: node1 read the peer's object over astral.
 
 object-store --target node2 put the object on the peer (node2) and recorded
-object_id + object_payload in node1's object.json; read-remote-object's agent (on
-node1, as the User) read it back from the peer and recorded object_remote in read.json.
+object_id in node1's object.json (the bytes are the fixed payload.txt it shipped to
+node1); read-remote-object's agent (on node1, as the User) read it back from the peer
+and recorded object_remote in read.json.
 
 Independent host-side check: re-read the peer's object AS THE USER (node1 holds the
 token) via <peer>:objects.load and assert the bytes equal the stored payload — this
@@ -65,11 +66,13 @@ def main():
     ap.add_argument("--peer", default="node2")    # the node holding the object (alias)
     args, _ = ap.parse_known_args()
 
-    obj = jload(args.vm, "object.json")     # object-store: object_id, object_payload
+    obj = jload(args.vm, "object.json")     # object-store: object_id
     user = jload(args.vm, "user.json")      # bootstrap/import: user_token
     rd = jload(args.vm, "read.json")        # this task's agent: object_remote
     ID = "".join(str(obj.get("object_id", "")).split())
-    PAY = str(obj.get("object_payload", "")).rstrip("\n")
+    # Ground-truth bytes: the fixed payload.txt that object-store shipped to the
+    # operator (node1), not the agent's account of what was stored.
+    PAY = (ssh(args.vm, "cat /home/tester/payload.txt") or "").rstrip("\n")
     REMOTE = str(rd.get("object_remote", ""))
     token = user.get("user_token", "")
 
@@ -84,7 +87,7 @@ def main():
     if not ID:
         errs.append("no object_id in node1's object.json (object-store --target node2 must run first)")
     if not PAY:
-        errs.append("no object_payload in node1's object.json")
+        errs.append("payload.txt missing on node1 (object-store --target node2 must run first)")
     if not token:
         errs.append("no user_token in node1's user.json (can't read the peer as the User)")
     if not REMOTE:

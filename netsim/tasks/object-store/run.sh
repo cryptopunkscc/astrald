@@ -28,13 +28,17 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # Substitute the target alias into the prompt (aliases are [a-z0-9.] — sed-safe).
 prompt=$(sed "s|__TARGET__|$TARGET|g" "$here/prompt.md")
 prompt_b64=$(printf '%s' "$prompt" | base64 -w0)   # GNU coreutils; -w0 = single line
+[ -f "$here/payload.txt" ] || { echo "missing $here/payload.txt" >&2; exit 1; }
+payload_b64=$(base64 -w0 "$here/payload.txt")       # the fixed bytes the agent stores
 
 REMOTE_BODY=$(cat <<'EOS'
 set -eu
 d=/home/tester/.netsim
 mkdir -p "$d"
 printf '%s' "$prompt_b64" | base64 -d > "$d/object-store.prompt"
+printf '%s' "$payload_b64" | base64 -d > /home/tester/payload.txt
 chown -R tester:tester "$d"
+chown tester:tester /home/tester/payload.txt
 
 su - tester -c 'qwen -y "$(cat /home/tester/.netsim/object-store.prompt)"' \
    > "$d/object-store.log" 2>&1 || {
@@ -46,21 +50,20 @@ su - tester -c 'qwen -y "$(cat /home/tester/.netsim/object-store.prompt)"' \
 # Cheap smoke-check; verify.py does the authoritative, independent check. The agent
 # records its outputs in $HOME/object.json (/home/tester/object.json).
 oid=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_id",""))' 2>/dev/null || true)
-opay=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_payload",""))' 2>/dev/null || true)
 orb=$(python3 -c 'import json;print(json.load(open("/home/tester/object.json")).get("object_readback",""))' 2>/dev/null || true)
+pay=$(cat /home/tester/payload.txt 2>/dev/null || true)
 [ -n "$oid" ]  || { echo "agent recorded no object_id in /home/tester/object.json on $(hostname)" >&2; exit 1; }
-[ -n "$opay" ] || { echo "agent recorded no object_payload on $(hostname)" >&2; exit 1; }
 [ -n "$orb" ]  || { echo "agent recorded no object_readback on $(hostname)" >&2; exit 1; }
 case "$oid" in
   data1*) : ;;
   *) echo "WARNING $(hostname): object_id does not look like a data1… Object ID (verify.py decides)" >&2 ;;
 esac
-[ "$opay" = "$orb" ] || echo "WARNING $(hostname): agent read-back != stored payload (verify.py decides)" >&2
+[ "$pay" = "$orb" ] || echo "WARNING $(hostname): agent read-back != payload.txt (verify.py decides)" >&2
 echo "object-store: agent finished on $(hostname); stored+read object $oid"
 EOS
 )
 
 echo "object-store (target=$TARGET): driving Qwen operator on $VM ..."
 # shellcheck disable=SC2029
-netsim ssh "$VM" -- "prompt_b64='$prompt_b64'; $REMOTE_BODY"
+netsim ssh "$VM" -- "prompt_b64='$prompt_b64'; payload_b64='$payload_b64'; $REMOTE_BODY"
 echo "object-store (target=$TARGET): done on $VM"

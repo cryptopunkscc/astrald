@@ -1,3 +1,2 @@
-You're running an astral node here that you control as its user, and another node
-is currently a member of your swarm. You no longer trust that node — permanently
-remove it from your swarm so it is banned and cannot rejoin.
+Another node is a member of your swarm and you no longer trust it. Permanently ban it
+from the swarm so it can't rejoin.
