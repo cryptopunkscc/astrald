@@ -114,6 +114,29 @@ func (value *Value[T]) Set(ctx *astral.Context, v T) (err error) {
 	return nil
 }
 
+// Clear resets the value to T's zero, persisting it as astral.Nil.
+// why: Set cannot clear a pointer T — a typed-nil T slips past its any(v) == nil
+// guard and the node would serialize a nil object. Clear sends astral.Nil instead.
+func (value *Value[T]) Clear(ctx *astral.Context) (err error) {
+	value.mu.Lock()
+	defer value.mu.Unlock()
+
+	if value.node != nil {
+		if err = value.node.Set(ctx, &astral.Nil{}); err == nil {
+			return nil
+		}
+		if value.NoLocal {
+			return err
+		}
+	}
+
+	if value.queue == nil {
+		value.queue = &sig.Queue[T]{}
+	}
+	value.clear()
+	return nil
+}
+
 // Follow returns a channel that emits the current value and all updates.
 func (value *Value[T]) Follow(ctx *astral.Context) <-chan T {
 	value.mu.Lock()
