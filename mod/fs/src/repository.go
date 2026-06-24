@@ -171,7 +171,12 @@ func (repo *Repository) Free(ctx *astral.Context) (int64, error) {
 
 func (repo *Repository) Delete(ctx *astral.Context, objectID *astral.ObjectID) error {
 	path := filepath.Join(repo.root, objectID.String())
-	return os.Remove(path)
+	err := os.Remove(path)
+	// why: map a missing-file miss to ErrNotFound so purge skips this leaf instead of aborting the whole pass
+	if os.IsNotExist(err) {
+		return objects.ErrNotFound
+	}
+	return err
 }
 
 func (repo *Repository) String() string {
