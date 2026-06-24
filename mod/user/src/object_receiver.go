@@ -51,6 +51,14 @@ func (mod *Module) receiveSignedContract(sender *astral.Identity, signed *auth.S
 		return objects.ErrPushRejected
 	}
 
+	// why: refuse to re-index a contract for a subject the issuer has expelled —
+	// mirrors the IssueMembership guard so an unsynced or hostile member cannot
+	// re-seat a banned node through a push, with the expelledSet filter only hiding it.
+	if mod.isExpelled(signed.Issuer, signed.Subject) {
+		mod.log.Errorv(1, "rejecting pushed contract for expelled %v", signed.Subject)
+		return objects.ErrPushRejected
+	}
+
 	if err := mod.Auth.VerifyContract(signed); err != nil {
 		mod.log.Errorv(1, "invalid signed contract: %v", err)
 		return objects.ErrPushRejected
