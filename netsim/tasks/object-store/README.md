@@ -1,5 +1,3 @@
 # object-store
 
-The operator on node1 stores `payload.txt` as an astral object on `--target` (default `localnode`; an alias like `node2` stores on that peer) and records the id. `verify.py` loads the object from the holder's local repo and asserts the bytes equal `payload.txt`.
-
-Stories: `object-store.story` (`localnode`) produces `two-nodes-data` and feeds `read-remote-object`; `object-store-peer.story` (`--target node2`) produces `two-nodes-data-peer`.
+node1's agent stores `payload.txt` as an Object via `objects.store` on `--target` (default `localnode`; an alias stores on that peer) and records the id. verify.py re-loads the id with `objects.load -repo local` on the holder and asserts the bytes equal `payload.txt`. two-nodes → two-nodes-data (localnode) or two-nodes-data-peer (`--target node2`).

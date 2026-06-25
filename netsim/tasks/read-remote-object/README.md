@@ -1,3 +1,3 @@
 # read-remote-object
 
-node1's agent reads a peer's object (id from `~/object.json`) over astral as the User and records the bytes to `~/read.json`. verify re-reads the peer's object via `<peer>:objects.load` and asserts the bytes equal node1's stored `payload.txt`. Produces the remote read in `read-remote-peer.story`.
+node1's agent reads node2's Object (id from `~/object.json`) over astral as the User and records it to `~/read.json`. verify.py independently re-reads it via `node2:objects.load` as the User and asserts the bytes equal node1's stored `payload.txt`.

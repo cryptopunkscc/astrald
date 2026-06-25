@@ -1,3 +1,3 @@
 # configure-astral-agent
 
-Installs the `astral-agent` skill into the Qwen Code operator. `verify.sh` asserts the linked skill exists at `~<user>/.qwen/skills/astral-agent` with `SKILL.md` frontmatter intact, a `references/` dir, the `astral-docs/README.md` mount, and operator ownership. Part of `lab.story`.
+On node1, the host clones the satforge/skills repo with a deploy key, builds the linker, and links the astral-agent skill into the Qwen operator at `~<user>/.qwen/skills/astral-agent`. verify.sh asserts the linked skill is present and owned by the operator.

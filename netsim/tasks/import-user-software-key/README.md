@@ -1,3 +1,3 @@
 # import-user-software-key
 
-Makes the target node a User node from an existing software User, deriving the key from the BIP-39 mnemonic in `prompt.md` rather than minting fresh entropy. Verify asserts `apphost.whoami` reports that User id and `user.info` finds an active contract; if `ASTRAL_USER_ID` is set, the derived id must equal it. Drop-in alternative to `bootstrap-user-software-key`; produces stage `one-node`.
+node1's agent makes node1 a User node from the BIP-39 mnemonic in `prompt.md`, deriving the existing key and installing its active contract. verify.sh asserts `apphost.whoami` reports that User id and `user.info` finds an active contract (matching `ASTRAL_USER_ID` if set). astrald-lab → one-node.
