@@ -31,8 +31,8 @@ export DEBIAN_FRONTEND=noninteractive
 
 # 1) install Tor and enable the control port (cookie auth, loopback)
 command -v tor >/dev/null 2>&1 || {
-  apt-get -qq -o DPkg::Lock::Timeout=120 update
-  apt-get -qq -y -o DPkg::Lock::Timeout=120 install tor >/dev/null
+  apt-get -qq -o DPkg::Lock::Timeout=300 update
+  apt-get -qq -y -o DPkg::Lock::Timeout=300 install tor >/dev/null
 }
 torrc=/etc/tor/torrc
 grep -q '^ControlPort 9051' "$torrc" || printf '\nControlPort 9051\nCookieAuthentication 1\n' >> "$torrc"

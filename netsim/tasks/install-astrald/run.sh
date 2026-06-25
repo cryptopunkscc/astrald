@@ -37,6 +37,15 @@ if [ -n "$need" ]; then
     apt-get -qq -o DPkg::Lock::Timeout=120 update
     apt-get -qq -y -o DPkg::Lock::Timeout=120 install $need ca-certificates >/dev/null
 fi
+
+# Ephemeral test-VM hygiene: disable the apt periodic machinery so a clock jump on
+# resume (netsim corrects the stale snapshot clock) can't wake apt-daily /
+# unattended-upgrades and saturate this 1-vCPU VM. Baked into the saved snapshot;
+# mask the timers too so a later apt-get update can't re-arm them. Intentional — these
+# are throwaway VMs that never need background package refreshes/security upgrades.
+systemctl disable --now apt-daily.timer apt-daily-upgrade.timer >/dev/null 2>&1 || true
+systemctl mask apt-daily.timer apt-daily-upgrade.timer apt-daily.service apt-daily-upgrade.service unattended-upgrades.service >/dev/null 2>&1 || true
+
 if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go$go_ver "; then
     case "$(uname -m)" in
         x86_64)  ga=amd64 ;; aarch64) ga=arm64 ;;

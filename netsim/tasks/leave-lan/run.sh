@@ -61,8 +61,8 @@ CUT_BODY=$(cat <<'EOS'
 set -eu
 export DEBIAN_FRONTEND=noninteractive
 command -v nft >/dev/null 2>&1 || {
-  apt-get -qq -o DPkg::Lock::Timeout=120 update
-  apt-get -qq -y -o DPkg::Lock::Timeout=120 install nftables >/dev/null
+  apt-get -qq -o DPkg::Lock::Timeout=300 update
+  apt-get -qq -y -o DPkg::Lock::Timeout=300 install nftables >/dev/null
 }
 # A dedicated table so the cut is self-contained and easy to reason about. Chains are
 # named netout/netin (not the nft scanner keywords in/out). Flush before adding so a
