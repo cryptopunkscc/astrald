@@ -1,4 +1,4 @@
-Set up user on local astral node with given seed phrase:
+Make this node a User node from the given seed phrase — install its active user contract, not just import the key:
 
 ```
 horse soldier imitate stool square buyer verb party enjoy result jazz rabbit trigger file benefit cloth term change
