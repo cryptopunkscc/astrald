@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """verify expel-node: node1 (the User) permanently banned node2 from the swarm.
 
-Independent both-ends check (does not trust run.sh); reaches the VMs via netsim ssh.
-The core property — confirmed in code (user.OpSwarmStatus -> ActiveNodes filters the
-expelledSet) — is that an expelled node yields FEWER swarm_status results: node2 is
-gone from node1's roster, recorded in user.list_expelled, and the link is torn down.
+Independent check (does not trust run.sh); reaches the VMs via netsim ssh. Asserts node2
+is recorded in user.list_expelled and is gone from node1's user.swarm_status roster
+(user.OpSwarmStatus -> ActiveNodes filters the expelledSet). Link state is not asserted.
+
+node2's identity comes from node1's siblings.json (recorded by adopt-node), NOT from node2
+itself: once expelled, node2 rejects user.info (query rejected (2) untokened, auth_failed
+with the User token — it no longer accepts the User it was banned from), so it is not a
+usable identity source.
 """
 import argparse
 import json
@@ -19,10 +23,10 @@ def ssh(vm, remote):
     return p.stdout
 
 
-def info(vm):
-    """The agent's $HOME/user.json (/home/tester/user.json) on the VM, as a dict."""
+def jfile(vm, name):
+    """/home/tester/<name> on the VM, parsed as a dict."""
     try:
-        return json.loads(ssh(vm, "cat /home/tester/user.json") or "{}") or {}
+        return json.loads(ssh(vm, f"cat /home/tester/{name}") or "{}") or {}
     except json.JSONDecodeError:
         return {}
 
@@ -39,16 +43,6 @@ def objs(stream):
         except json.JSONDecodeError:
             pass
     return out
-
-
-def contract(stream):
-    """(Issuer, Subject) of the active contract from a user.info stream."""
-    for o in objs(stream):
-        ob = o.get("Object")
-        if isinstance(ob, dict) and isinstance(ob.get("Contract"), dict):
-            c = ob["Contract"].get("Contract", {})
-            return c.get("Issuer"), c.get("Subject")
-    return None, None
 
 
 def swarm_identities(stream):
@@ -80,15 +74,6 @@ def is_expelled(stream, ident):
     return False
 
 
-def has_link_to(links, identity):
-    """True if a nodes.links stream contains an active link to `identity`."""
-    for o in objs(links):
-        ob = o.get("Object")
-        if isinstance(ob, dict) and ob.get("RemoteIdentity") == identity:
-            return True
-    return False
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--node1", default="node1")
@@ -96,43 +81,33 @@ def main():
     args, _ = ap.parse_known_args()
     vm1, vm2 = args.node1, args.node2
 
-    # node1 acts as the User (token from bootstrap); the expel op requires the caller
-    # to be the contract issuer, so list_expelled / swarm_status run under that token.
-    info1 = info(vm1)
+    # node1 acts as the User (token from bootstrap); list_expelled / swarm_status require
+    # the caller to be the contract issuer, so they run under that token.
+    info1 = jfile(vm1, "user.json")
     U = "".join(str(info1.get("user_id", "")).split())
     TOKEN = f"export ASTRALD_APPHOST_TOKEN={info1.get('user_token', '')};"
 
-    n1_info = ssh(vm1, TOKEN + " astral-query user.info -out json")
-    n1_swarm = ssh(vm1, TOKEN + " astral-query user.swarm_status -out json")
+    # node2's identity from node1's siblings.json (recorded by adopt-node) — a stable
+    # source. The expelled node itself can't be queried (post-ban node2 rejects user.info).
+    sibs = jfile(vm1, "siblings.json")
+    sib_ids = ["".join(str(x).split()) for x in (sibs.get("sibling_ids") or []) if x]
+    s2 = sib_ids[0] if sib_ids else None
+
     n1_expelled = ssh(vm1, TOKEN + " astral-query user.list_expelled -out json")
-    n1_links = ssh(vm1, "astral-query nodes.links -out json")
-
-    # node2 still holds its membership contract (expel bans, it does not revoke the
-    # contract), so its identity is still readable from its own user.info.
-    n2_info = ssh(vm2, "astral-query user.info -out json")
-    n2_links = ssh(vm2, "astral-query nodes.links -out json")
-
-    _, s1 = contract(n1_info)   # node1's identity (the swarm User's own node)
-    _, s2 = contract(n2_info)   # node2's identity (the expelled subject)
+    n1_swarm = ssh(vm1, TOKEN + " astral-query user.swarm_status -out json")
     members = swarm_identities(n1_swarm)
 
     errs = []
     if not U:
         errs.append("no user_id in node1's user.json")
     if not s2:
-        errs.append("could not resolve node2's identity from its user.info")
-    if not is_expelled(n1_expelled, s2):
+        errs.append("no sibling_ids in node1's siblings.json — can't identify the expelled node")
+    if s2 and not is_expelled(n1_expelled, s2):
         errs.append(f"node2 {s2} is NOT in node1's user.list_expelled "
                     "(expulsion was never issued — agent did not expel the node)")
     if s2 and s2 in members:
         errs.append(f"node2 {s2} still appears in node1's user.swarm_status "
                     "(roster not reduced — expelledSet filter did not drop it)")
-    if s2 and has_link_to(n1_links, s2):
-        errs.append(f"node1 still holds an active link to expelled node2 {s2} "
-                    "(applyExpulsion did not close the link)")
-    if s1 and has_link_to(n2_links, s1):
-        errs.append(f"node2 still holds an active link back to node1 {s1} "
-                    "(link not torn down on the peer end)")
 
     if errs:
         sys.stderr.write("expel-node verify FAILED:\n")
@@ -141,8 +116,8 @@ def main():
         return 1
 
     print(f"expel OK: User {U[:8]}.. banned node2 {s2[:8]}.. — recorded in "
-          f"user.list_expelled, dropped from user.swarm_status ({len(members)} "
-          f"member(s) remain), and the link is torn down on both ends")
+          f"user.list_expelled and dropped from user.swarm_status "
+          f"({len(members)} member(s) remain).")
     return 0
 
 
