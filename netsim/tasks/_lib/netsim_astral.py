@@ -186,7 +186,19 @@ def connect(vm, token=None):
                  "-L", f"{port}:127.0.0.1:{WS_PORT}", "-N", vm],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if _wait_port(port):
-                client = astral.connect(f"ws://127.0.0.1:{port}/.ws", token=token)
+                c = astral.connect(f"ws://127.0.0.1:{port}/.ws", token=token)
+                # Some astrald builds reject anonymous WS route_query with a
+                # ProtocolError; probe once so such a session degrades to the CLI
+                # wholesale instead of failing-then-falling-back on every call.
+                try:
+                    c.whoami()
+                    client = c
+                except Exception:
+                    try:
+                        c.close()
+                    except Exception:
+                        pass
+                    client = None
         except Exception:
             client = None
     try:

@@ -1,77 +1,37 @@
 #!/usr/bin/env python3
 """verify enable-tor: each target VM runs Tor and saved its own onion endpoint.
 
-Independent host-side check (does not trust run.sh): on each VM the tor service is active,
-/root/tor.json holds an onion endpoint, and that saved onion matches what astrald actually
-advertises now (nodes.resolve_endpoints -id localnode). Reaches the VMs via netsim ssh.
+Independent host-side check (does not trust run.sh): on each VM the tor service is
+active, /root/tor.json holds an onion endpoint, and that saved onion matches what
+astrald actually advertises now (nodes.resolve_endpoints -id localnode).
+
+Queries reach each VM's apphost through the shared astral-py client
+(tasks/_lib/netsim_astral.py), CLI fallback for anything it can't serve.
 """
 import argparse
-import json
-import subprocess
+import os
 import sys
 
-
-def ssh(vm, remote):
-    p = subprocess.run(["netsim", "ssh", vm, "--", remote], capture_output=True, text=True)
-    return p.stdout
-
-
-def all_running_vms():
-    out = subprocess.run(["netsim", "vm", "ls", "--json"], capture_output=True, text=True).stdout
-    try:
-        return [v["hostname"] for v in json.loads(out or "[]") if v.get("state") == "running"]
-    except json.JSONDecodeError:
-        return []
-
-
-def endpoint_addr(ep):
-    if isinstance(ep, str):
-        return ep
-    if isinstance(ep, dict):
-        o = ep.get("Object")
-        return o if isinstance(o, str) else ""
-    return ""
-
-
-def live_onion(vm):
-    """The onion address astrald advertises now (resolve_endpoints -id localnode), or None."""
-    stream = ssh(vm, "astral-query nodes.resolve_endpoints -id localnode -out json")
-    for ln in (stream or "").splitlines():
-        ln = ln.strip()
-        if not ln:
-            continue
-        try:
-            o = json.loads(ln)
-        except json.JSONDecodeError:
-            continue
-        a = endpoint_addr((o.get("Object") or {}).get("Endpoint"))
-        if ".onion" in a:
-            return a
-    return None
-
-
-def saved(vm):
-    """The contents of /root/tor.json on the VM, as a dict."""
-    try:
-        return json.loads(ssh(vm, "cat /root/tor.json") or "{}") or {}
-    except json.JSONDecodeError:
-        return {}
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
+import netsim_astral as na  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--vm", action="append", default=[])
     args, _ = ap.parse_known_args()
-    vms = args.vm or all_running_vms()
+    vms = args.vm or na.all_running_vms()
     if not vms:
         sys.stderr.write("enable-tor verify FAILED: no VMs to verify\n")
         return 1
 
     bad = False
     for vm in vms:
-        tor_active = ssh(vm, "systemctl is-active tor 2>/dev/null").strip() == "active"
-        file_onion = str(saved(vm).get("onion", ""))
-        live = live_onion(vm)
+        tor_active = na.ssh(vm, "systemctl is-active tor 2>/dev/null").strip() == "active"
+        file_onion = str(na.read_json(vm, "/root/tor.json").get("onion", ""))
+        with na.connect(vm) as node:
+            live = na.resolve_onion(node.call("nodes.resolve_endpoints", {"id": "localnode"}))
 
         errs = []
         if not tor_active:

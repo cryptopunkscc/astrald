@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
 """verify leave-lan: <vm> can no longer reach <peer> over the LAN.
 
-Independent host-side check: from <vm>, a TCP connect to the peer's LAN address on the
-astral port (1791) must NOT succeed (the nftables drop blackholes it -> timeout). The
-peer's LAN IP is resolved from the peer. Reaches the VMs via netsim ssh.
+Independent host-side check: from <vm>, a TCP connect to the peer's LAN address on
+the astral port (1791) must NOT succeed (the nftables drop blackholes it ->
+timeout). The peer's LAN IP is resolved from the peer. No astral-query here -- this
+is a raw socket probe, run through tasks/_lib/netsim_astral.py's ssh transport.
 """
 import argparse
-import subprocess
+import os
 import sys
 
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
+import netsim_astral as na  # noqa: E402
+
 PORT = 1791
-
-
-def ssh(vm, remote):
-    p = subprocess.run(["netsim", "ssh", vm, "--", remote], capture_output=True, text=True)
-    return p.stdout
-
-
-def peer_lan_ip(peer):
-    for tok in (ssh(peer, "hostname -I") or "").split():
-        if tok.startswith("10.77."):
-            return tok
-    return ""
 
 
 def main():
@@ -30,7 +23,7 @@ def main():
     ap.add_argument("--peer", default="node1")    # the node it can no longer reach
     args, _ = ap.parse_known_args()
 
-    ip = peer_lan_ip(args.peer)
+    ip = na.peer_lan_ip(args.peer)
     if not ip:
         sys.stderr.write(f"leave-lan verify FAILED: could not resolve {args.peer}'s 10.77 LAN IP.\n")
         return 1
@@ -46,11 +39,11 @@ def main():
         "except socket.timeout:\n print(\"timeout\")\n"
         "except Exception as e:\n print(\"err:\"+type(e).__name__)'"
     )
-    result = (ssh(args.vm, probe) or "").strip()
+    result = (na.ssh(args.vm, probe) or "").strip()
 
     if result == "timeout":
         print(f"leave-lan OK: {args.vm} can no longer reach {args.peer} ({ip}:{PORT}) over the LAN "
-              "(connect times out — blackholed)")
+              "(connect times out -- blackholed)")
         return 0
 
     if result == "open":
@@ -58,7 +51,7 @@ def main():
                          f"({ip}:{PORT}) over the LAN (connect succeeded).\n")
     else:
         sys.stderr.write(f"leave-lan verify FAILED: probe to {args.peer} ({ip}:{PORT}) was "
-                         f"inconclusive ({result!r}) — expected a timeout from the drop, not a "
+                         f"inconclusive ({result!r}) -- expected a timeout from the drop, not a "
                          "refusal/reset.\n")
     return 1
 
