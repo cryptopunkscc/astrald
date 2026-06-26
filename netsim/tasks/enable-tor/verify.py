@@ -12,6 +12,7 @@ import argparse
 import os
 import sys
 
+# why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
 import netsim_astral as na  # noqa: E402

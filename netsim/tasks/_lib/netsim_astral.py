@@ -28,6 +28,7 @@ $ASTRALPY_SRC, else ~/work/satforge/astral-py/master/src.
 import contextlib
 import json
 import os
+import shlex
 import socket
 import subprocess
 import sys
@@ -146,7 +147,7 @@ class Node:
 
     def _via_shell(self, op, args, target):
         q = f"{target}:{op}" if target else op
-        flags = "".join(f" -{k} '{v}'" for k, v in (args or {}).items())
+        flags = "".join(f" -{k} {shlex.quote(str(v))}" for k, v in (args or {}).items())
         tok = f"export ASTRALD_APPHOST_TOKEN={self._token}; " if self._token else ""
         return parse_cli(ssh(self.vm, f"{tok}astral-query {q}{flags} -out json"))
 
@@ -156,13 +157,14 @@ class Node:
         Routes through the astral-py client unless the op is pinned in SHELL_OPS
         or no client is available; on any client error, falls back to the Go CLI.
         """
-        base = op.split(":")[-1]
-        if self._client is None or op in SHELL_OPS or base in SHELL_OPS:
+        if self._client is None or op in SHELL_OPS:
             return self._via_shell(op, args, target)
         try:
             with self._client.query(op, args or None, target=target) as st:
                 return list(st)
         except Exception:
+            # why: anonymous WS sessions and any client error fall back to the
+            # lockstep astral-query so verification still runs.
             return self._via_shell(op, args, target)
 
 
@@ -187,9 +189,8 @@ def connect(vm, token=None):
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if _wait_port(port):
                 c = astral.connect(f"ws://127.0.0.1:{port}/.ws", token=token)
-                # Some astrald builds reject anonymous WS route_query with a
-                # ProtocolError; probe once so such a session degrades to the CLI
-                # wholesale instead of failing-then-falling-back on every call.
+                # why: some astrald builds reject anonymous WS route_query (ProtocolError);
+                # probe once so the session degrades to the Go CLI wholesale, not per call.
                 try:
                     c.whoami()
                     client = c
@@ -219,7 +220,8 @@ def connect(vm, token=None):
 
 # --- interrogators: list[AstralObject] -> extracted value --------------------
 def _values(objs):
-    return [o.value for o in objs if not o.is_eos]
+    # note: interrogators below test isinstance(v, dict), so eos/error values are skipped
+    return [o.value for o in objs]
 
 
 def contract(objs):
@@ -255,6 +257,7 @@ def has_link_to(objs, ident):
 
 
 def _contains_identity(value, ident):
+    # why: expulsion records nest the Subject at varying depth; recurse the dict/list tree
     if isinstance(value, str):
         return value == ident
     if isinstance(value, dict):

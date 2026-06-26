@@ -16,6 +16,7 @@ import argparse
 import os
 import sys
 
+# why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
 import netsim_astral as na  # noqa: E402
@@ -43,7 +44,7 @@ def main():
     got = na.loaded_payload(h_load)
     local_ok = got is not None and got.rstrip("\n") == PAY
 
-    errs, notes = [], []
+    errs = []
     if not ID:
         errs.append("no object_id in node1's object.json")
     if not PAY:
@@ -52,8 +53,6 @@ def main():
     if not errs and local_ok:
         print(f"object-store OK (target={args.target}): {holder}'s local repo holds object "
               f"{ID[:12]}.. with the exact bytes ({len(PAY)} B).")
-        for n in notes:
-            sys.stderr.write(f"  note: {n}\n")
         return 0
 
     sys.stderr.write(f"object-store verify FAILED (target={args.target}): {holder}'s local repo "
@@ -66,8 +65,6 @@ def main():
         sys.stderr.write(f"  bytes mismatch: got {got!r} != stored {PAY!r}.\n")
     for e in na.error_messages(h_load):
         sys.stderr.write(f"  load error_message: {e}\n")
-    for n in notes:
-        sys.stderr.write(f"  note: {n}\n")
     sys.stderr.write(f"  (id={ID} holder={holder} load={'hit' if got is not None else 'miss'})\n")
     return 1
 

@@ -18,6 +18,7 @@ import argparse
 import os
 import sys
 
+# why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
 import netsim_astral as na  # noqa: E402
@@ -41,7 +42,7 @@ def main():
     # rejects user.info).
     sibs = na.home_json(vm1, "siblings.json")
     sib_ids = ["".join(str(x).split()) for x in (sibs.get("sibling_ids") or []) if x]
-    s2 = sib_ids[0] if sib_ids else None
+    expelled_id = sib_ids[0] if sib_ids else None
 
     with na.connect(vm1, token=token) as n1:
         n1_expelled = n1.call("user.list_expelled")
@@ -50,13 +51,13 @@ def main():
     errs = []
     if not U:
         errs.append("no user_id in node1's user.json")
-    if not s2:
+    if not expelled_id:
         errs.append("no sibling_ids in node1's siblings.json -- can't identify the expelled node")
-    if s2 and not na.is_expelled(n1_expelled, s2):
-        errs.append(f"node2 {s2} is NOT in node1's user.list_expelled "
+    if expelled_id and not na.is_expelled(n1_expelled, expelled_id):
+        errs.append(f"node2 {expelled_id} is NOT in node1's user.list_expelled "
                     "(expulsion was never issued -- agent did not expel the node)")
-    if s2 and s2 in members:
-        errs.append(f"node2 {s2} still appears in node1's user.swarm_status "
+    if expelled_id and expelled_id in members:
+        errs.append(f"node2 {expelled_id} still appears in node1's user.swarm_status "
                     "(roster not reduced -- expelledSet filter did not drop it)")
 
     if errs:
@@ -65,7 +66,7 @@ def main():
             sys.stderr.write(f"  - {e}\n")
         return 1
 
-    print(f"expel OK: User {U[:8]}.. banned node2 {s2[:8]}.. -- recorded in "
+    print(f"expel OK: User {U[:8]}.. banned node2 {expelled_id[:8]}.. -- recorded in "
           f"user.list_expelled and dropped from user.swarm_status "
           f"({len(members)} member(s) remain).")
     return 0

@@ -110,14 +110,20 @@ class ShellRoutingTests(unittest.TestCase):
         self.assertEqual(
             self.calls[-1][1],
             "export ASTRALD_APPHOST_TOKEN=TKN; "
-            "astral-query objects.load -id 'X' -repo 'local' -out json")
+            "astral-query objects.load -id X -repo local -out json")
 
     def test_peer_target(self):
         na.Node("node1", None, "TKN").call("objects.load", {"id": "X"}, target="node2")
         self.assertEqual(
             self.calls[-1][1],
             "export ASTRALD_APPHOST_TOKEN=TKN; "
-            "astral-query node2:objects.load -id 'X' -out json")
+            "astral-query node2:objects.load -id X -out json")
+
+    def test_arg_value_is_shell_quoted(self):
+        import shlex
+        v = "a b'c"  # a value with a space and a quote
+        na.Node("node1", None, "").call("objects.load", {"id": v})
+        self.assertIn(f"-id {shlex.quote(v)}", self.calls[-1][1])
 
     def test_shell_ops_pin_forces_cli(self):
         # even with a (truthy sentinel) client, a pinned op must go to the shell
