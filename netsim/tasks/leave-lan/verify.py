@@ -4,7 +4,7 @@
 Independent host-side check: from <vm>, a TCP connect to the peer's LAN address on
 the astral port (1791) must NOT succeed (the nftables drop blackholes it ->
 timeout). The peer's LAN IP is resolved from the peer. No astral-query here -- this
-is a raw socket probe, run through tasks/_lib/netsim_astral.py's ssh transport.
+is a raw socket probe, run through tasks/_lib/astralapi.py's ssh transport.
 """
 import argparse
 import os
@@ -13,7 +13,7 @@ import sys
 # why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
-import netsim_astral as na  # noqa: E402
+import astralapi  # noqa: E402
 
 PORT = 1791
 
@@ -24,7 +24,7 @@ def main():
     ap.add_argument("--peer", default="node1")    # the node it can no longer reach
     args, _ = ap.parse_known_args()
 
-    ip = na.peer_lan_ip(args.peer)
+    ip = astralapi.peer_lan_ip(args.peer)
     if not ip:
         sys.stderr.write(f"leave-lan verify FAILED: could not resolve {args.peer}'s 10.77 LAN IP.\n")
         return 1
@@ -40,7 +40,7 @@ def main():
         "except socket.timeout:\n print(\"timeout\")\n"
         "except Exception as e:\n print(\"err:\"+type(e).__name__)'"
     )
-    result = (na.ssh(args.vm, probe) or "").strip()
+    result = (astralapi.ssh(args.vm, probe) or "").strip()
 
     if result == "timeout":
         print(f"leave-lan OK: {args.vm} can no longer reach {args.peer} ({ip}:{PORT}) over the LAN "

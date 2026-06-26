@@ -6,7 +6,7 @@ per-task symlink:
     import os, sys
     sys.path.insert(0, os.path.join(
         os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
-    import netsim_astral as na
+    import astralapi
 
 It centralises the two halves every verifier shares:
 

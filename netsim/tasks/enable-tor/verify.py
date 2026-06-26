@@ -6,7 +6,7 @@ active, /root/tor.json holds an onion endpoint, and that saved onion matches wha
 astrald actually advertises now (nodes.resolve_endpoints -id localnode).
 
 Queries reach each VM's apphost through the shared astral-py client
-(tasks/_lib/netsim_astral.py), CLI fallback for anything it can't serve.
+(tasks/_lib/astralapi.py), CLI fallback for anything it can't serve.
 """
 import argparse
 import os
@@ -15,24 +15,24 @@ import sys
 # why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
-import netsim_astral as na  # noqa: E402
+import astralapi  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--vm", action="append", default=[])
     args, _ = ap.parse_known_args()
-    vms = args.vm or na.all_running_vms()
+    vms = args.vm or astralapi.all_running_vms()
     if not vms:
         sys.stderr.write("enable-tor verify FAILED: no VMs to verify\n")
         return 1
 
     bad = False
     for vm in vms:
-        tor_active = na.ssh(vm, "systemctl is-active tor 2>/dev/null").strip() == "active"
-        file_onion = str(na.read_json(vm, "/root/tor.json").get("onion", ""))
-        with na.connect(vm) as node:
-            live = na.resolve_onion(node.call("nodes.resolve_endpoints", {"id": "localnode"}))
+        tor_active = astralapi.ssh(vm, "systemctl is-active tor 2>/dev/null").strip() == "active"
+        file_onion = str(astralapi.read_json(vm, "/root/tor.json").get("onion", ""))
+        with astralapi.connect(vm) as node:
+            live = astralapi.resolve_onion(node.call("nodes.resolve_endpoints", {"id": "localnode"}))
 
         errs = []
         if not tor_active:

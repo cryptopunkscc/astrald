@@ -10,7 +10,7 @@ ground-truth payload is the fixed payload.txt that run.sh shipped to the
 operator's home.
 
 Queries reach the holder's apphost through the shared astral-py client
-(tasks/_lib/netsim_astral.py), CLI fallback for anything it can't serve.
+(tasks/_lib/astralapi.py), CLI fallback for anything it can't serve.
 """
 import argparse
 import os
@@ -19,7 +19,7 @@ import sys
 # why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
-import netsim_astral as na  # noqa: E402
+import astralapi  # noqa: E402
 
 
 def main():
@@ -30,18 +30,18 @@ def main():
     args, _ = ap.parse_known_args()
     holder = args.node2 if args.target == args.node2 else args.vm
 
-    ID = "".join(str(na.home_json(args.vm, "object.json").get("object_id", "")).split())
+    ID = "".join(str(astralapi.home_json(args.vm, "object.json").get("object_id", "")).split())
     # Canonical input: the exact bytes the agent was handed to store (run.sh shipped
     # payload.txt to the operator's home). Ground truth -- we don't trust the agent's
     # own account of what it stored.
-    PAY = na.read_file(args.vm, "/home/tester/payload.txt")
+    PAY = astralapi.read_file(args.vm, "/home/tester/payload.txt")
 
     # Decisive: re-load the object from the holder's local repo (repo-pinned + ungated)
     # and confirm the bytes match payload.txt -- the read-back is verify's job, not the
     # agent's (the agent only stores and records the id).
-    with na.connect(holder) as h:
+    with astralapi.connect(holder) as h:
         h_load = h.call("objects.load", {"id": ID, "repo": "local"})
-    got = na.loaded_payload(h_load)
+    got = astralapi.loaded_payload(h_load)
     local_ok = got is not None and got.rstrip("\n") == PAY
 
     errs = []
@@ -63,7 +63,7 @@ def main():
         sys.stderr.write(f"  objects.load -repo local on {holder} returned no payload (see errors below).\n")
     elif not local_ok:
         sys.stderr.write(f"  bytes mismatch: got {got!r} != stored {PAY!r}.\n")
-    for e in na.error_messages(h_load):
+    for e in astralapi.error_messages(h_load):
         sys.stderr.write(f"  load error_message: {e}\n")
     sys.stderr.write(f"  (id={ID} holder={holder} load={'hit' if got is not None else 'miss'})\n")
     return 1

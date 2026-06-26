@@ -12,7 +12,7 @@ the token) via <peer>:objects.load and assert the bytes equal the stored payload
 recorded read.
 
 Queries reach node1's apphost through the shared astral-py client
-(tasks/_lib/netsim_astral.py), CLI fallback for anything it can't serve.
+(tasks/_lib/astralapi.py), CLI fallback for anything it can't serve.
 """
 import argparse
 import os
@@ -21,7 +21,7 @@ import sys
 # why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
-import netsim_astral as na  # noqa: E402
+import astralapi  # noqa: E402
 
 
 def main():
@@ -30,21 +30,21 @@ def main():
     ap.add_argument("--peer", default="node2")    # the node holding the object (alias)
     args, _ = ap.parse_known_args()
 
-    obj = na.home_json(args.vm, "object.json")    # object-store: object_id
-    user = na.home_json(args.vm, "user.json")     # bootstrap/import: user_token
-    rd = na.home_json(args.vm, "read.json")       # this task's agent: object_remote
+    obj = astralapi.home_json(args.vm, "object.json")    # object-store: object_id
+    user = astralapi.home_json(args.vm, "user.json")     # bootstrap/import: user_token
+    rd = astralapi.home_json(args.vm, "read.json")       # this task's agent: object_remote
     ID = "".join(str(obj.get("object_id", "")).split())
     # Ground-truth bytes: the fixed payload.txt that object-store shipped to the
     # operator (node1), not the agent's account of what was stored.
-    PAY = na.read_file(args.vm, "/home/tester/payload.txt")
+    PAY = astralapi.read_file(args.vm, "/home/tester/payload.txt")
     REMOTE = str(rd.get("object_remote", ""))
     token = user.get("user_token", "")
 
     # Independent: node1, as the User, reads the peer's object over astral. This is
     # authenticated (token), so the query keeps the network zone and routes to the peer.
-    with na.connect(args.vm, token=token) as n1:
+    with astralapi.connect(args.vm, token=token) as n1:
         out = n1.call("objects.load", {"id": ID}, target=args.peer)
-    got = na.loaded_payload(out)
+    got = astralapi.loaded_payload(out)
     read_ok = got is not None and got.rstrip("\n") == PAY
 
     errs, notes = [], []
@@ -75,7 +75,7 @@ def main():
                          "(route_not_found means the read didn't route -- check auth/zone).\n")
     elif not read_ok:
         sys.stderr.write(f"  bytes mismatch: got {got!r} != stored {PAY!r}.\n")
-    for e in na.error_messages(out):
+    for e in astralapi.error_messages(out):
         sys.stderr.write(f"  load error_message: {e}\n")
     for n in notes:
         sys.stderr.write(f"  note: {n}\n")

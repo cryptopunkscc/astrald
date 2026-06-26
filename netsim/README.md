@@ -22,7 +22,7 @@ netsim/
     object-store/                      # node1 stores an object (--target localnode|node2) -> two-nodes-data[-peer]
     read-remote-object/                # node1's agent reads node2's object over astral (used by read-remote-peer)
     expel-node/                        # node1 (User) permanently bans node2 from the swarm -> two-nodes-expel
-    _lib/                              # shared verify library (netsim_astral.py) + astral-py submodule
+    _lib/                              # shared verify library (astralapi.py) + astral-py submodule
   stories/                             # one story per tested flow (start/save stage in each header)
     lab.story                          # null           -> astrald-lab
     bootstrap-user-software-key.story  # astrald-lab    -> one-node
@@ -50,7 +50,7 @@ netsim tasks        # confirm: install-astrald is listed as a user task
 
 ## Verifier library
 
-The `verify.py` oracles share `tasks/_lib/netsim_astral.py`, which reaches each
+The `verify.py` oracles share `tasks/_lib/astralapi.py`, which reaches each
 VM's apphost through the **astral-py** client vendored as a submodule at
 `tasks/_lib/astral-py`. Initialize it once per worktree (`workon.sh` does not
 `--recurse`); a missing submodule fails with a loud `ImportError`:

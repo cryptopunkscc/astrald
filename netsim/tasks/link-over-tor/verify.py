@@ -8,7 +8,7 @@ requiring ".onion" would false-negative; node2 is the only sibling, so a tor lin
 is a tor link to node2.) Also cross-checks the agent's record.
 
 Queries reach node1's apphost through the shared astral-py client
-(tasks/_lib/netsim_astral.py), CLI fallback for anything it can't serve.
+(tasks/_lib/astralapi.py), CLI fallback for anything it can't serve.
 """
 import argparse
 import os
@@ -17,7 +17,7 @@ import sys
 # why: realpath crosses netsim's per-task symlink to reach the sibling tasks/_lib
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
-import netsim_astral as na  # noqa: E402
+import astralapi  # noqa: E402
 
 
 def main():
@@ -26,13 +26,13 @@ def main():
     ap.add_argument("--peer", default="node2")    # the node that left the LAN
     args, _ = ap.parse_known_args()
 
-    tor = na.home_json(args.vm, "tor.json")        # agent: peer_onion, link_network
+    tor = astralapi.home_json(args.vm, "tor.json")        # agent: peer_onion, link_network
     net = str(tor.get("link_network", ""))
     onion = str(tor.get("peer_onion", ""))
 
     # Decisive: an actual link over Tor from node1 (to the only sibling, the peer).
-    with na.connect(args.vm) as node:
-        links = na.tor_links(node.call("nodes.links"))
+    with astralapi.connect(args.vm) as node:
+        links = astralapi.tor_links(node.call("nodes.links"))
 
     notes = []
     if net != "tor":
@@ -50,7 +50,7 @@ def main():
     sys.stderr.write(f"link-over-tor verify FAILED: {args.vm} has no link to {args.peer} over Tor.\n")
     for n in notes:
         sys.stderr.write(f"  note: {n}\n")
-    sys.stderr.write(f"  nodes.links:\n{na.ssh(args.vm, 'astral-query nodes.links -out json')}\n")
+    sys.stderr.write(f"  nodes.links:\n{astralapi.ssh(args.vm, 'astral-query nodes.links -out json')}\n")
     return 1
 
 
