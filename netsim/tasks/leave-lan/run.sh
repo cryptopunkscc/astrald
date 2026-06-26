@@ -1,12 +1,16 @@
 #!/bin/sh
-# leave-lan: sever the LAN path between <vm> (node2, the node that "leaves") and <peer>
-# (node1). astrald's tor module + the swarm link maintainer will then re-link over Tor.
+# leave-lan: make <vm> (node2, the node that "leaves") genuinely leave the 10.77 LAN, so
+# astrald's tor module + the swarm link maintainer re-link to <peer> (node1) over Tor.
 #
 # Two steps, both on the host:
 #   1. Seed <peer> with <vm>'s onion WHILE THE LAN IS STILL UP — once the LAN is gone the
 #      peer can no longer ask <vm> for its address, so it needs the .onion cached first.
-#   2. nftables-drop all traffic between them on the LAN. The NIC stays up and Internet
-#      egress (the WAN NAT, used for Tor) is untouched — only the direct LAN path is cut.
+#   2. Withdraw <vm>'s own 10.77 LAN address (ip addr flush). astrald has no carrier/
+#      operstate monitor: it polls net.InterfaceAddrs() every 3s and advertises one tcp
+#      endpoint per assigned IP, so removing the address is what it observes as "left the
+#      network" — it drops the 10.77 endpoint and re-links over Tor. (A packet-filter DROP,
+#      or even a link/carrier down, leaves the IPv4 address in place and is invisible to
+#      that monitor.) SSH/management rides the separate WAN NIC and is untouched.
 #   leave-lan [--vm <host>] [--peer <host>]    (default: node2 leaves, peer node1)
 #
 # Both nodes must have Tor up (enable-tor) and the alias <vm> must resolve on <peer>
@@ -53,31 +57,22 @@ echo "leave-lan: seeding $PEER with $VM's onion ..."
 # shellcheck disable=SC2029
 netsim ssh "$PEER" -- "leaver='$VM'; $SEED_BODY"
 
-# 2) resolve <peer>'s LAN address and drop it on <vm>
-peer_ip=$(netsim ssh "$PEER" -- "hostname -I" | tr ' ' '\n' | grep '^10\.77\.' | head -1)
-[ -n "$peer_ip" ] || { echo "leave-lan: could not find $PEER's 10.77 LAN address" >&2; exit 1; }
-
+# 2) make <vm> leave the LAN: withdraw its own 10.77 address (and drop the NIC for realism).
+#    Removing the address takes its connected /24 route with it, so <vm> has no address on
+#    and no route to the LAN — it has genuinely left at the IP layer, which is exactly what
+#    astrald observes (see the header). No peer IP needed: <vm> drops its own membership.
 CUT_BODY=$(cat <<'EOS'
 set -eu
-export DEBIAN_FRONTEND=noninteractive
-command -v nft >/dev/null 2>&1 || {
-  apt-get -qq -o DPkg::Lock::Timeout=300 update
-  apt-get -qq -y -o DPkg::Lock::Timeout=300 install nftables >/dev/null
-}
-# A dedicated table so the cut is self-contained and easy to reason about. Chains are
-# named netout/netin (not the nft scanner keywords in/out). Flush before adding so a
-# re-run yields exactly one rule per direction.
-nft add table ip netsimcut 2>/dev/null || true
-nft 'add chain ip netsimcut netout { type filter hook output priority 0 ; }' 2>/dev/null || true
-nft 'add chain ip netsimcut netin  { type filter hook input  priority 0 ; }' 2>/dev/null || true
-nft flush chain ip netsimcut netout 2>/dev/null || true
-nft flush chain ip netsimcut netin  2>/dev/null || true
-nft add rule ip netsimcut netout ip daddr "$peer_ip" drop
-nft add rule ip netsimcut netin  ip saddr "$peer_ip" drop
-echo "leave-lan: $(hostname) dropped LAN traffic to/from $peer_ip"
+# the NIC holding the 10.77 LAN address is nic2; SSH rides the separate WAN NIC, untouched.
+lan_if=$(ip -o -4 addr show | awk '$4 ~ /^10\.77\./ {print $2; exit}')
+[ -n "$lan_if" ] || { echo "leave-lan: no 10.77 LAN interface on $(hostname)" >&2; exit 1; }
+lan_ip=$(ip -o -4 addr show dev "$lan_if" | awk '$4 ~ /^10\.77\./ {print $4; exit}')
+ip addr flush dev "$lan_if"   # RTM_DELADDR: drops the address AND its connected /24 route
+ip link set "$lan_if" down    # carrier/admin down too, so the NIC is faithfully "gone"
+echo "leave-lan: $(hostname) withdrew $lan_ip from $lan_if (left the LAN)"
 EOS
 )
-echo "leave-lan: severing LAN path $VM <-> $PEER ($peer_ip) ..."
+echo "leave-lan: $VM leaving the LAN (withdrawing its 10.77 address) ..."
 # shellcheck disable=SC2029
-netsim ssh "$VM" -- "peer_ip='$peer_ip'; $CUT_BODY"
+netsim ssh "$VM" -- "$CUT_BODY"
 echo "leave-lan: done on $VM"

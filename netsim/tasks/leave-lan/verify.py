@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
-"""verify leave-lan: <vm> can no longer reach <peer> over the LAN.
+"""verify leave-lan: <vm> has withdrawn its LAN identity, so it genuinely left the
+10.77 LAN (not merely had its packets filtered).
 
-Independent host-side check: from <vm>, a TCP connect to the peer's LAN address on
-the astral port (1791) must NOT succeed (the nftables drop blackholes it ->
-timeout). The peer's LAN IP is resolved from the peer. No astral-query here -- this
-is a raw socket probe, run through tasks/_lib/astralapi.py's ssh transport.
+The cut (run.sh) flushes <vm>'s own 10.77 address, which is what astrald observes as
+"left the network": it polls net.InterfaceAddrs() every 3s and advertises one tcp
+endpoint per assigned IP, so removing the address fires EventNetworkAddressChanged and
+withdraws the 10.77 tcp endpoint. (A packet-filter DROP -- or a bare link/carrier down --
+leaves the IPv4 address in place and is invisible to that monitor.)
+
+This is a blind, deterministic host-side check: it reads <vm>'s own network state over
+ssh, independent of astral, and asserts two consequences of the address withdrawal --
+<vm> has (1) no 10.77 LAN address and (2) no route into the 10.77 subnet. Neither depends
+on a TCP probe's error code, which would vary with the WAN default route (a connect to
+the LAN falls through to the WAN NAT and times out rather than returning ENETUNREACH).
+astrald's reaction -- re-linking over Tor -- is asserted separately by link-over-tor.
 """
 import argparse
 import os
@@ -15,8 +24,6 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "_lib"))
 import astralapi  # noqa: E402
 
-PORT = 1791
-
 
 def main():
     ap = argparse.ArgumentParser()
@@ -24,37 +31,24 @@ def main():
     ap.add_argument("--peer", default="node1")    # the node it can no longer reach
     args, _ = ap.parse_known_args()
 
-    ip = astralapi.peer_lan_ip(args.peer)
-    if not ip:
-        sys.stderr.write(f"leave-lan verify FAILED: could not resolve {args.peer}'s 10.77 LAN IP.\n")
+    # 1) the leaver no longer holds any 10.77 LAN address (the thing astrald keys on)
+    lan_ip = astralapi.peer_lan_ip(args.vm)
+    # 2) and has no route into the 10.77 subnet (the connected route went with the address)
+    lan_routes = [ln for ln in (astralapi.ssh(args.vm, "ip -o route show") or "").splitlines()
+                  if "10.77." in ln]
+
+    if lan_ip:
+        sys.stderr.write(f"leave-lan verify FAILED: {args.vm} still holds a LAN address "
+                         f"({lan_ip}) -- it has not left the 10.77 LAN.\n")
+        return 1
+    if lan_routes:
+        sys.stderr.write(f"leave-lan verify FAILED: {args.vm} still has a route into the "
+                         "10.77 LAN:\n  " + "\n  ".join(lan_routes) + "\n")
         return 1
 
-    # Only a TIMEOUT proves the nftables DROP blackholed the path. A connect that
-    # succeeds means the LAN is not severed; a refusal/reset (or any other error) means
-    # the path is reachable but the port is closed for another reason -> inconclusive,
-    # NOT a pass (would otherwise false-pass if the drop rule were missing).
-    probe = (
-        "python3 -c 'import socket\n"
-        "s=socket.socket(); s.settimeout(3)\n"
-        f"try:\n s.connect((\"{ip}\",{PORT})); print(\"open\")\n"
-        "except socket.timeout:\n print(\"timeout\")\n"
-        "except Exception as e:\n print(\"err:\"+type(e).__name__)'"
-    )
-    result = (astralapi.ssh(args.vm, probe) or "").strip()
-
-    if result == "timeout":
-        print(f"leave-lan OK: {args.vm} can no longer reach {args.peer} ({ip}:{PORT}) over the LAN "
-              "(connect times out -- blackholed)")
-        return 0
-
-    if result == "open":
-        sys.stderr.write(f"leave-lan verify FAILED: {args.vm} still reaches {args.peer} "
-                         f"({ip}:{PORT}) over the LAN (connect succeeded).\n")
-    else:
-        sys.stderr.write(f"leave-lan verify FAILED: probe to {args.peer} ({ip}:{PORT}) was "
-                         f"inconclusive ({result!r}) -- expected a timeout from the drop, not a "
-                         "refusal/reset.\n")
-    return 1
+    print(f"leave-lan OK: {args.vm} withdrew its 10.77 LAN address and route -- it has left "
+          f"the LAN (astrald re-links to {args.peer} over Tor; asserted by link-over-tor).")
+    return 0
 
 
 if __name__ == "__main__":
