@@ -22,8 +22,8 @@ It centralises the two halves every verifier shares:
     serve an op (pinned in SHELL_OPS, or it raised). Both paths return the same
     list[AstralObject], so the interrogators below are transport-agnostic.
 
-astral-py is imported from an editable checkout (no pip needed on this host):
-$ASTRALPY_SRC, else ~/work/satforge/astral-py/master/src.
+astral-py is the submodule at _lib/astral-py (package under src/); imported without
+pip. $ASTRALPY_SRC overrides the src dir for local dev against another checkout.
 """
 import contextlib
 import json
@@ -34,11 +34,17 @@ import subprocess
 import sys
 import time
 
-# --- astral-py (editable checkout; pip-free) ---------------------------------
-_ASTRALPY_SRC = os.environ.get("ASTRALPY_SRC") or os.path.expanduser(
-    "~/work/satforge/astral-py/master/src")
-if os.path.isdir(_ASTRALPY_SRC) and _ASTRALPY_SRC not in sys.path:
-    sys.path.insert(0, _ASTRALPY_SRC)
+# --- astral-py (submodule at _lib/astral-py; pip-free) -----------------------
+# why: realpath resolves _lib through netsim's per-task symlink; the submodule's
+# package lives under src/. $ASTRALPY_SRC overrides for local dev.
+_ASTRALPY_SRC = os.environ.get("ASTRALPY_SRC") or os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "astral-py", "src")
+if not os.path.isdir(os.path.join(_ASTRALPY_SRC, "astral")):
+    raise ImportError(
+        f"astral-py not found at {_ASTRALPY_SRC} -- run "
+        "`git submodule update --init netsim/tasks/_lib/astral-py` "
+        "(or set $ASTRALPY_SRC to an astral-py checkout's src/)")
+sys.path.insert(0, _ASTRALPY_SRC)
 import astral  # noqa: E402
 from astral.encoding import from_json_envelope  # noqa: E402
 
