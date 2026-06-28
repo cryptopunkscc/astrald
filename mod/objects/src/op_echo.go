@@ -24,6 +24,22 @@ type opEchoArgs struct {
 // stopped on the Stop type. Strict mode fails on objects whose blueprint isn't
 // registered; lenient mode passes them through unparsed.
 func (mod *Module) OpEcho(ctx *astral.Context, q *routing.IncomingQuery, args opEchoArgs) (err error) {
+	// why: Strict drops the AllowUnparsed fallback so a missing blueprint surfaces as a
+	// decode error instead of silently re-emitting the original bytes. The default keeps
+	// pass-through behavior used by relay/debug callers.
+	opts := []channel.ConfigFunc{channel.WithFormats(args.In, args.Out)}
+	if !args.Strict {
+		opts = append(opts, channel.AllowUnparsed(true))
+	}
+	ch := channel.New(q.AcceptRaw(), opts...)
+	defer ch.Close()
+
+	return echo(ch, args)
+}
+
+// echo runs the receive/relay loop over an established channel. It is split out from
+// OpEcho so the loop can be tested without a live query/transport.
+func echo(ch *channel.Channel, args opEchoArgs) error {
 	// prepare lists
 	var only, except []string
 	if args.Only != nil && len(*args.Only) > 0 {
@@ -35,21 +51,20 @@ func (mod *Module) OpEcho(ctx *astral.Context, q *routing.IncomingQuery, args op
 
 	var stop = len(args.Stop) > 0
 
-	// why: Strict drops the AllowUnparsed fallback so a missing blueprint surfaces as a
-	// decode error instead of silently re-emitting the original bytes. The default keeps
-	// pass-through behavior used by relay/debug callers.
-	opts := []channel.ConfigFunc{channel.WithFormats(args.In, args.Out)}
-	if !args.Strict {
-		opts = append(opts, channel.AllowUnparsed(true))
-	}
-	ch := channel.New(q.AcceptRaw(), opts...)
-	defer ch.Close()
-
 	for {
 		object, err := ch.Receive()
 		switch {
 		case err == nil:
 		case errors.Is(err, io.EOF):
+			return nil
+		case errors.Is(err, astral.ErrStreamCorrupted):
+			// why: the non-binary receivers (canonical/json/text) have no per-object framing,
+			// so once an unknown type desyncs the stream they latch this error and return it on
+			// EVERY subsequent Receive without touching the reader. The ErrBlueprintNotFound case
+			// below would `continue` on it forever.
+			if args.Strict {
+				return ch.Send(astral.NewError(err.Error()))
+			}
 			return nil
 		case errors.Is(err, astral.ErrBlueprintNotFound):
 			// why: in strict mode an unparseable object is a verification failure — surface
