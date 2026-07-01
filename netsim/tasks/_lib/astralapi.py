@@ -314,6 +314,27 @@ def tor_links(objs):
     return out
 
 
+def links_by_network(objs, network):
+    """(RemoteIdentity, endpoint-address) for links whose Network == <network>."""
+    out = []
+    for v in _values(objs):
+        if isinstance(v, dict) and str(v.get("Network")) == network:
+            out.append((str(v.get("RemoteIdentity", "")),
+                        endpoint_addr(v.get("RemoteEndpoint"))))
+    return out
+
+
+def kcp_links(objs):
+    """(RemoteIdentity, endpoint-address) for links whose Network == 'kcp'.
+
+    A 'kcp' link is the unique signal of a completed NAT hole-punch: mod/nodes'
+    NATLinkStrategy is the only path that dials a kcp.Endpoint (BasicLinkStrategy
+    dials only tcp, and kcp endpoints are never advertised for an ordinary peer
+    dial), so a kcp link to a sibling means the punch succeeded and was promoted
+    to a direct link. Mirrors tor_links(); cf. links_by_network(objs, "kcp")."""
+    return links_by_network(objs, "kcp")
+
+
 def resolve_onion(objs):
     """The .onion address from a nodes.resolve_endpoints result, or None."""
     for v in _values(objs):
