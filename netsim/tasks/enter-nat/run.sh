@@ -9,8 +9,14 @@
 #     198.51.100.<lan-octet> on the LAN NIC (validated as endpoint-independent/cone by
 #     nat-eim-probe);
 #   * relaunch astrald INSIDE the netns (same -root, so same identity) via a systemd
-#     drop-in (NetworkNamespacePath -- joins only the NET ns, leaving the apphost unix
-#     socket in the shared mount ns so `astral-query` still reaches it from the root ns).
+#     drop-in (NetworkNamespacePath -- joins only the NET ns; the -root/apphost files stay
+#     in the shared mount ns).
+#
+# Reaching the netns'd astrald: `astral-query` defaults to tcp:127.0.0.1:8625
+# (lib/apphost DefaultEndpoint; only the TOKEN is env-overridable, not the endpoint), and
+# once astrald is in "priv" that 127.0.0.1 is the NETNS loopback -- unreachable from the
+# root ns. So EVERY astral-query against a NAT'd node must run inside the netns:
+# `ip netns exec priv astral-query ...` (see add-reflector / verify / configure-nat-tor).
 #
 # astrald cannot see its own public alias -- that is what masquerade means -- so its nat
 # module stays disabled until the reflector node reflects that endpoint back (see
@@ -76,7 +82,7 @@ systemctl restart astrald
 # wait for astrald to come back up inside the netns
 ok=; n=0
 while [ "$n" -lt 90 ]; do
-  if systemctl is-active --quiet astrald && timeout 5 astral-query localnode:.spec -out json >/dev/null 2>&1; then
+  if systemctl is-active --quiet astrald && timeout 5 ip netns exec priv astral-query localnode:.spec -out json >/dev/null 2>&1; then
     ok=1; break
   fi
   n=$((n + 1)); sleep 1

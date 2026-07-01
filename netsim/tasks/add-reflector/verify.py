@@ -42,8 +42,9 @@ def main():
             failed.append(f"{p}: could not read its 10.77 LAN address")
             continue
         want = "198.51.100." + lan.split(".")[-1]           # the peer's public TEST-NET alias
-        # local introspection op, ungated; astrald is in netns priv -> unix-socket CLI.
-        raw = astralapi.ssh(p, "astral-query ip.public_ip_candidates -out json") or ""
+        # astrald is in netns "priv"; astral-query defaults to tcp:127.0.0.1:8625 (netns-local),
+        # so run it inside the netns. Local introspection op -> ungated, no token needed.
+        raw = astralapi.ssh(p, "ip netns exec priv astral-query ip.public_ip_candidates -out json") or ""
         if want in raw:
             print(f"add-reflector OK: {p} nat armed -- public candidate {want} present.")
         else:
