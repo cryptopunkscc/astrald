@@ -7,7 +7,9 @@
 #   * create netns "priv" (192.168.99.2) wired to the VM by a veth pair;
 #   * port-preserving SNAT of 192.168.99.0/24 to a per-node public TEST-NET alias
 #     198.51.100.<lan-octet> on the LAN NIC (validated as endpoint-independent/cone by
-#     nat-eim-probe);
+#     nat-eim-probe), plus an inbound DNAT of that alias back into the netns so the box is a
+#     real cone-NAT gateway (without it inbound punch packets hit the local INPUT and the
+#     punch never completes -- see the nat table section below);
 #   * relaunch astrald INSIDE the netns (same -root, so same identity) via a systemd
 #     drop-in (NetworkNamespacePath -- joins only the NET ns; the -root/apphost files stay
 #     in the shared mount ns).
@@ -68,6 +70,21 @@ nft add table ip nat 2>/dev/null || true
 nft flush table ip nat
 nft add chain ip nat postrouting '{ type nat hook postrouting priority 100 ; }'
 nft add rule ip nat postrouting ip saddr 192.168.99.0/24 oifname "$lan" snat ip to "$pub"
+
+# Inbound DNAT of the public alias into the netns -- REQUIRED for the punch to complete.
+# The alias 198.51.100.<oct> is a LOCAL address on this box (NAT and endpoint are collapsed
+# onto one VM), so inbound punch packets are delivered to the local INPUT (no listener) and
+# never reach the netns puncher; the conntrack-reply reverse-SNAT that should forward them
+# fails under a source-port-realloc clash (the inbound-to-local-alias creates a conntrack
+# entry that collides with the outbound SNAT). DNAT the alias to the netns host (port
+# preserved) so the box acts as a real cone-NAT gateway -- inbound and outbound become one
+# conntrack flow, no clash. Confirmed live: with this rule the punch promotes to a kcp link
+# on BOTH peers; without it both punchers emit and packets reach each peer's lan0, but
+# inbound is never delivered to the netns and the punch times out ("context deadline
+# exceeded"). This makes the NAT a full-cone (endpoint-independent) NAT -- the permissive
+# punchable type; a restricted-cone/symmetric simulation would need a separate router VM.
+nft add chain ip nat prerouting '{ type nat hook prerouting priority -100 ; }'
+nft add rule ip nat prerouting iif "$lan" ip daddr "$pub" dnat to 192.168.99.2
 
 # move astrald into the netns: join only the NET namespace (mount ns untouched, so the
 # apphost unix socket stays reachable from the root ns for astral-query).

@@ -16,6 +16,10 @@ add-vm --hostname reflector
 install-astrald --vm reflector
 enable-tor --vm node1 --vm node2
 enter-nat --vm node1 --vm node2
-add-reflector --reflector reflector --vm node1 --vm node2
 configure-nat-tor --vm node1 --vm node2
+add-reflector --reflector reflector --vm node1 --vm node2
 punch-nat --vm node1 --peer node2
+# NOTE order: configure-nat-tor (which RESTARTS astrald) must run BEFORE add-reflector.
+# add-reflector arms `nat` via an in-memory reflected endpoint; an astrald restart after
+# it would wipe that endpoint and disarm nat -> the punch aborts "does not support NAT
+# traversal". So arm LAST, after the final restart.
