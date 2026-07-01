@@ -30,13 +30,20 @@ REMOTE_BODY=$(cat <<'EOS'
 set -eu
 export DEBIAN_FRONTEND=noninteractive
 
-# deps: git + curl (Go comes from the official tarball, not apt -> need >= 1.25)
-need=""; command -v git  >/dev/null 2>&1 || need="$need git"
-         command -v curl >/dev/null 2>&1 || need="$need curl"
+# deps: git + curl (Go comes from the official tarball, not apt -> need >= 1.25).
+# qemu-guest-agent lets the host correct the guest clock out-of-band over
+# virtio-serial on snapshot resume (netsim's qga guest-set-time), instead of
+# racing sshd while the resume clock-jump storms this 1-vCPU VM.
+need=""; command -v git     >/dev/null 2>&1 || need="$need git"
+         command -v curl    >/dev/null 2>&1 || need="$need curl"
+         command -v qemu-ga >/dev/null 2>&1 || need="$need qemu-guest-agent"
 if [ -n "$need" ]; then
     apt-get -qq -o DPkg::Lock::Timeout=120 update
     apt-get -qq -y -o DPkg::Lock::Timeout=120 install $need ca-certificates >/dev/null
 fi
+# Bind the agent to netsim's guest-agent virtio-serial port (present from boot);
+# left running so it is baked into the snapshot and answers on resume.
+systemctl enable --now qemu-guest-agent >/dev/null 2>&1 || true
 
 # Ephemeral test-VM hygiene: disable the apt periodic machinery so a clock jump on
 # resume (netsim corrects the stale snapshot clock) can't wake apt-daily /
