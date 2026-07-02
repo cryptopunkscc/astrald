@@ -3,7 +3,7 @@
 # drops its LAN path to node1 (after node1 is seeded with node2's onion); then node1's
 # agent re-establishes the swarm link over Tor.
 # start: two-nodes   save: two-nodes-tor
-#   netsim story --stage two-nodes --save two-nodes-tor netsim/stories/tor-link.story
+#   netsim story --stage two-nodes --save two-nodes-tor netsim/scenarios/tor-link/tor-link.story
 enable-tor    --vm node1 --vm node2
 leave-lan     --vm node2 --peer node1
 link-over-tor --vm node1 --peer node2

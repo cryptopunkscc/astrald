@@ -23,15 +23,17 @@ netsim/
     read-remote-object/                # node1's agent reads node2's object over astral (used by read-remote-peer)
     expel-node/                        # node1 (User) permanently bans node2 from the swarm -> two-nodes-expel
     _lib/                              # shared verify library (astralapi.py) + astral-py submodule
-  stories/                             # one story per tested flow (start/save stage in each header)
-    lab.story                          # null           -> astrald-lab
-    bootstrap-user-software-key.story  # astrald-lab    -> one-node
-    import-user-software-key.story     # astrald-lab    -> one-node  (alt.)
-    adopt-node.story                   # one-node       -> two-nodes
-    object-store.story                 # two-nodes      -> two-nodes-data       (store on node1)
-    object-store-peer.story            # two-nodes      -> two-nodes-data-peer  (store on node2)
-    read-remote-peer.story             # two-nodes      -> two-nodes-peer-read  (store on node2, then read it)
-    expel-node.story                   # two-nodes      -> two-nodes-expel
+  scenarios/                           # one dir per scenario: <name>.story + README.md (plain-words)
+    lab/                               # null           -> astrald-lab           (fixture)
+    bootstrap-user-software-key/       # astrald-lab    -> one-node              (fixture)
+    import-user-software-key/          # astrald-lab    -> one-node  (alt.)
+    adopt-node/                        # one-node       -> two-nodes             (fixture)
+    object-store/                      # two-nodes      -> two-nodes-data        (store on node1)
+    object-store-peer/                 # two-nodes      -> two-nodes-data-peer   (store on node2)
+    read-remote-peer/                  # two-nodes      -> two-nodes-peer-read   (store on node2, then read it)
+    expel-node/                        # two-nodes      -> two-nodes-expel
+    tor-link/                          # two-nodes      -> two-nodes-tor         (re-link over Tor)
+    nat-punch/                         # two-nodes      -> two-nodes-nat         (NAT hole-punch)
   link.sh                          # register tasks with netsim (idempotent; re-run anytime)
   README.md
 ```
@@ -111,7 +113,7 @@ then build the lab:
 ```sh
 ./netsim/link.sh
 export SATFORGE_SKILLS_DEPLOY_KEY=~/.ssh/satforge_skills_deploy   # see tasks/configure-astral-agent
-netsim story --stage null --save astrald-lab netsim/stories/lab.story
+netsim story --stage null --save astrald-lab netsim/scenarios/lab/lab.story
 ```
 
 The result is the stage `astrald-lab`: `node1` and `node2` running astrald, with a
@@ -120,20 +122,21 @@ with `netsim shell --stage astrald-lab`.
 
 ## Swarm pipeline
 
-Each post-lab flow is its own story under `stories/`, layered on the previous
-stage (its `start`/`save` stages are in the story header). Intermediate stages
-stay reusable, so you can replay one flow without rebuilding the chain:
+Each post-lab flow is its own scenario under `scenarios/<name>/` — a `<name>.story`
+plus a plain-words `README.md` — layered on the previous stage (its `start`/`save`
+stages are in the story header and README). Intermediate stages stay reusable, so
+you can replay one flow without rebuilding the chain:
 
 ```
 astrald-lab ─[bootstrap-user-software-key]→ one-node ─[adopt-node]→ two-nodes ─[object-store]→ two-nodes-data
 ```
 
 ```sh
-netsim story --stage astrald-lab    --save one-node             netsim/stories/bootstrap-user-software-key.story
-netsim story --stage one-node       --save two-nodes            netsim/stories/adopt-node.story
-netsim story --stage two-nodes      --save two-nodes-data       netsim/stories/object-store.story
-netsim story --stage two-nodes      --save two-nodes-peer-read  netsim/stories/read-remote-peer.story
-netsim story --stage two-nodes      --save two-nodes-expel      netsim/stories/expel-node.story
+netsim story --stage astrald-lab    --save one-node             netsim/scenarios/bootstrap-user-software-key/bootstrap-user-software-key.story
+netsim story --stage one-node       --save two-nodes            netsim/scenarios/adopt-node/adopt-node.story
+netsim story --stage two-nodes      --save two-nodes-data       netsim/scenarios/object-store/object-store.story
+netsim story --stage two-nodes      --save two-nodes-peer-read  netsim/scenarios/read-remote-peer/read-remote-peer.story
+netsim story --stage two-nodes      --save two-nodes-expel      netsim/scenarios/expel-node/expel-node.story
 ```
 
 `expel-node` is a separate branch off `two-nodes`: the User on node1 permanently

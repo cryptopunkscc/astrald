@@ -11,7 +11,7 @@
 # symmetric NATs, and the punch client sets no relay hint), so configure-nat-tor is required.
 #
 # start: two-nodes   save: two-nodes-nat
-#   netsim story --stage two-nodes --save two-nodes-nat netsim/stories/nat-punch.story
+#   netsim story --stage two-nodes --save two-nodes-nat netsim/scenarios/nat-punch/nat-punch.story
 add-vm --hostname reflector
 install-astrald --vm reflector
 enable-tor --vm node1 --vm node2
