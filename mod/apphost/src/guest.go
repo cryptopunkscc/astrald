@@ -198,6 +198,11 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 		QueryString: guest.prepareQueryString(string(msg.Query)),
 	}
 
+	// Before the node has a user, a web guest may only run setup ops.
+	if guest.mod.setupModeBlocks(ctx, guest.webOrigin, q) {
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+	}
+
 	// check authorization if necessary
 	switch {
 	case q.Caller.IsZero():
