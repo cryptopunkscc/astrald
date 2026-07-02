@@ -191,6 +191,11 @@ func (guest *Guest) onRouteQueryMsg(ctx *astral.Context, msg *apphost.RouteQuery
 		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
 	}
 
+	// deny anonymous browser guests whose origin is not first-party.
+	if guest.webOriginDenied() {
+		return guest.Send(&apphost.ErrorMsg{Code: apphost.ErrCodeDenied})
+	}
+
 	var q = &astral.Query{
 		Nonce:       msg.Nonce,
 		Caller:      msg.Caller,
@@ -287,6 +292,17 @@ func (guest *Guest) sendError(code string) error {
 
 func (guest *Guest) isAuthenticated() bool {
 	return !guest.guestID.IsZero()
+}
+
+// webOriginDenied reports whether this guest's query must be denied for origin
+// reasons: an anonymous browser guest (non-empty Origin) whose origin is not
+// first-party.
+// why: the loopback WS admits any website; without this an untrusted origin could
+// run local-zone ops (objects.store, apphost.list_tokens, ...) anonymously.
+// note: a valid token bypasses this - the token is the authority regardless of
+// origin; an empty origin is a non-browser client, governed by AllowAnonymous.
+func (guest *Guest) webOriginDenied() bool {
+	return !guest.isAuthenticated() && guest.webOrigin != "" && !originAllowed(guest.webOrigin)
 }
 
 // onRegisterServiceMsg registers this connection as the notification channel for
