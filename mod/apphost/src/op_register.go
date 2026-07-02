@@ -22,6 +22,11 @@ type opRegisterArgs struct {
 // OpRegister provisions a brand-new identity: generates a key pair, issues a signed app contract, and returns an access token.
 // The caller receives a ready-to-use guest identity without providing any pre-existing credentials.
 func (mod *Module) OpRegister(ctx *astral.Context, query *routing.IncomingQuery, args opRegisterArgs) (err error) {
+	// why: read the registering web origin before accepting - EnRouteQueryExtra
+	// only resolves while the query is en route, and Accept removes that entry.
+	webOrigin, _ := mod.EnRouteQueryExtra(query.Nonce(), "origin-web")
+	origin, _ := webOrigin.(string)
+
 	ch := query.Accept(channel.WithFormats(args.In, args.Out))
 	defer ch.Close()
 
@@ -44,6 +49,10 @@ func (mod *Module) OpRegister(ctx *astral.Context, query *routing.IncomingQuery,
 	if err != nil {
 		return ch.Send(astral.Err(err))
 	}
+
+	// grant the permit template for the registering web origin (read above,
+	// before Accept). A non-browser (IPC) caller has no origin-web.
+	contract.Permits = append(contract.Permits, mod.permitsForOrigin(origin)...)
 
 	signed := &auth.SignedContract{Contract: contract}
 	if err = mod.Auth.SignContract(ctx, signed); err != nil {
