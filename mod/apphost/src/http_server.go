@@ -92,6 +92,14 @@ func (srv *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Reque
 		return
 	}
 
+	// why: the HTTP query/object API is loopback-only, matching the WS path
+	// (ws_server.go) and the documented localhost endpoint. BindHTTP may listen on
+	// all interfaces, so the guard is enforced per-request here, not by the bind.
+	if !isLoopback(request) {
+		writer.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	// add CORS headers
 	writer.Header().Set("Access-Control-Allow-Origin", "*")
 	writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
