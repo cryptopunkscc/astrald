@@ -95,6 +95,17 @@ func (mod *Module) LocalApps() ([]*apphost.App, error) {
 	return list, nil
 }
 
+// EnRouteQueryExtra returns the value of key from the Extra map of a guest query
+// that is still en route (launched but not yet accepted or rejected). Once the
+// query resolves the entry is gone and the lookup misses.
+func (mod *Module) EnRouteQueryExtra(nonce astral.Nonce, key string) (any, bool) {
+	er, ok := mod.enRoute.Get(nonce)
+	if !ok {
+		return nil, false
+	}
+	return er.query.Extra.Get(key)
+}
+
 func (mod *Module) String() string {
 	return apphost.ModuleName
 }
