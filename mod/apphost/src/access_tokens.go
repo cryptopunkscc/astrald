@@ -1,8 +1,9 @@
 package apphost
 
 import (
+	"crypto/rand"
 	"errors"
-	"math/rand"
+	"time"
 
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/mod/apphost"
@@ -45,14 +46,38 @@ func (mod *Module) AuthenticateToken(token string) (*astral.Identity, error) {
 		return nil, errors.New("invalid token")
 	}
 
+	// reject expired tokens; collapsed into the same opaque error
+	if time.Now().After(dbToken.ExpiresAt) {
+		return nil, errors.New("invalid token")
+	}
+
 	return dbToken.Identity, nil
 }
 
-func randomString(length int) (s string) {
+// randomString returns a cryptographically random string of length characters
+// over [a-zA-Z0-9_].
+// why: access tokens are bearer credentials; math/rand is predictable from
+// observed output and must never generate them.
+func randomString(length int) (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
-	var name = make([]byte, length)
-	for i := 0; i < len(name); i++ {
-		name[i] = charset[rand.Intn(len(charset))]
+	// reject the biased tail so every charset index is equally likely
+	const maxByte = 256 - (256 % len(charset))
+
+	out := make([]byte, length)
+	buf := make([]byte, length)
+	for filled := 0; filled < length; {
+		if _, err := rand.Read(buf); err != nil {
+			return "", err
+		}
+		for _, b := range buf {
+			if filled == length {
+				break
+			}
+			if int(b) < maxByte {
+				out[filled] = charset[int(b)%len(charset)]
+				filled++
+			}
+		}
 	}
-	return string(name[:])
+	return string(out), nil
 }
