@@ -16,7 +16,6 @@ const (
 	OpAdopt             = "user.adopt"
 	OpRequestMembership = "user.request_membership"
 	OpSwarmStatus       = "user.swarm_status"
-	OpCreate            = "user.create"
 	OpListSiblings      = "user.list_siblings"
 	OpAssets            = "user.assets"
 	OpNewNodeContract   = "user.new_node_contract"
