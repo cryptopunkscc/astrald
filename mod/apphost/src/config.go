@@ -12,6 +12,12 @@ type Config struct {
 	BindHTTP string `yaml:"bind_http,flow"`
 
 	AllowAnonymous bool `yaml:"allow_anonymous,omitempty"`
+
+	// TrustedWebOrigins are the browser origins allowed to act anonymously over
+	// the WS transport (route local-zone queries and request a token). Exact
+	// match against the request Origin header. Add a dev-server origin here to
+	// develop the settings app against this node.
+	TrustedWebOrigins []string `yaml:"trusted_web_origins,omitempty"`
 }
 
 var defaultConfig = Config{
@@ -21,8 +27,9 @@ var defaultConfig = Config{
 		"memu:apphosty",
 		"memb:apphostb",
 	},
-	BindHTTP:       "tcp:0.0.0.0:8624",
-	Tokens:         map[string]string{},
-	Workers:        32,
-	AllowAnonymous: true,
+	BindHTTP:          "tcp:0.0.0.0:8624",
+	Tokens:            map[string]string{},
+	Workers:           32,
+	AllowAnonymous:    true,
+	TrustedWebOrigins: []string{TrustedWebOrigin},
 }

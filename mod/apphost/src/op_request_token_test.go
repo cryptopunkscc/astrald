@@ -43,8 +43,9 @@ func newTestModule(t *testing.T, u user.Module) *Module {
 	}
 
 	mod := &Module{
-		db:  &DB{gdb},
-		log: log.New(nil),
+		db:     &DB{gdb},
+		log:    log.New(nil),
+		config: Config{TrustedWebOrigins: []string{TrustedWebOrigin}},
 	}
 	mod.User = u
 	return mod

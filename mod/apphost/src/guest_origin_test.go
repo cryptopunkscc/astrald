@@ -26,9 +26,11 @@ func TestWebOriginDenied(t *testing.T) {
 		{"authenticated, no origin", authed, "", false},
 	}
 
+	mod := &Module{config: Config{TrustedWebOrigins: []string{TrustedWebOrigin}}}
+
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			guest := &Guest{guestID: c.guestID, webOrigin: c.webOrigin}
+			guest := &Guest{mod: mod, guestID: c.guestID, webOrigin: c.webOrigin}
 			if got := guest.webOriginDenied(); got != c.want {
 				t.Fatalf("webOriginDenied() = %v; want %v", got, c.want)
 			}

@@ -1,24 +1,24 @@
 package apphost
 
 import (
+	"slices"
+
 	"github.com/cryptopunkscc/astrald/astral"
 	"github.com/cryptopunkscc/astrald/astral/channel"
 	"github.com/cryptopunkscc/astrald/lib/routing"
 )
 
-// TrustedWebOrigin is the only browser origin allowed to act anonymously against
-// the node (routing local-zone queries and requesting a token).
-// why: hardcoded first-party origin (the settings app); no config surface until
-// other origins need setup access.
-// todo: promote to a config allowlist once a second legitimate origin exists.
+// TrustedWebOrigin is the built-in first-party origin, seeded into the default
+// TrustedWebOrigins allowlist. Operators add further origins (e.g. a dev server)
+// via config.
 const TrustedWebOrigin = "https://settings.astrald.app"
 
 // originAllowed reports whether an anonymous browser guest from origin may route
-// queries. Only the first-party settings app is trusted. Callers must pass a
-// non-empty origin; an empty origin denotes a non-browser client and is governed
-// by AllowAnonymous, not this check.
-func originAllowed(origin string) bool {
-	return origin == TrustedWebOrigin
+// queries: origin must be in the configured TrustedWebOrigins allowlist. Callers
+// must pass a non-empty origin; an empty origin denotes a non-browser client and
+// is governed by AllowAnonymous, not this check.
+func (mod *Module) originAllowed(origin string) bool {
+	return slices.Contains(mod.config.TrustedWebOrigins, origin)
 }
 
 type opRequestTokenArgs struct {
@@ -33,7 +33,7 @@ func (mod *Module) OpRequestToken(ctx *astral.Context, q *routing.IncomingQuery,
 	// is removed once the query resolves
 	o, _ := mod.EnRouteQueryExtra(q.Nonce(), "origin-web")
 	origin, _ := o.(string)
-	if !originAllowed(origin) {
+	if !mod.originAllowed(origin) {
 		return q.Reject()
 	}
 

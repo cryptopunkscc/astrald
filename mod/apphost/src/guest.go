@@ -302,7 +302,7 @@ func (guest *Guest) isAuthenticated() bool {
 // note: a valid token bypasses this - the token is the authority regardless of
 // origin; an empty origin is a non-browser client, governed by AllowAnonymous.
 func (guest *Guest) webOriginDenied() bool {
-	return !guest.isAuthenticated() && guest.webOrigin != "" && !originAllowed(guest.webOrigin)
+	return !guest.isAuthenticated() && guest.webOrigin != "" && !guest.mod.originAllowed(guest.webOrigin)
 }
 
 // onRegisterServiceMsg registers this connection as the notification channel for
